@@ -148,8 +148,8 @@ const MyLearning = () => {
                   <div className="h-full w-28 md:w-full md:h-48 rounded-xl md:rounded-[16px] overflow-hidden flex-shrink-0 bg-gray-100 relative">
                     {course.image ? (
                       <img 
-                        src={`http://localhost:5000/${course.image.replace(/\\/g, '/')}`}
-                        onError={(e) => { e.target.onerror = null; e.target.src = course.image; }} // Fallback if absolute url is given
+                        src={course.image.startsWith('http') ? course.image : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/${course.image.replace(/\\/g, '/')}`}
+                        onError={(e) => { e.target.onerror = null; e.target.src = course.image; }} // Fallback
                         alt={course.title} 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                       />

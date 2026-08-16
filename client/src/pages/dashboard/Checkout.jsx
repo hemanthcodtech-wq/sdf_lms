@@ -16,7 +16,7 @@ const Checkout = () => {
   useEffect(() => {
     const fetchCourse = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:5000/api/courses/public/${id}`);
+        const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses/public/${id}`);
         setCourse(data.data);
       } catch (error) {
         console.error('Error fetching course for checkout:', error);
@@ -34,7 +34,7 @@ const Checkout = () => {
     setProcessing(true);
     
     try {
-      await axios.post('http://localhost:5000/api/payments/mock-checkout', {
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/payments/mock-checkout`, {
         courseId: id,
         email,
         amount: course.price

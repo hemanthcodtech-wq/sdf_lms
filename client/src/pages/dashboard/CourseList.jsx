@@ -17,7 +17,7 @@ const CourseList = () => {
 
   const fetchCourses = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/courses/public');
+      const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses/public`);
       setCourses(data.data);
     } catch (error) {
       console.error('Error fetching courses:', error);
