@@ -25,8 +25,8 @@ const TopNav = () => {
   const navItems = [
     { name: 'Home', path: '/dashboard', icon: FaHome },
     { name: 'Courses', path: '/courses', icon: FaGraduationCap },
-    { name: 'Classes', path: '/classes', icon: FaChalkboardTeacher },
-    { name: 'My Learning', path: '/learning', icon: FaBookOpen },
+    { name: 'Classes', path: '/dashboard/classes', icon: FaChalkboardTeacher },
+    { name: 'My Learning', path: '/dashboard/learning', icon: FaBookOpen },
   ];
 
   return (
@@ -77,7 +77,7 @@ const TopNav = () => {
           <FaBell size={18} />
           <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
         </button>
-        <NavLink to="/profile" className="flex items-center gap-2 pl-4 border-l border-gray-200">
+        <NavLink to="/dashboard/profile" className="flex items-center gap-2 pl-4 border-l border-gray-200">
           <div className="w-10 h-10 rounded-full bg-brand-green/10 flex items-center justify-center text-brand-green overflow-hidden">
             <FaUser size={16} />
           </div>

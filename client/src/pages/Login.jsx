@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaFacebookF, FaPhoneAlt } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
 import axios from 'axios';
@@ -10,6 +10,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -24,7 +25,10 @@ const Login = () => {
       if (response.data.success) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify({ emailOrPhone: response.data.emailOrPhone, role: response.data.role }));
-        navigate('/dashboard');
+        
+        const searchParams = new URLSearchParams(location.search);
+        const redirectUrl = searchParams.get('redirect') || '/dashboard';
+        navigate(redirectUrl);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');
@@ -40,14 +44,14 @@ const Login = () => {
 
       <div className="w-full max-w-md flex flex-col items-center z-10">
         
-        {/* Logo Section - Outside the card */}
-        <div className="flex flex-col items-center mb-6 w-full drop-shadow-sm">
-          <img src="/logo.png" alt="Swamy Dwija Foundation" className="w-48 h-auto" />
-        </div>
-
         {/* Glassmorphism Card */}
         <div className="w-full bg-white/60 backdrop-blur-xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-[2rem] p-8 md:p-10 flex flex-col items-center">
           
+          {/* Logo Section */}
+          <div className="flex flex-col items-center mb-4 w-full drop-shadow-sm">
+            <img src="/logo.png" alt="Swamy Dwija Foundation" className="w-48 h-auto" />
+          </div>
+
           {/* Welcome Text */}
           <div className="text-center mb-8 w-full">
             <p className="text-[15px] text-gray-800 font-semibold mb-1">Welcome Back!</p>

@@ -10,6 +10,15 @@ const CourseDetails = () => {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const handleEnroll = () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      navigate(`/checkout/${course._id}`);
+    } else {
+      navigate(`/login?redirect=/checkout/${course._id}`);
+    }
+  };
+
   useEffect(() => {
     const fetchCourse = async () => {
       try {
@@ -118,7 +127,7 @@ const CourseDetails = () => {
         {/* Sticky Bottom Action */}
         <div className="fixed bottom-16 left-0 w-full bg-bg-cream/95 backdrop-blur-md px-5 py-4 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] border-t border-gray-100">
           <button 
-            onClick={() => navigate(`/checkout/${course._id}`)}
+            onClick={handleEnroll}
             className="w-full bg-brand-green-dark hover:bg-brand-green text-white font-bold py-4 rounded-[20px] shadow-[0_8px_20px_rgba(20,83,45,0.2)] transition-all text-[15px]"
           >
             Enroll Now
@@ -132,17 +141,8 @@ const CourseDetails = () => {
           ========================================= */}
       <div className="hidden md:block pb-20">
         
-        {/* Navigation Bar */}
-        <div className="w-full bg-white/60 backdrop-blur-xl border-b border-white/40 sticky top-0 z-50 shadow-sm">
-          <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <button onClick={() => navigate('/courses')} className="flex items-center gap-2 text-brand-green-dark hover:text-brand-green font-bold transition-colors">
-              <FaArrowLeft /> Back to Classes
-            </button>
-          </div>
-        </div>
-
         {/* Hero Section with Glassmorphism */}
-        <div className="relative pt-12 pb-24 overflow-hidden">
+        <div className="relative pt-24 pb-24 overflow-hidden">
           {/* Abstract background blobs for hero */}
           <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-brand-green/20 rounded-full blur-[100px] pointer-events-none"></div>
           <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] bg-[#d67b22]/15 rounded-full blur-[100px] pointer-events-none"></div>
@@ -151,6 +151,10 @@ const CourseDetails = () => {
             
             {/* Left Content */}
             <div className="flex-1 space-y-6">
+              <button onClick={() => navigate('/courses')} className="flex items-center gap-2 text-brand-green-dark hover:text-brand-green font-bold transition-colors mb-4">
+                <FaArrowLeft /> Back to Classes
+              </button>
+              
               <div className="flex items-center gap-3">
                 <span className="bg-white/60 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-brand-green shadow-sm border border-white/50">
                   {course.category}
@@ -230,7 +234,7 @@ const CourseDetails = () => {
                 <h3 className="text-xl font-bold text-gray-900 text-center mb-6">Ready to start?</h3>
                 
                 <button 
-                  onClick={() => navigate(`/checkout/${course._id}`)}
+                  onClick={handleEnroll}
                   className="w-full py-4 px-6 bg-brand-green hover:bg-brand-green-dark text-white text-lg font-bold rounded-2xl shadow-[0_10px_25px_rgba(41,120,56,0.3)] hover:-translate-y-1 transition-all duration-300"
                 >
                   Enroll Now

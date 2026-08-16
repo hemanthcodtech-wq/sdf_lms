@@ -40,7 +40,7 @@ const CourseList = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-16">
         {/* Mobile Header (Back Arrow & Title) */}
         <div className="flex md:hidden items-center gap-3 mb-6">
-          <button onClick={() => navigate('/dashboard')} className="text-brand-green-dark hover:text-brand-green transition-colors">
+          <button onClick={() => navigate(-1)} className="text-brand-green-dark hover:text-brand-green transition-colors">
             <svg stroke="currentColor" fill="none" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="20" width="20" xmlns="http://www.w3.org/2000/svg"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
           </button>
           <h1 className="text-xl font-extrabold text-brand-green-dark">All Classes</h1>

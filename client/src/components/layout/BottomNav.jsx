@@ -7,9 +7,9 @@ const BottomNav = () => {
   const navItems = [
     { name: 'Home', path: '/dashboard', icon: FaHome },
     { name: 'Courses', path: '/courses', icon: FaGraduationCap },
-    { name: 'Classes', path: '/classes', icon: FaChalkboardTeacher },
-    { name: 'My Learning', path: '/learning', icon: FaBookOpen },
-    { name: 'Profile', path: '/profile', icon: FaUser },
+    { name: 'Classes', path: '/dashboard/classes', icon: FaChalkboardTeacher },
+    { name: 'My Learning', path: '/dashboard/learning', icon: FaBookOpen },
+    { name: 'Profile', path: '/dashboard/profile', icon: FaUser },
   ];
 
   return (
