@@ -1,0 +1,107 @@
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET || 'secret123', {
+    expiresIn: '30d',
+  });
+};
+
+exports.registerUser = async (req, res, next) => {
+  try {
+    const { emailOrPhone, password, role } = req.body;
+
+    const userExists = await User.findOne({ emailOrPhone });
+
+    if (userExists) {
+      return res.status(400).json({ success: false, message: 'User already exists' });
+    }
+
+    const user = await User.create({
+      emailOrPhone,
+      password,
+      role
+    });
+
+    if (user) {
+      res.status(201).json({
+        success: true,
+        _id: user._id,
+        emailOrPhone: user.emailOrPhone,
+        role: user.role,
+        token: generateToken(user._id),
+      });
+    } else {
+      res.status(400).json({ success: false, message: 'Invalid user data' });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.loginUser = async (req, res, next) => {
+  try {
+    const { emailOrPhone, password } = req.body;
+
+    const user = await User.findOne({ emailOrPhone });
+
+    if (user && (await user.comparePassword(password))) {
+      res.json({
+        success: true,
+        _id: user._id,
+        emailOrPhone: user.emailOrPhone,
+        role: user.role,
+        token: generateToken(user._id),
+      });
+    } else {
+      res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getUserProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    if (user) {
+      res.json({ success: true, data: user });
+    } else {
+      res.status(404).json({ success: false, message: 'User not found' });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateUserProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+      user.firstName = req.body.firstName || user.firstName;
+      user.lastName = req.body.lastName || user.lastName;
+      user.emailOrPhone = req.body.emailOrPhone || user.emailOrPhone;
+      
+      if (req.body.password) {
+        user.password = req.body.password;
+      }
+
+      const updatedUser = await user.save();
+
+      res.json({
+        success: true,
+        _id: updatedUser._id,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        emailOrPhone: updatedUser.emailOrPhone,
+        role: updatedUser.role,
+        token: generateToken(updatedUser._id),
+      });
+    } else {
+      res.status(404).json({ success: false, message: 'User not found' });
+    }
+  } catch (error) {
+    next(error);
+  }
+};

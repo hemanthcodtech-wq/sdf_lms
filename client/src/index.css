@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-inter: 'Inter', sans-serif;
+  --color-brand-green: #0d5c31;
+  --color-brand-green-dark: #084223;
+  --color-brand-orange: #ea7a28;
+  --color-bg-cream: #fbf9f2;
+}
+
+body {
+  font-family: var(--font-inter);
+  background-color: var(--color-bg-cream);
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom styles for exactly matching the input design */
+.custom-input {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.custom-input:focus-within {
+  border-color: var(--color-brand-green);
+  box-shadow: 0 0 0 1px var(--color-brand-green);
+}
