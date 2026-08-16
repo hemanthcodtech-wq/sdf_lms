@@ -34,10 +34,16 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/sdf_lms';
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log('Connected to MongoDB');
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
+    // Only listen if not in Vercel production environment
+    if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+      app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+    }
   })
   .catch((err) => {
     console.error('Failed to connect to MongoDB', err);
   });
+
+// Export the app for Vercel serverless functions
+module.exports = app;
