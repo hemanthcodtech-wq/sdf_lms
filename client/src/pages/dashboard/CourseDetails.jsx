@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { FaArrowLeft, FaClock, FaGlobe, FaCheck, FaUser } from 'react-icons/fa';
 
 const CourseDetails = () => {
-  const { id } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -22,7 +22,7 @@ const CourseDetails = () => {
   useEffect(() => {
     const fetchCourse = async () => {
       try {
-        const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses/public/${id}`);
+        const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses/public/${slug}`);
         setCourse(data.data);
       } catch (error) {
         console.error('Error fetching course:', error);
@@ -31,7 +31,7 @@ const CourseDetails = () => {
       }
     };
     fetchCourse();
-  }, [id]);
+  }, [slug]);
 
   if (loading) {
     return (
@@ -75,7 +75,7 @@ const CourseDetails = () => {
 
         {/* Content Section */}
         <div className="px-5 py-6">
-          <h1 className="text-[22px] font-extrabold text-gray-900 leading-tight mb-2">
+          <h1 className="text-[26px] font-bold font-playfair text-gray-900 leading-tight mb-2 tracking-tight">
             {course.title}
           </h1>
           
@@ -102,8 +102,8 @@ const CourseDetails = () => {
 
           {/* About */}
           <div className="mb-8">
-            <h2 className="text-[17px] font-extrabold text-gray-900 mb-3">About This Class</h2>
-            <p className="text-sm text-gray-700 leading-relaxed font-medium">
+            <h2 className="text-[22px] font-bold font-playfair text-gray-900 mb-3">About This Class</h2>
+            <p className="text-[15px] font-inter text-gray-700 leading-relaxed">
               {course.description}
             </p>
           </div>
@@ -111,7 +111,7 @@ const CourseDetails = () => {
           {/* What You Will Learn */}
           {(course.whatYouWillLearn && course.whatYouWillLearn.length > 0) && (
             <div className="mb-8">
-              <h2 className="text-[17px] font-extrabold text-gray-900 mb-4">What You Will Learn</h2>
+              <h2 className="text-[22px] font-bold font-playfair text-gray-900 mb-4">What You Will Learn</h2>
               <ul className="space-y-3">
                 {course.whatYouWillLearn.map((item, idx) => (
                   <li key={idx} className="flex items-start gap-3">
@@ -151,9 +151,6 @@ const CourseDetails = () => {
             
             {/* Left Content */}
             <div className="flex-1 space-y-6">
-              <button onClick={() => navigate('/courses')} className="flex items-center gap-2 text-brand-green-dark hover:text-brand-green font-bold transition-colors mb-4">
-                <FaArrowLeft /> Back to Classes
-              </button>
               
               <div className="flex items-center gap-3">
                 <span className="bg-white/60 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-brand-green shadow-sm border border-white/50">
@@ -164,17 +161,17 @@ const CourseDetails = () => {
                 </span>
               </div>
               
-              <h1 className="text-4xl lg:text-6xl font-extrabold text-gray-900 leading-tight">
+              <h1 className="text-5xl lg:text-7xl font-bold font-playfair text-gray-900 leading-[1.1] tracking-tight">
                 {course.title}
               </h1>
               
-              <div className="flex items-center gap-6 text-gray-600 font-medium">
+              <div className="flex items-center gap-6 text-gray-700 font-outfit font-semibold text-lg">
                 <div className="flex items-center gap-2"><FaClock className="text-brand-green" /> {course.duration}</div>
                 <div className="flex items-center gap-2"><FaGlobe className="text-brand-green" /> {course.language || 'English'}</div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[#f59e0b]">★</span>
                   <span className="font-bold text-gray-900">4.8</span>
-                  <span className="text-gray-500">(258 reviews)</span>
+                  <span className="text-gray-500 font-medium">(258 reviews)</span>
                 </div>
               </div>
             </div>
@@ -202,24 +199,26 @@ const CourseDetails = () => {
             <div className="flex-1 space-y-10">
               
               {/* About Block */}
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 lg:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-white/80">
-                <h2 className="text-2xl font-extrabold text-gray-900 mb-5">About This Class</h2>
-                <p className="text-gray-700 leading-relaxed text-lg">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white/40 backdrop-blur-3xl rounded-3xl p-8 lg:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-white/60">
+                <h2 className="text-4xl font-bold font-playfair text-gray-900 mb-5">About This Class</h2>
+                <div className="w-16 h-1 bg-brand-green mb-6 rounded-full"></div>
+                <p className="text-gray-700 font-inter leading-relaxed text-lg">
                   {course.description}
                 </p>
               </motion.div>
 
               {/* What You Will Learn Block */}
               {(course.whatYouWillLearn && course.whatYouWillLearn.length > 0) && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 lg:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-white/80">
-                  <h2 className="text-2xl font-extrabold text-gray-900 mb-6">What You Will Learn</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white/40 backdrop-blur-3xl rounded-3xl p-8 lg:p-10 shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-white/60">
+                  <h2 className="text-4xl font-bold font-playfair text-gray-900 mb-6">What You Will Learn</h2>
+                  <div className="w-16 h-1 bg-brand-green mb-8 rounded-full"></div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {course.whatYouWillLearn.map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-4">
-                        <div className="w-6 h-6 rounded-full bg-brand-green/10 flex items-center justify-center shrink-0 mt-0.5">
-                          <FaCheck className="text-brand-green-dark text-[12px]" />
+                      <div key={idx} className="flex items-start gap-4 bg-white/50 p-4 rounded-2xl border border-white/50 shadow-sm transition-transform hover:-translate-y-1">
+                        <div className="w-8 h-8 rounded-full bg-brand-green/20 flex items-center justify-center shrink-0">
+                          <FaCheck className="text-brand-green-dark text-[14px]" />
                         </div>
-                        <span className="text-gray-700 font-medium text-[15px]">{item}</span>
+                        <span className="text-gray-800 font-bold text-[16px] mt-1">{item}</span>
                       </div>
                     ))}
                   </div>
@@ -228,32 +227,32 @@ const CourseDetails = () => {
             </div>
 
             {/* Sticky Sidebar Action */}
-            <div className="w-full lg:w-80">
-              <div className="sticky top-28 bg-white/60 backdrop-blur-2xl rounded-[2rem] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-white">
+            <div className="w-full lg:w-96">
+              <div className="sticky top-28 bg-white/40 backdrop-blur-3xl rounded-[2.5rem] p-8 shadow-[0_30px_60px_rgba(0,0,0,0.12)] border border-white/80">
                 
-                <h3 className="text-xl font-bold text-gray-900 text-center mb-6">Ready to start?</h3>
+                <h3 className="text-2xl font-black text-gray-900 text-center mb-8">Ready to start?</h3>
                 
                 <button 
                   onClick={handleEnroll}
-                  className="w-full py-4 px-6 bg-brand-green hover:bg-brand-green-dark text-white text-lg font-bold rounded-2xl shadow-[0_10px_25px_rgba(41,120,56,0.3)] hover:-translate-y-1 transition-all duration-300"
+                  className="w-full py-4 px-6 bg-brand-green hover:bg-brand-green-dark text-white text-xl font-bold rounded-2xl shadow-[0_10px_25px_rgba(41,120,56,0.4)] hover:shadow-[0_15px_35px_rgba(41,120,56,0.6)] hover:-translate-y-1 transition-all duration-300 transform"
                 >
                   Enroll Now
                 </button>
                 
-                <p className="text-center text-sm text-gray-500 mt-4 font-medium">Join thousands of students</p>
+                <p className="text-center text-sm text-gray-600 mt-5 font-semibold">Join thousands of students</p>
                 
-                <div className="mt-8 pt-6 border-t border-gray-200/50 space-y-4">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500 font-medium">Access</span>
-                    <span className="font-bold text-gray-800">Lifetime</span>
+                <div className="mt-8 pt-6 border-t border-gray-300/50 space-y-5">
+                  <div className="flex justify-between items-center text-base">
+                    <span className="text-gray-600 font-semibold">Access</span>
+                    <span className="font-bold text-gray-900">Lifetime</span>
                   </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500 font-medium">Language</span>
-                    <span className="font-bold text-gray-800">{course.language || 'English'}</span>
+                  <div className="flex justify-between items-center text-base">
+                    <span className="text-gray-600 font-semibold">Language</span>
+                    <span className="font-bold text-gray-900">{course.language || 'English'}</span>
                   </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500 font-medium">Format</span>
-                    <span className="font-bold text-gray-800">On-demand</span>
+                  <div className="flex justify-between items-center text-base">
+                    <span className="text-gray-600 font-semibold">Format</span>
+                    <span className="font-bold text-gray-900">On-demand</span>
                   </div>
                 </div>
               </div>

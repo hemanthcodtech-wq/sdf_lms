@@ -41,12 +41,11 @@ const AppRoutes = () => {
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/courses" element={<CourseList />} />
-          <Route path="/courses/:id" element={<CourseDetails />} />
+          <Route path="/courses/:slug" element={<CourseDetails />} />
+          {/* Auth Routes inside PublicLayout for Navbar */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
         </Route>
-
-        {/* Auth Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
         
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
