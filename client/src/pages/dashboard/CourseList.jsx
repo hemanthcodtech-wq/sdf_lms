@@ -128,11 +128,7 @@ const CourseList = () => {
                   
                   <p className="text-[11px] md:text-sm font-medium text-gray-500 mt-1 md:mb-5">{course.level}</p>
 
-                  <div className="mt-auto pt-2 md:pt-0 flex items-center justify-between text-[11px] md:text-[13px] text-gray-600 font-bold mb-1 md:mb-4">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[#f59e0b] md:text-[15px]">★</span>
-                      <span className="text-gray-700">4.8</span>
-                    </div>
+                  <div className="mt-auto pt-2 md:pt-0 flex items-center justify-start text-[11px] md:text-[13px] text-gray-600 font-bold mb-1 md:mb-4">
                     <div className="text-gray-500 font-medium">{course.duration}</div>
                   </div>
                   

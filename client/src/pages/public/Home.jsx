@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform, useMotionValue, useSpring } from 'fram
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaClock, FaGlobe, FaStar, FaArrowRight, FaCheckCircle, FaAward, FaChalkboardTeacher, FaGraduationCap, FaLeaf, FaHeartbeat, FaOm, FaAppleAlt, FaQuoteLeft, FaPlayCircle } from 'react-icons/fa';
+import { useLanguage } from '../../context/LanguageContext';
 // --- Typewriter Component ---
 const TypewriterText = ({ text }) => {
   const [displayText, setDisplayText] = useState('');
@@ -112,6 +113,7 @@ const Home = () => {
   const y1 = useTransform(scrollY, [0, 1000], [0, 200]);
   const y2 = useTransform(scrollY, [0, 1000], [0, -200]);
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [featuredCourses, setFeaturedCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -135,11 +137,17 @@ const Home = () => {
     "Yoga Alliance", "Ayurvedic Medical Board", "Global Wellness Inst.", "Mindfulness Assoc." // Duplicated for seamless marquee
   ];
 
+  const marqueeColors = [
+    'text-brand-green-dark hover:text-brand-green',
+    'text-brand-orange hover:text-[#c45a12]',
+    'text-brand-green hover:text-brand-green-dark'
+  ];
+
   return (
     <div className="bg-bg-cream overflow-hidden">
 
       {/* --- HERO SECTION --- */}
-      <section className="relative min-h-screen flex items-center pt-20 overflow-hidden bg-dark-bg">
+      <section className="relative pt-36 pb-20 md:pt-44 md:pb-24 overflow-hidden bg-dark-bg">
         {/* Animated Background Elements */}
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1545205597-3d9d02c29597?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center opacity-40 mix-blend-luminosity z-0"></div>
         <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a]/90 via-[#084223]/80 to-[#ea7a28]/60 z-0"></div>
@@ -155,53 +163,53 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full text-center">
           <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold font-outfit text-white mb-6 drop-shadow-2xl tracking-tight">
-              Future of <br />
+              {t('hero_title_1')} <br />
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-brand-green via-yellow-400 to-brand-orange bg-[length:200%_auto] animate-text-shimmer drop-shadow-lg">
-                <TypewriterText text="Wellness Learning" />
+                <TypewriterText text={t('hero_title_2')} />
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-blue-100/80 font-inter mb-10 max-w-3xl mx-auto font-light">
-              Master new skills in a premium, immersive environment. Join the Swamy Dwija Foundation's community of visionaries.
+              {t('hero_subtitle')}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Link to="/courses" className="group relative overflow-hidden bg-brand-green text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-brand-green-dark transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(13,92,49,0.5)] inline-flex items-center justify-center border border-brand-green/50">
                 <span className="relative z-10 flex items-center">
-                  Explore Courses
+                  {t('hero_explore')}
                   <FaArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </span>
                 <div className="absolute inset-0 -translate-x-full group-hover:animate-text-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
               </Link>
-              <Link to="/register" className="glass text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-white/10 transition-all duration-300 transform hover:scale-105 shadow-lg border border-white/20">
-                Start Learning
+              <Link to="/register" className="bg-brand-orange text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-[#d66b1a] transition-all duration-300 transform hover:scale-105 shadow-lg border border-transparent">
+                {t('hero_start')}
               </Link>
             </div>
 
             {/* Stats Glass Cards */}
-            <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6 animate-fade-in-up">
+            <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-6 animate-fade-in-up">
               <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
                 <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
                   <AnimatedCounter from={0} to={10} suffix="K+" duration={2.5} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">Students</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{t('stat_students')}</div>
               </div>
               <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
                 <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
                   <AnimatedCounter from={0} to={50} suffix="+" duration={2} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">Courses</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{t('stat_courses')}</div>
               </div>
               <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
                 <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
                   <AnimatedCounter from={0} to={20} suffix="+" duration={2} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">Instructors</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{t('stat_instructors')}</div>
               </div>
               <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
                 <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
                   <AnimatedCounter from={0} to={99} suffix="%" duration={2.5} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">Satisfaction</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{t('stat_satisfaction')}</div>
               </div>
             </div>
           </motion.div>
@@ -216,7 +224,7 @@ const Home = () => {
         <div className="relative flex overflow-x-hidden">
           <div className="animate-marquee whitespace-nowrap flex items-center py-4">
             {partners.map((partner, index) => (
-              <span key={index} className="mx-8 text-xl font-bold text-gray-300 hover:text-brand-green transition-colors cursor-pointer">
+              <span key={index} className={`mx-8 text-xl font-bold transition-colors cursor-pointer ${marqueeColors[index % marqueeColors.length]}`}>
                 {partner}
               </span>
             ))}
@@ -224,7 +232,7 @@ const Home = () => {
           {/* Duplicate for seamless effect */}
           <div className="absolute top-0 animate-marquee2 whitespace-nowrap flex items-center py-4" style={{ left: '100%' }}>
             {partners.map((partner, index) => (
-              <span key={`dup-${index}`} className="mx-8 text-xl font-bold text-gray-300 hover:text-brand-green transition-colors cursor-pointer">
+              <span key={`dup-${index}`} className={`mx-8 text-xl font-bold transition-colors cursor-pointer ${marqueeColors[index % marqueeColors.length]}`}>
                 {partner}
               </span>
             ))}
@@ -233,15 +241,15 @@ const Home = () => {
       </section>
 
       {/* --- FEATURED COURSES (TILTED CARDS) --- */}
-      <section className="py-24 relative bg-bg-cream">
+      <section className="pt-12 pb-24 relative bg-bg-cream">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-end mb-16">
             <div>
-              <h2 className="text-4xl font-extrabold text-gray-900 mb-2 font-outfit">Featured Courses</h2>
-              <p className="text-gray-500 font-medium text-lg">Discover our most popular wellness programs</p>
+              <h2 className="text-4xl font-extrabold text-gray-900 mb-2 font-outfit">{t('featured_title')}</h2>
+              <p className="text-gray-500 font-medium text-lg">{t('featured_sub')}</p>
             </div>
             <Link to="/courses" className="hidden md:flex items-center text-brand-green font-bold hover:text-brand-green-dark transition-colors">
-              View All <FaArrowRight className="ml-2" />
+              {t('featured_view_all')} <FaArrowRight className="ml-2" />
             </Link>
           </div>
 
@@ -267,15 +275,14 @@ const Home = () => {
                     <p className="text-sm text-gray-500 mb-4 line-clamp-2">{course.description}</p>
 
                     <div className="mt-auto space-y-3">
-                      <div className="flex items-center justify-between text-sm font-medium text-gray-600">
+                      <div className="flex items-center justify-start text-sm font-medium text-gray-600">
                         <span className="flex items-center gap-1.5"><FaClock className="text-brand-green" /> {course.duration}</span>
-                        <span className="flex items-center gap-1.5 text-orange-500"><FaStar /> 4.9</span>
                       </div>
 
                       <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
                         <span className="text-xl font-black text-gray-900">₹{course.price}</span>
                         <button onClick={() => navigate(`/courses/${course.slug}`)} className="text-brand-green font-bold hover:text-brand-green-dark text-sm bg-brand-green/10 px-4 py-2 rounded-full transition-colors">
-                          Details
+                          {t('featured_book_now')}
                         </button>
                       </div>
                     </div>
@@ -415,38 +422,8 @@ const Home = () => {
         </div>
       </section>
 
-      {/* --- TESTIMONIALS SECTION --- */}
-      <section className="py-24 relative bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-extrabold text-gray-900 mb-4 font-outfit">Student Success Stories</h2>
-            <p className="text-gray-500 font-medium text-lg max-w-2xl mx-auto">Hear from our community of learners who have transformed their lives.</p>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { name: 'Sarah Jenkins', role: 'Yoga Instructor', text: 'The Foundations of Vinyasa Yoga course completely changed my approach to teaching. The depth of knowledge provided is unmatched.', img: 'https://i.pravatar.cc/150?img=1' },
-              { name: 'Michael Chen', role: 'Wellness Coach', text: 'Ayurvedic Diet & Nutrition gave me the practical tools I needed to help my clients achieve better health outcomes.', img: 'https://i.pravatar.cc/150?img=11' },
-              { name: 'Elena Rodriguez', role: 'Meditation Practitioner', text: 'Advanced Mindfulness Meditation helped me deepen my practice and find a level of peace I didn\'t know was possible.', img: 'https://i.pravatar.cc/150?img=5' }
-            ].map((testimonial, idx) => (
-              <div key={idx} className="bg-bg-cream rounded-[2rem] p-8 relative shadow-sm border border-gray-100 hover:shadow-xl transition-shadow duration-300">
-                <FaQuoteLeft className="text-4xl text-brand-green/20 absolute top-8 right-8" />
-                <div className="flex items-center gap-4 mb-6">
-                  <img src={testimonial.img} alt={testimonial.name} className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md" />
-                  <div>
-                    <h4 className="font-bold text-gray-900">{testimonial.name}</h4>
-                    <p className="text-sm text-gray-500">{testimonial.role}</p>
-                  </div>
-                </div>
-                <div className="flex text-yellow-400 mb-4">
-                  {[...Array(5)].map((_, i) => <FaStar key={i} />)}
-                </div>
-                <p className="text-gray-600 italic">"{testimonial.text}"</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       {/* --- CTA SECTION --- */}
       <section className="py-24 relative overflow-hidden bg-brand-green-dark">

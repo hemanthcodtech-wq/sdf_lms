@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'secret123', {
@@ -101,6 +104,58 @@ exports.updateUserProfile = async (req, res, next) => {
     } else {
       res.status(404).json({ success: false, message: 'User not found' });
     }
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.googleLogin = async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ success: false, message: 'No Google credential provided' });
+    }
+
+    // Verify the Google ID token
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    // Find or create user
+    let user = await User.findOne({ $or: [{ googleId }, { emailOrPhone: email }] });
+
+    if (user) {
+      // Update googleId if not set
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.avatar = picture || user.avatar;
+        user.name = name || user.name;
+        await user.save();
+      }
+    } else {
+      // Create new user with Google
+      user = await User.create({
+        emailOrPhone: email,
+        googleId,
+        name,
+        avatar: picture,
+        role: 'student',
+      });
+    }
+
+    res.json({
+      success: true,
+      _id: user._id,
+      emailOrPhone: user.emailOrPhone,
+      name: user.name,
+      avatar: user.avatar,
+      role: user.role,
+      token: generateToken(user._id),
+    });
   } catch (error) {
     next(error);
   }

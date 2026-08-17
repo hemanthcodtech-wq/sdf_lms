@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaHome, FaBook, FaInfoCircle, FaUser } from 'react-icons/fa';
+import { FaHome, FaBook, FaInfoCircle, FaUser, FaGlobe } from 'react-icons/fa';
+import { useLanguage } from '../../context/LanguageContext';
+
 const PublicNavbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -9,6 +11,7 @@ const PublicNavbar = () => {
   const token = localStorage.getItem('token');
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
+  const { lang, setLang, t } = useLanguage();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -18,11 +21,22 @@ const PublicNavbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close language dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (langRef.current && !langRef.current.contains(e.target)) {
+        setIsLangOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'About', path: '/about' },
-    { name: 'Courses', path: '/courses' },
-    { name: 'Contact', path: '/contact' }
+    { name: t('nav_home'), path: '/' },
+    { name: t('nav_about'), path: '/about' },
+    { name: t('nav_courses'), path: '/courses' },
+    { name: t('nav_contact'), path: '/contact' }
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -32,18 +46,17 @@ const PublicNavbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
-      className={`fixed top-0 w-full z-50 transition-all duration-300 bg-white ${isScrolled ? 'py-3 shadow-md' : 'py-5 shadow-sm'
-        }`}
+      className={`fixed top-0 w-full z-50 transition-all duration-300 bg-white ${isScrolled ? 'py-3 shadow-md' : 'py-5 shadow-sm'}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center w-full relative">
           
-          {/* Mobile Spacer (for flex balance) */}
-          <div className="w-8 md:hidden"></div>
+          {/* Mobile Spacer (for flex balance & container height) */}
+          <div className="w-8 h-16 md:h-auto md:hidden"></div>
 
           {/* Logo */}
           <Link to="/" className="flex-shrink-0 flex items-center gap-2 absolute md:relative left-1/2 transform -translate-x-1/2 md:translate-x-0 md:left-0">
-            <img src="/Swamy logo.png" alt="Logo" className="h-10 w-auto" />
+            <img src="/Swamy logo.png" alt="Logo" className="h-16 md:h-20 w-auto" />
             <span className="font-outfit font-bold text-lg text-brand-green-dark hidden lg:block">Swamy Dwija Foundation</span>
           </Link>
 
@@ -51,10 +64,9 @@ const PublicNavbar = () => {
           <div className="hidden md:flex space-x-8 items-center">
             {navLinks.map((link) => (
               <Link
-                key={link.name}
+                key={link.path}
                 to={link.path}
-                className={`relative font-outfit font-medium text-[16px] transition-colors ${isActive(link.path) ? 'text-brand-green' : 'text-gray-700 hover:text-brand-green'
-                  }`}
+                className={`relative font-outfit font-medium text-[16px] transition-colors ${isActive(link.path) ? 'text-brand-green' : 'text-gray-700 hover:text-brand-green'}`}
               >
                 {link.name}
                 {isActive(link.path) && (
@@ -67,35 +79,55 @@ const PublicNavbar = () => {
             ))}
           </div>
 
-          {/* Auth Buttons */}
+          {/* Right side: Language + Auth */}
           <div className="hidden md:flex items-center space-x-4">
+            {/* Language Select Dropdown */}
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors">
+              <FaGlobe className="text-brand-green text-xs" />
+              <select
+                value={lang}
+                onChange={(e) => setLang(e.target.value)}
+                className="bg-transparent text-sm font-bold text-gray-700 font-outfit outline-none cursor-pointer pr-1"
+              >
+                <option value="en">EN</option>
+                <option value="te">TE</option>
+              </select>
+            </div>
+
+            {/* Auth Buttons */}
             {token ? (
               <Link
                 to={user?.role === 'admin' ? '/admin/dashboard' : '/dashboard'}
                 className="px-6 py-2.5 rounded-full bg-brand-green text-white font-semibold font-outfit text-sm hover:bg-brand-green-dark transition-all shadow-[0_4px_14px_0_rgba(13,92,49,0.39)] hover:shadow-[0_6px_20px_rgba(13,92,49,0.23)] hover:-translate-y-0.5"
               >
-                Dashboard
+                {t('nav_dashboard')}
               </Link>
             ) : (
               <>
-                <Link
-                  to="/login"
-                  className="font-outfit font-semibold text-gray-700 hover:text-brand-green transition-colors px-2"
-                >
-                  Log in
+                <Link to="/login" className="font-outfit font-semibold text-gray-700 hover:text-brand-green transition-colors px-2">
+                  {t('nav_login')}
                 </Link>
-                <Link
-                  to="/register"
-                  className="px-6 py-2.5 rounded-full bg-brand-green text-white font-semibold font-outfit text-sm hover:bg-brand-green-dark transition-all shadow-[0_4px_14px_0_rgba(13,92,49,0.39)] hover:shadow-[0_6px_20px_rgba(13,92,49,0.23)] hover:-translate-y-0.5"
-                >
-                  Register
+                <Link to="/register" className="px-6 py-2.5 rounded-full bg-brand-green text-white font-semibold font-outfit text-sm hover:bg-brand-green-dark transition-all shadow-[0_4px_14px_0_rgba(13,92,49,0.39)] hover:shadow-[0_6px_20px_rgba(13,92,49,0.23)] hover:-translate-y-0.5">
+                  {t('nav_register')}
                 </Link>
               </>
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          {/* Mobile Language + Hamburger */}
+          <div className="md:hidden flex items-center gap-2">
+            {/* Mobile Language Select */}
+            <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-gray-200 bg-gray-50">
+              <FaGlobe className="text-brand-green text-[10px]" />
+              <select
+                value={lang}
+                onChange={(e) => setLang(e.target.value)}
+                className="bg-transparent text-xs font-bold text-gray-700 font-outfit outline-none cursor-pointer"
+              >
+                <option value="en">EN</option>
+                <option value="te">TE</option>
+              </select>
+            </div>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="text-gray-700 hover:text-brand-green focus:outline-none"
@@ -124,11 +156,10 @@ const PublicNavbar = () => {
             <div className="px-4 pt-2 pb-6 space-y-1">
               {navLinks.map((link) => (
                 <Link
-                  key={link.name}
+                  key={link.path}
                   to={link.path}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`block px-3 py-2 rounded-md font-outfit font-medium text-base ${isActive(link.path) ? 'bg-brand-green/10 text-brand-green' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
+                  className={`block px-3 py-2 rounded-md font-outfit font-medium text-base ${isActive(link.path) ? 'bg-brand-green/10 text-brand-green' : 'text-gray-700 hover:bg-gray-50'}`}
                 >
                   {link.name}
                 </Link>
@@ -140,21 +171,15 @@ const PublicNavbar = () => {
                     to={user?.role === 'admin' ? '/admin/dashboard' : '/dashboard'}
                     className="w-full text-center px-4 py-2 rounded-full bg-brand-green text-white font-semibold font-outfit"
                   >
-                    Dashboard
+                    {t('nav_dashboard')}
                   </Link>
                 ) : (
                   <>
-                    <Link
-                      to="/login"
-                      className="w-full text-center px-4 py-2 rounded-full border border-brand-green text-brand-green font-semibold font-outfit"
-                    >
-                      Log in
+                    <Link to="/login" className="w-full text-center px-4 py-2 rounded-full border border-brand-green text-brand-green font-semibold font-outfit">
+                      {t('nav_login')}
                     </Link>
-                    <Link
-                      to="/register"
-                      className="w-full text-center px-4 py-2 rounded-full bg-brand-green text-white font-semibold font-outfit"
-                    >
-                      Register
+                    <Link to="/register" className="w-full text-center px-4 py-2 rounded-full bg-brand-green text-white font-semibold font-outfit">
+                      {t('nav_register')}
                     </Link>
                   </>
                 )}
@@ -169,19 +194,19 @@ const PublicNavbar = () => {
         <div className="flex justify-around items-center pt-3 pb-4 px-2">
           <Link to="/" className={`flex flex-col items-center gap-1.5 transition-colors ${isActive('/') ? 'text-brand-green' : 'text-gray-400 hover:text-brand-green'}`}>
             <FaHome className="text-xl" />
-            <span className="text-[11px] font-outfit font-bold tracking-wide">Home</span>
+            <span className="text-[11px] font-outfit font-bold tracking-wide">{t('nav_bottom_home')}</span>
           </Link>
           <Link to="/courses" className={`flex flex-col items-center gap-1.5 transition-colors ${isActive('/courses') ? 'text-brand-green' : 'text-gray-400 hover:text-brand-green'}`}>
             <FaBook className="text-xl" />
-            <span className="text-[11px] font-outfit font-bold tracking-wide">Classes</span>
+            <span className="text-[11px] font-outfit font-bold tracking-wide">{t('nav_bottom_classes')}</span>
           </Link>
           <Link to="/about" className={`flex flex-col items-center gap-1.5 transition-colors ${isActive('/about') ? 'text-brand-green' : 'text-gray-400 hover:text-brand-green'}`}>
             <FaInfoCircle className="text-xl" />
-            <span className="text-[11px] font-outfit font-bold tracking-wide">About</span>
+            <span className="text-[11px] font-outfit font-bold tracking-wide">{t('nav_bottom_about')}</span>
           </Link>
           <Link to={token ? (user?.role === 'admin' ? '/admin/dashboard' : '/dashboard') : '/login'} className={`flex flex-col items-center gap-1.5 transition-colors ${location.pathname.includes('/dashboard') || location.pathname.includes('/login') ? 'text-brand-green' : 'text-gray-400 hover:text-brand-green'}`}>
             <FaUser className="text-xl" />
-            <span className="text-[11px] font-outfit font-bold tracking-wide">{token ? 'Dashboard' : 'Login'}</span>
+            <span className="text-[11px] font-outfit font-bold tracking-wide">{token ? t('nav_dashboard') : t('nav_bottom_login')}</span>
           </Link>
         </div>
       </div>

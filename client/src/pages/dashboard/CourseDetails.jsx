@@ -81,10 +81,6 @@ const CourseDetails = () => {
           
           <div className="flex items-center gap-3 mb-5">
             <span className="text-brand-green font-bold text-sm">{course.level}</span>
-            <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium">
-              <span className="text-[#f59e0b] text-[15px]">★</span>
-              <span>4.8 <span className="text-gray-500 font-normal">(258 reviews)</span></span>
-            </div>
           </div>
 
           {/* Pills */}
@@ -142,7 +138,7 @@ const CourseDetails = () => {
       <div className="hidden md:block pb-20">
         
         {/* Hero Section with Glassmorphism */}
-        <div className="relative pt-24 pb-24 overflow-hidden">
+        <div className="relative pt-36 pb-24 overflow-hidden">
           {/* Abstract background blobs for hero */}
           <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-brand-green/20 rounded-full blur-[100px] pointer-events-none"></div>
           <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] bg-[#d67b22]/15 rounded-full blur-[100px] pointer-events-none"></div>
@@ -168,11 +164,6 @@ const CourseDetails = () => {
               <div className="flex items-center gap-6 text-gray-700 font-outfit font-semibold text-lg">
                 <div className="flex items-center gap-2"><FaClock className="text-brand-green" /> {course.duration}</div>
                 <div className="flex items-center gap-2"><FaGlobe className="text-brand-green" /> {course.language || 'English'}</div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[#f59e0b]">★</span>
-                  <span className="font-bold text-gray-900">4.8</span>
-                  <span className="text-gray-500 font-medium">(258 reviews)</span>
-                </div>
               </div>
             </div>
 
