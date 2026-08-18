@@ -3,7 +3,7 @@ import { motion, useScroll, useTransform, useMotionValue, useSpring } from 'fram
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaClock, FaGlobe, FaStar, FaArrowRight, FaCheckCircle, FaAward, FaChalkboardTeacher, FaGraduationCap, FaLeaf, FaHeartbeat, FaOm, FaAppleAlt, FaQuoteLeft, FaPlayCircle } from 'react-icons/fa';
-import { useLanguage } from '../../context/LanguageContext';
+import { useLanguage, useAutoTranslate } from '../../context/LanguageContext';
 // --- Typewriter Component ---
 const TypewriterText = ({ text }) => {
   const [displayText, setDisplayText] = useState('');
@@ -108,6 +108,46 @@ const TiltedCard = ({ children, className }) => {
   );
 };
 
+// --- Featured Course Card Component (For Translations) ---
+const FeaturedCourseCard = ({ course, navigate }) => {
+  const { t } = useLanguage();
+  const titleTe = useAutoTranslate(course.title, course.title_te);
+  const descTe = useAutoTranslate(course.description, course.description_te);
+
+  return (
+    <TiltedCard className="bg-white rounded-[2rem] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)] border border-gray-100 flex flex-col h-full transform-gpu transition-all duration-200">
+      <div className="w-full h-48 rounded-[1.5rem] overflow-hidden mb-6 relative bg-gray-100 shadow-inner" style={{ transform: "translateZ(30px)" }}>
+        {course.thumbnailUrl ? (
+          <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-brand-green/50 bg-brand-green/10 font-bold">No Image</div>
+        )}
+        <div className="absolute top-3 left-3 bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-brand-green shadow-sm">
+          {course.category}
+        </div>
+      </div>
+
+      <div style={{ transform: "translateZ(40px)" }} className="flex-1 flex flex-col">
+        <h3 className="text-xl font-extrabold text-gray-900 mb-2 font-outfit line-clamp-2">{titleTe}</h3>
+        <p className="text-sm text-gray-500 mb-4 line-clamp-2">{descTe}</p>
+
+        <div className="mt-auto space-y-3">
+          <div className="flex items-center justify-start text-sm font-medium text-gray-600">
+            <span className="flex items-center gap-1.5"><FaClock className="text-brand-green" /> {course.duration}</span>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
+            <span className="text-xl font-black text-gray-900">₹{course.price}</span>
+            <button onClick={() => navigate(`/courses/${course.slug}`)} className="text-brand-green font-bold hover:text-brand-green-dark text-sm bg-brand-green/10 px-4 py-2 rounded-full transition-colors">
+              {t('featured_book_now')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </TiltedCard>
+  );
+};
+
 const Home = () => {
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 1000], [0, 200]);
@@ -147,7 +187,7 @@ const Home = () => {
     <div className="bg-bg-cream overflow-hidden">
 
       {/* --- HERO SECTION --- */}
-      <section className="relative pt-36 pb-20 md:pt-44 md:pb-24 overflow-hidden bg-dark-bg">
+      <section className="relative pt-16 pb-20 md:pt-20 md:pb-24 overflow-hidden bg-dark-bg">
         {/* Animated Background Elements */}
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1545205597-3d9d02c29597?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center opacity-40 mix-blend-luminosity z-0"></div>
         <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a]/90 via-[#084223]/80 to-[#ea7a28]/60 z-0"></div>
@@ -219,7 +259,7 @@ const Home = () => {
       {/* --- PARTNERS MARQUEE --- */}
       <section className="py-8 bg-white border-y border-gray-100 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4 text-center">
-          <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Trusted by industry leaders worldwide</p>
+          <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{t('home_trusted')}</p>
         </div>
         <div className="relative flex overflow-x-hidden">
           <div className="animate-marquee whitespace-nowrap flex items-center py-4">
@@ -257,44 +297,15 @@ const Home = () => {
             <div className="text-center py-12"><div className="w-10 h-10 border-4 border-brand-green border-t-transparent rounded-full animate-spin mx-auto"></div></div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {featuredCourses.map((course, idx) => (
-                <TiltedCard key={course._id} className="bg-white rounded-[2rem] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)] border border-gray-100 flex flex-col h-full transform-gpu transition-all duration-200">
-                  <div className="w-full h-48 rounded-[1.5rem] overflow-hidden mb-6 relative bg-gray-100 shadow-inner" style={{ transform: "translateZ(30px)" }}>
-                    {course.thumbnailUrl ? (
-                      <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-brand-green/50 bg-brand-green/10 font-bold">No Image</div>
-                    )}
-                    <div className="absolute top-3 left-3 bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-brand-green shadow-sm">
-                      {course.category}
-                    </div>
-                  </div>
-
-                  <div style={{ transform: "translateZ(40px)" }} className="flex-1 flex flex-col">
-                    <h3 className="text-xl font-extrabold text-gray-900 mb-2 font-outfit line-clamp-2">{course.title}</h3>
-                    <p className="text-sm text-gray-500 mb-4 line-clamp-2">{course.description}</p>
-
-                    <div className="mt-auto space-y-3">
-                      <div className="flex items-center justify-start text-sm font-medium text-gray-600">
-                        <span className="flex items-center gap-1.5"><FaClock className="text-brand-green" /> {course.duration}</span>
-                      </div>
-
-                      <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
-                        <span className="text-xl font-black text-gray-900">₹{course.price}</span>
-                        <button onClick={() => navigate(`/courses/${course.slug}`)} className="text-brand-green font-bold hover:text-brand-green-dark text-sm bg-brand-green/10 px-4 py-2 rounded-full transition-colors">
-                          {t('featured_book_now')}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </TiltedCard>
+              {featuredCourses.map((course) => (
+                <FeaturedCourseCard key={course._id} course={course} navigate={navigate} />
               ))}
             </div>
           )}
 
           <div className="md:hidden text-center mt-10">
             <Link to="/courses" className="inline-flex items-center text-brand-green font-bold hover:text-brand-green-dark transition-colors">
-              View All Courses <FaArrowRight className="ml-2" />
+              {t('home_view_all_mobile')} <FaArrowRight className="ml-2" />
             </Link>
           </div>
         </div>
@@ -304,8 +315,8 @@ const Home = () => {
       <section className="py-24 relative bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-extrabold text-gray-900 mb-4 font-outfit">Explore by Category</h2>
-            <p className="text-gray-500 font-medium text-lg max-w-2xl mx-auto">Find the perfect path for your wellness journey from our diverse range of subjects.</p>
+            <h2 className="text-4xl font-extrabold text-gray-900 mb-4 font-outfit">{t('home_categories_title')}</h2>
+             <p className="text-gray-500 font-medium text-lg max-w-2xl mx-auto">{t('home_categories_sub')}</p>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -320,7 +331,7 @@ const Home = () => {
                   {cat.icon}
                 </div>
                 <h3 className="text-xl font-bold font-outfit">{cat.name}</h3>
-                <p className="mt-2 text-sm opacity-80 group-hover:opacity-100">View Courses</p>
+                <p className="mt-2 text-sm opacity-80 group-hover:opacity-100">{t('home_cat_view')}</p>
               </div>
             ))}
           </div>
@@ -347,22 +358,22 @@ const Home = () => {
                     <FaCheckCircle />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500 font-medium">Completed</p>
-                    <p className="text-lg font-bold text-gray-900">100+ Lessons</p>
+                    <p className="text-sm text-gray-500 font-medium">{t('home_completed')}</p>
+                    <p className="text-lg font-bold text-gray-900">{t('home_lessons')}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="w-full md:w-1/2">
-              <h2 className="text-4xl font-extrabold text-gray-900 mb-6 font-outfit">How You'll Learn</h2>
-              <p className="text-lg text-gray-600 mb-10">Our platform is designed to provide a seamless, intuitive, and deeply engaging learning experience.</p>
+              <h2 className="text-4xl font-extrabold text-gray-900 mb-6 font-outfit">{t('home_how_title')}</h2>
+              <p className="text-lg text-gray-600 mb-10">{t('home_how_sub')}</p>
               
               <div className="space-y-8">
                 {[
-                  { title: "Select a Program", desc: "Browse our extensive catalog and find the course that resonates with your goals." },
-                  { title: "Learn at Your Pace", desc: "Access high-quality video lectures, reading materials, and interactive quizzes anytime." },
-                  { title: "Earn Certification", desc: "Complete the curriculum and receive a globally recognized certificate of completion." }
+                  { title: t('home_step1_title'), desc: t('home_step1_desc') },
+                  { title: t('home_step2_title'), desc: t('home_step2_desc') },
+                  { title: t('home_step3_title'), desc: t('home_step3_desc') }
                 ].map((step, idx) => (
                   <div key={idx} className="flex gap-6">
                     <div className="flex-shrink-0">
@@ -386,7 +397,7 @@ const Home = () => {
       {/* --- WHY CHOOSE US (NEOMORPHISM) --- */}
       <section className="py-24 relative bg-bg-cream">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl md:text-5xl font-extrabold text-center mb-16 text-gray-900 font-outfit">Why Choose SDF?</h2>
+          <h2 className="text-4xl md:text-5xl font-extrabold text-center mb-16 text-gray-900 font-outfit">{t('home_why_title')}</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             <div className="neomorph p-10 rounded-[2rem] text-center transition-all duration-300 hover:-translate-y-2">
@@ -395,8 +406,8 @@ const Home = () => {
                   <FaChalkboardTeacher />
                 </div>
               </div>
-              <h3 className="text-2xl font-bold mb-4 text-gray-900 font-outfit">Expert Gurus</h3>
-              <p className="text-gray-600 font-medium leading-relaxed">Learn from highly qualified practitioners with decades of experience in ancient wellness traditions.</p>
+              <h3 className="text-2xl font-bold mb-4 text-gray-900 font-outfit">{t('home_why1_title')}</h3>
+              <p className="text-gray-600 font-medium leading-relaxed">{t('home_why1_desc')}</p>
             </div>
 
             <div className="neomorph p-10 rounded-[2rem] text-center transition-all duration-300 hover:-translate-y-2">
@@ -405,8 +416,8 @@ const Home = () => {
                   <FaGlobe />
                 </div>
               </div>
-              <h3 className="text-2xl font-bold mb-4 text-gray-900 font-outfit">Learn Anywhere</h3>
-              <p className="text-gray-600 font-medium leading-relaxed">Access high-quality courses on any device, at your own pace, from anywhere in the world.</p>
+              <h3 className="text-2xl font-bold mb-4 text-gray-900 font-outfit">{t('home_why2_title')}</h3>
+              <p className="text-gray-600 font-medium leading-relaxed">{t('home_why2_desc')}</p>
             </div>
 
             <div className="neomorph p-10 rounded-[2rem] text-center transition-all duration-300 hover:-translate-y-2">
@@ -415,8 +426,8 @@ const Home = () => {
                   <FaAward />
                 </div>
               </div>
-              <h3 className="text-2xl font-bold mb-4 text-gray-900 font-outfit">Certified Learning</h3>
-              <p className="text-gray-600 font-medium leading-relaxed">Earn recognized certificates upon course completion to validate your skills and knowledge.</p>
+              <h3 className="text-2xl font-bold mb-4 text-gray-900 font-outfit">{t('home_why3_title')}</h3>
+              <p className="text-gray-600 font-medium leading-relaxed">{t('home_why3_desc')}</p>
             </div>
           </div>
         </div>
@@ -426,15 +437,15 @@ const Home = () => {
 
 
       {/* --- CTA SECTION --- */}
-      <section className="py-24 relative overflow-hidden bg-brand-green-dark">
+      <section className="pt-24 pb-36 md:pb-24 relative overflow-hidden bg-brand-green-dark">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?q=80&w=2000&auto=format&fit=crop')] opacity-10 bg-cover bg-center mix-blend-overlay"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-brand-green/50 to-brand-orange/20 backdrop-blur-[2px]"></div>
 
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          <h2 className="text-4xl md:text-5xl font-extrabold mb-6 text-white font-outfit drop-shadow-lg">Ready to Start Learning?</h2>
-          <p className="text-xl text-blue-100/90 mb-10 font-medium">Join thousands of students already learning with us. Start your journey today!</p>
+          <h2 className="text-4xl md:text-5xl font-extrabold mb-6 text-white font-outfit drop-shadow-lg">{t('home_cta_title')}</h2>
+          <p className="text-xl text-blue-100/90 mb-10 font-medium">{t('home_cta_sub')}</p>
           <Link to="/register" className="inline-block bg-white text-brand-green px-10 py-4 rounded-full font-bold text-lg hover:bg-gray-50 transition transform hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.3)]">
-            Get Started Now
+            {t('home_cta_btn')}
           </Link>
         </div>
       </section>

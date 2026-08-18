@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaPlus, FaEdit, FaTrash, FaTimes, FaCloudUploadAlt, FaVideo, FaFilePdf, FaImage } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaTimes, FaCloudUploadAlt, FaVideo, FaFilePdf, FaImage, FaLanguage, FaSync } from 'react-icons/fa';
 
 const CourseManagement = () => {
   const [courses, setCourses] = useState([]);
@@ -9,8 +9,11 @@ const CourseManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [formData, setFormData] = useState({
-    title: '', description: '', category: 'Yoga', duration: '', level: 'Beginner', language: 'English', whatYouWillLearn: ''
+    title: '', description: '', category: 'Yoga', duration: '', level: 'Beginner', language: 'English', whatYouWillLearn: '',
+    title_te: '', description_te: '', whatYouWillLearn_te: ''
   });
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState('');
   
   const [enrolledUsers, setEnrolledUsers] = useState([]);
   const [enrolledCourse, setEnrolledCourse] = useState(null);
@@ -25,6 +28,51 @@ const CourseManagement = () => {
   useEffect(() => {
     fetchCourses();
   }, []);
+
+  // Free MyMemory Translation API — no key needed
+  const translateText = async (text) => {
+    if (!text || !text.trim()) return '';
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|te`
+    );
+    const data = await res.json();
+    if (data.responseStatus === 200) return data.responseData.translatedText;
+    throw new Error(data.responseDetails || 'Translation failed');
+  };
+
+  const handleAutoTranslate = async () => {
+    if (!formData.title && !formData.description && !formData.whatYouWillLearn) {
+      setTranslateError('Please fill in the English fields first.');
+      return;
+    }
+    setIsTranslating(true);
+    setTranslateError('');
+    try {
+      const [titleTe, descTe] = await Promise.all([
+        formData.title ? translateText(formData.title) : Promise.resolve(''),
+        formData.description ? translateText(formData.description) : Promise.resolve(''),
+      ]);
+
+      // Translate each learn item individually
+      let learnTe = '';
+      if (formData.whatYouWillLearn.trim()) {
+        const lines = formData.whatYouWillLearn.split('\n').map(l => l.trim()).filter(Boolean);
+        const translated = await Promise.all(lines.map(line => translateText(line)));
+        learnTe = translated.join('\n');
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        title_te: titleTe,
+        description_te: descTe,
+        whatYouWillLearn_te: learnTe
+      }));
+    } catch (err) {
+      setTranslateError('Auto-translation failed. Please check your internet connection and try again.');
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -49,11 +97,14 @@ const CourseManagement = () => {
         duration: course.duration,
         level: course.level,
         language: course.language || 'English',
-        whatYouWillLearn: course.whatYouWillLearn ? course.whatYouWillLearn.join('\n') : ''
+        whatYouWillLearn: course.whatYouWillLearn ? course.whatYouWillLearn.join('\n') : '',
+        title_te: course.title_te || '',
+        description_te: course.description_te || '',
+        whatYouWillLearn_te: course.whatYouWillLearn_te ? course.whatYouWillLearn_te.join('\n') : ''
       });
     } else {
       setEditingCourse(null);
-      setFormData({ title: '', description: '', category: 'Yoga', duration: '', level: 'Beginner', language: 'English', whatYouWillLearn: '' });
+      setFormData({ title: '', description: '', category: 'Yoga', duration: '', level: 'Beginner', language: 'English', whatYouWillLearn: '', title_te: '', description_te: '', whatYouWillLearn_te: '' });
     }
     setThumbnailFile(null);
     setContentFile(null);
@@ -97,9 +148,11 @@ const CourseManagement = () => {
       const data = new FormData();
       Object.keys(formData).forEach(key => {
         if (key === 'whatYouWillLearn') {
-          // split by newline, trim, and filter out empties
           const array = formData.whatYouWillLearn.split('\n').map(item => item.trim()).filter(item => item !== '');
-          data.append('whatYouWillLearn', JSON.stringify(array)); // stringified JSON array
+          data.append('whatYouWillLearn', JSON.stringify(array));
+        } else if (key === 'whatYouWillLearn_te') {
+          const array = formData.whatYouWillLearn_te.split('\n').map(item => item.trim()).filter(item => item !== '');
+          data.append('whatYouWillLearn_te', JSON.stringify(array));
         } else {
           data.append(key, formData[key]);
         }
@@ -320,7 +373,50 @@ const CourseManagement = () => {
                   
                   <div className="col-span-full">
                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">What You Will Learn (One per line)</label>
-                    <textarea required rows="4" value={formData.whatYouWillLearn} onChange={e => setFormData({...formData, whatYouWillLearn: e.target.value})} className="w-full p-3.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:border-brand-green focus:bg-white/70 focus:ring-2 focus:ring-brand-green/20 outline-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all resize-none" placeholder="Stress relief techniques&#10;Breathing exercises&#10;Improve flexibility"></textarea>
+                    <textarea required rows="4" value={formData.whatYouWillLearn} onChange={e => setFormData({...formData, whatYouWillLearn: e.target.value})} className="w-full p-3.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:border-brand-green focus:bg-white/70 focus:ring-2 focus:ring-brand-green/20 outline-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all resize-none" placeholder={`Stress relief techniques\nBreathing exercises\nImprove flexibility`}></textarea>
+                  </div>
+
+                  {/* Telugu Translation Section */}
+                  <div className="col-span-full pt-6 mt-2 border-t border-brand-green/20">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-brand-orange"></div>
+                        <h3 className="font-bold text-gray-700 text-sm">Telugu Translation (తెలుగు)</h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAutoTranslate}
+                        disabled={isTranslating}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-orange to-[#e07b20] text-white text-sm font-bold rounded-xl shadow-[0_4px_14px_rgba(234,122,40,0.4)] hover:shadow-[0_6px_20px_rgba(234,122,40,0.5)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                      >
+                        {isTranslating ? (
+                          <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Translating...</>
+                        ) : (
+                          <><FaLanguage className="text-base" /> ✨ Auto Translate to Telugu</>
+                        )}
+                      </button>
+                    </div>
+
+                    {translateError && (
+                      <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm">
+                        {translateError}
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-600 mb-1.5">Title in Telugu (శీర్షిక)</label>
+                        <input type="text" value={formData.title_te} onChange={e => setFormData({...formData, title_te: e.target.value})} className="w-full p-3.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:border-brand-orange focus:bg-white/70 outline-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all" placeholder="e.g. యోగా ధ్యాన తరగతి" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-600 mb-1.5">Description in Telugu (వివరణ)</label>
+                        <textarea rows="3" value={formData.description_te} onChange={e => setFormData({...formData, description_te: e.target.value})} className="w-full p-3.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:border-brand-orange focus:bg-white/70 outline-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all resize-none" placeholder="ఈ తరగతి గురించి వివరణ..."></textarea>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-600 mb-1.5">What You Will Learn in Telugu (ఒక్కో అంశం వేర్వేరు వరుసలో)</label>
+                        <textarea rows="4" value={formData.whatYouWillLearn_te} onChange={e => setFormData({...formData, whatYouWillLearn_te: e.target.value})} className="w-full p-3.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:border-brand-orange focus:bg-white/70 outline-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all resize-none" placeholder={`ఒత్తిడి తగ్గింపు పద్ధతులు\nశ్వాస వ్యాయామాలు\nవశ్యత మెరుగుపడడం`}></textarea>
+                      </div>
+                    </div>
                   </div>
 
                   {/* File Uploads */}

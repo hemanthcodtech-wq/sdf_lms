@@ -2,14 +2,16 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { FaHome, FaChalkboardTeacher, FaBookOpen, FaUser, FaGraduationCap } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import { useLanguage } from '../../context/LanguageContext';
 
 const BottomNav = () => {
+  const { t } = useLanguage();
   const navItems = [
-    { name: 'Home', path: '/dashboard', icon: FaHome },
-    { name: 'Courses', path: '/courses', icon: FaGraduationCap },
-    { name: 'Classes', path: '/dashboard/classes', icon: FaChalkboardTeacher },
-    { name: 'My Learning', path: '/dashboard/learning', icon: FaBookOpen },
-    { name: 'Profile', path: '/dashboard/profile', icon: FaUser },
+    { name: t('dash_nav_home'), path: '/dashboard', icon: FaHome },
+    { name: t('dash_nav_courses'), path: '/courses', icon: FaGraduationCap },
+    { name: t('dash_nav_classes'), path: '/dashboard/classes', icon: FaChalkboardTeacher },
+    { name: t('dash_nav_learning'), path: '/dashboard/learning', icon: FaBookOpen },
+    { name: t('dash_nav_profile'), path: '/dashboard/profile', icon: FaUser },
   ];
 
   return (

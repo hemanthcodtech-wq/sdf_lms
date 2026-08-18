@@ -3,10 +3,12 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaEye, FaEyeSlash, FaApple } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
 import axios from 'axios';
+import { useLanguage } from '../context/LanguageContext';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const Login = () => {
+  const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ emailOrPhone: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
@@ -107,7 +109,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center relative overflow-hidden font-inter py-10 px-4">
+    <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center relative overflow-hidden font-inter py-8 px-4">
 
       <div className="w-full max-w-md flex flex-col items-center z-10">
         
@@ -121,8 +123,8 @@ const Login = () => {
 
           {/* Welcome Text */}
           <div className="text-center mb-8 w-full">
-            <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2">Welcome back!</h2>
-            <p className="text-[15px] text-gray-700 font-bold">Login to manage your learning & courses</p>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2">{t('login_welcome')}</h2>
+            <p className="text-[15px] text-gray-700 font-bold">{t('login_subtitle')}</p>
           </div>
 
           {error && (
@@ -137,7 +139,7 @@ const Login = () => {
               <input 
                 name="emailOrPhone"
                 type="text"
-                placeholder="Email or Phone Number" 
+                placeholder={t('login_email_placeholder')}
                 value={formData.emailOrPhone}
                 onChange={handleChange}
                 required
@@ -149,7 +151,7 @@ const Login = () => {
               <input 
                 name="password"
                 type={showPassword ? "text" : "password"} 
-                placeholder="Password" 
+                placeholder={t('login_password_placeholder')} 
                 value={formData.password}
                 onChange={handleChange}
                 required
@@ -165,8 +167,8 @@ const Login = () => {
             </div>
 
             <div className="flex justify-between items-center mt-[-4px]">
-              <Link to="/forgot-password" className="text-[13px] text-[#2F80ED] font-extrabold hover:underline transition-colors">Forgot password?</Link>
-              <a href="#" className="text-[12px] text-gray-600 font-bold hover:text-gray-800 transition-colors">Having trouble logging in?</a>
+              <Link to="/forgot-password" className="text-[13px] text-[#2F80ED] font-extrabold hover:underline transition-colors">{t('login_forgot')}</Link>
+              <a href="#" className="text-[12px] text-gray-600 font-bold hover:text-gray-800 transition-colors">{t('login_trouble')}</a>
             </div>
 
             <button 
@@ -174,21 +176,21 @@ const Login = () => {
               disabled={isLoading}
               className="w-full py-3.5 mt-2 rounded-lg bg-[#F2994A] text-white font-bold text-[16px] shadow-sm hover:shadow-md hover:bg-[#E68A3B] transition-all duration-300 flex justify-center items-center"
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              {isLoading ? t('login_loading') : t('login_btn')}
             </button>
           </form>
 
           {/* Sign Up Link */}
           <div className="mt-6 text-center w-full">
             <p className="text-[14px] text-gray-700 font-bold">
-              Need to create an account? <Link to="/register" className="text-[#2F80ED] font-extrabold hover:underline transition-colors">Sign UP</Link>
+              {t('login_no_account')} <Link to="/register" className="text-[#2F80ED] font-extrabold hover:underline transition-colors">{t('login_signup')}</Link>
             </p>
           </div>
 
           {/* Divider */}
           <div className="w-full flex items-center justify-center space-x-4 mt-6 mb-6">
             <div className="h-[1px] bg-gray-300 flex-1"></div>
-            <span className="text-[14px] text-gray-500 font-extrabold tracking-wider">OR</span>
+            <span className="text-[14px] text-gray-500 font-extrabold tracking-wider">{t('login_or')}</span>
             <div className="h-[1px] bg-gray-300 flex-1"></div>
           </div>
 
@@ -206,12 +208,12 @@ const Login = () => {
                 <FcGoogle size={24} />
               )}
               <span className="text-gray-700 font-bold text-[15px]">
-                {isGoogleLoading ? 'Signing in...' : 'Log in using Google'}
+                {isGoogleLoading ? t('login_google_loading') : t('login_google')}
               </span>
             </button>
             <button className="w-full h-12 rounded-lg bg-black text-white flex items-center justify-center gap-3 hover:bg-gray-900 transition-all duration-300">
               <FaApple size={24} />
-              <span className="text-white font-bold text-[15px]">Sign in with Apple</span>
+              <span className="text-white font-bold text-[15px]">{t('login_apple')}</span>
             </button>
           </div>
         </div>

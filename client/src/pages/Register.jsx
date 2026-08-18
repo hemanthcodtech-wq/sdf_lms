@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import axios from 'axios';
+import { useLanguage } from '../context/LanguageContext';
 
 const Register = () => {
+  const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ emailOrPhone: '', password: '', confirmPassword: '' });
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +47,7 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center relative overflow-hidden font-inter py-10 px-4">
+    <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center relative overflow-hidden font-inter py-8 px-4">
       
 
 
@@ -61,8 +63,8 @@ const Register = () => {
 
           {/* Welcome Text */}
           <div className="text-center mb-8 w-full">
-            <p className="text-[15px] text-gray-800 font-semibold mb-1">Join Us!</p>
-            <h2 className="text-2xl md:text-3xl font-bold text-brand-green">Create an Account</h2>
+            <p className="text-[15px] text-gray-800 font-semibold mb-1">{t('register_join')}</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-brand-green">{t('register_title')}</h2>
           </div>
 
           {error && (
@@ -77,7 +79,7 @@ const Register = () => {
               <input 
                 name="emailOrPhone"
                 type="text"
-                placeholder="Email or Phone Number" 
+                placeholder={t('register_email')}
                 value={formData.emailOrPhone}
                 onChange={handleChange}
                 required
@@ -89,7 +91,7 @@ const Register = () => {
               <input 
                 name="password"
                 type={showPassword ? "text" : "password"} 
-                placeholder="Password" 
+                placeholder={t('register_password')}
                 value={formData.password}
                 onChange={handleChange}
                 required
@@ -108,7 +110,7 @@ const Register = () => {
               <input 
                 name="confirmPassword"
                 type={showPassword ? "text" : "password"} 
-                placeholder="Confirm Password" 
+                placeholder={t('register_confirm')}
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
@@ -121,13 +123,13 @@ const Register = () => {
               disabled={isLoading}
               className="w-full py-3.5 mt-4 rounded-full bg-brand-green text-white font-semibold text-[16px] shadow-md hover:shadow-lg hover:-translate-y-0.5 hover:bg-brand-green-dark transition-all duration-300 flex justify-center items-center"
             >
-              {isLoading ? 'Signing up...' : 'Sign Up'}
+              {isLoading ? t('register_loading') : t('register_btn')}
             </button>
           </form>
 
           {/* Sign In Link */}
           <p className="text-[14px] text-gray-600 mt-8">
-            Already have an account? <Link to="/login" className="text-brand-green font-semibold hover:text-brand-green-dark hover:underline transition-colors">Login</Link>
+            {t('register_have_account')} <Link to="/login" className="text-brand-green font-semibold hover:text-brand-green-dark hover:underline transition-colors">{t('register_login_link')}</Link>
           </p>
 
         </div>

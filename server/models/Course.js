@@ -6,6 +6,10 @@ const courseSchema = new mongoose.Schema({
     required: [true, 'Course title is required'],
     trim: true
   },
+  title_te: {
+    type: String,
+    trim: true
+  },
   slug: {
     type: String,
     unique: true,
@@ -14,6 +18,9 @@ const courseSchema = new mongoose.Schema({
   description: {
     type: String,
     required: [true, 'Course description is required']
+  },
+  description_te: {
+    type: String
   },
   category: {
     type: String,
@@ -32,6 +39,10 @@ const courseSchema = new mongoose.Schema({
     default: 'English'
   },
   whatYouWillLearn: {
+    type: [String],
+    default: []
+  },
+  whatYouWillLearn_te: {
     type: [String],
     default: []
   },

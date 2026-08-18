@@ -6,7 +6,7 @@ const About = () => {
   const { t } = useLanguage();
 
   return (
-    <div className="bg-bg-cream pt-24 pb-12 overflow-hidden min-h-screen">
+    <div className="bg-bg-cream pb-12 overflow-hidden min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Header */}
@@ -16,7 +16,7 @@ const About = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-20"
         >
-          <h1 className="text-5xl md:text-6xl font-bold font-outfit text-gray-900 mb-6">{t('about_title')}</h1>
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold font-outfit text-gray-900 mb-6">{t('about_title')}</h1>
           <div className="w-24 h-1 bg-brand-green mx-auto rounded-full mb-6"></div>
           <p className="text-xl text-gray-600 font-inter max-w-3xl mx-auto leading-relaxed">
             {t('about_subtitle')}

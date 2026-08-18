@@ -3,6 +3,41 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { FaSearch, FaUserTie, FaClock, FaSignal, FaImage } from 'react-icons/fa';
+import { useLanguage, useAutoTranslate } from '../../context/LanguageContext';
+
+// Sub-component so useAutoTranslate hook can be called per card
+const CourseCard = ({ course, onClick }) => {
+  const titleTe = useAutoTranslate(course.title, course.title_te);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-[20px] p-2.5 md:p-4 shadow-sm hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] border border-gray-100 flex flex-row md:flex-col gap-4 md:gap-5 hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group"
+      onClick={onClick}
+    >
+      <div className="w-[100px] h-[100px] md:w-full md:h-52 shrink-0 relative overflow-hidden rounded-xl md:rounded-[16px] bg-gray-100">
+        {course.thumbnailUrl ? (
+          <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-300"><FaImage size={24} className="md:w-10 md:h-10" /></div>
+        )}
+        <div className="hidden md:block absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg text-[11px] font-extrabold text-brand-green shadow-sm uppercase tracking-wider">
+          {course.category}
+        </div>
+      </div>
+      <div className="flex-1 flex flex-col justify-center md:justify-start py-1 pr-2 md:pr-0 md:px-1">
+        <h3 className="text-[14px] md:text-xl font-extrabold text-gray-900 leading-snug line-clamp-2 md:mb-1.5 group-hover:text-brand-green transition-colors">{titleTe}</h3>
+        <p className="text-[11px] md:text-sm font-medium text-gray-500 mt-1 md:mb-5">{course.level}</p>
+        <div className="mt-auto pt-2 md:pt-0 flex items-center justify-start text-[11px] md:text-[13px] text-gray-600 font-bold mb-1 md:mb-4">
+          <div className="text-gray-500 font-medium">{course.duration}</div>
+        </div>
+        <div className="hidden md:block pt-1 md:pt-2">
+          <span className="text-lg md:text-xl font-black text-brand-green-dark tracking-tight">₹{course.price}</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 const CourseList = () => {
   const [courses, setCourses] = useState([]);
@@ -10,6 +45,7 @@ const CourseList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const navigate = useNavigate();
+  const { lang, t } = useLanguage();
 
   useEffect(() => {
     fetchCourses();
@@ -43,15 +79,13 @@ const CourseList = () => {
           <button onClick={() => navigate(-1)} className="text-brand-green-dark hover:text-brand-green transition-colors">
             <svg stroke="currentColor" fill="none" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="20" width="20" xmlns="http://www.w3.org/2000/svg"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
           </button>
-          <h1 className="text-xl font-extrabold text-brand-green-dark">All Classes</h1>
+          <h1 className="text-xl font-extrabold text-brand-green-dark">{t('course_all')}</h1>
         </div>
 
         {/* Desktop Header */}
         <div className="hidden md:block mb-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-brand-green-dark mb-4 tracking-tight">All Classes</h1>
-          <p className="text-gray-600 max-w-2xl mx-auto text-lg">
-            Discover a wide range of courses taught by expert instructors.
-          </p>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-brand-green-dark mb-4 tracking-tight">{t('course_all')}</h1>
+          <p className="text-gray-600 max-w-2xl mx-auto text-lg">{t('course_discover')}</p>
         </div>
 
         {/* Search Bar & Filter */}
@@ -60,7 +94,7 @@ const CourseList = () => {
             <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
               type="text" 
-              placeholder="Search classes..." 
+              placeholder={t('course_search')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-brand-green/20 outline-none transition-all text-sm text-gray-800"
@@ -95,49 +129,17 @@ const CourseList = () => {
           </div>
         ) : filteredCourses.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-gray-100 max-w-3xl mx-auto">
-            <h3 className="text-xl font-bold text-gray-800 mb-2">No classes found</h3>
-            <p className="text-gray-500 text-sm">Try adjusting your search or category filter.</p>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">{t('course_no_found')}</h3>
+            <p className="text-gray-500 text-sm">{t('course_no_found_sub')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
-            {filteredCourses.map((course, index) => (
-              <motion.div 
+            {filteredCourses.map((course) => (
+              <CourseCard
                 key={course._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05, type: 'spring', stiffness: 200, damping: 20 }}
-                className="bg-white rounded-[20px] p-2.5 md:p-4 shadow-sm hover:shadow-[0_12px_40px_rgb(0,0,0,0.06)] border border-gray-100 flex flex-row md:flex-col gap-4 md:gap-5 hover:-translate-y-1.5 transition-all duration-300 cursor-pointer group"
+                course={course}
                 onClick={() => navigate(`/courses/${course.slug || course._id}`)}
-              >
-                {/* Image Section */}
-                <div className="w-[100px] h-[100px] md:w-full md:h-52 shrink-0 relative overflow-hidden rounded-xl md:rounded-[16px] bg-gray-100">
-                  {course.thumbnailUrl ? (
-                    <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300"><FaImage size={24} className="md:w-10 md:h-10" /></div>
-                  )}
-                  {/* Category badge - Laptop layout shows it top-left */}
-                  <div className="hidden md:block absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg text-[11px] font-extrabold text-brand-green shadow-sm uppercase tracking-wider">
-                    {course.category}
-                  </div>
-                </div>
-                
-                {/* Content Section */}
-                <div className="flex-1 flex flex-col justify-center md:justify-start py-1 pr-2 md:pr-0 md:px-1">
-                  <h3 className="text-[14px] md:text-xl font-extrabold text-gray-900 leading-snug line-clamp-2 md:mb-1.5 group-hover:text-brand-green transition-colors">{course.title}</h3>
-                  
-                  <p className="text-[11px] md:text-sm font-medium text-gray-500 mt-1 md:mb-5">{course.level}</p>
-
-                  <div className="mt-auto pt-2 md:pt-0 flex items-center justify-start text-[11px] md:text-[13px] text-gray-600 font-bold mb-1 md:mb-4">
-                    <div className="text-gray-500 font-medium">{course.duration}</div>
-                  </div>
-                  
-                  {/* Price - Desktop Only */}
-                  <div className="hidden md:block pt-1 md:pt-2">
-                    <span className="text-lg md:text-xl font-black text-brand-green-dark tracking-tight">${course.price}</span>
-                  </div>
-                </div>
-              </motion.div>
+              />
             ))}
           </div>
         )}
