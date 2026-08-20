@@ -1,151 +1,203 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaBell, FaLeaf, FaSeedling, FaSpa, FaAppleAlt } from 'react-icons/fa';
-
-const categories = [
-  { name: 'Yoga', icon: FaSpa, color: 'bg-[#0a4f2a]' },
-  { name: 'Meditation', icon: FaSeedling, color: 'bg-[#297838]' },
-  { name: 'Nutrition', icon: FaAppleAlt, color: 'bg-[#d67b22]' },
-
-  { name: 'Ayurveda', icon: FaLeaf, color: 'bg-[#70a448]' },
-];
+import { FaGraduationCap, FaClock, FaAward, FaPlay, FaChevronRight, FaBookOpen, FaUser } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Home = () => {
-  const [user, setUser] = React.useState(null);
+  const [user, setUser] = useState(null);
+  const [enrolledCount, setEnrolledCount] = useState(0);
+  const [upcomingClass, setUpcomingClass] = useState(null);
+  const navigate = useNavigate();
 
-  React.useEffect(() => {
+  useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        // Fetch enrolled courses
+        const coursesRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/payments/history`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (coursesRes.data.success) {
+          setEnrolledCount(coursesRes.data.data.length);
+        }
+
+        // Fetch classes
+        const classesRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/classes/student`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (classesRes.data.success) {
+          const now = new Date();
+          const futureClasses = classesRes.data.data.filter(cls => {
+            const classTime = new Date(`${cls.date.split('T')[0]}T${cls.time}:00`);
+            return classTime > now;
+          }).sort((a, b) => {
+            const aTime = new Date(`${a.date.split('T')[0]}T${a.time}:00`);
+            const bTime = new Date(`${b.date.split('T')[0]}T${b.time}:00`);
+            return aTime - bTime;
+          });
+          if (futureClasses.length > 0) setUpcomingClass(futureClasses[0]);
+        }
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
+    };
+
+    fetchStats();
   }, []);
 
-  const displayName = user?.emailOrPhone?.split('@')[0] || 'Guest';
+  const displayName = user?.name || user?.emailOrPhone?.split('@')[0] || 'Learner';
+
+  const stats = [
+    { label: 'Courses Enrolled', value: enrolledCount, icon: FaGraduationCap, color: 'text-blue-500', bg: 'bg-blue-50' },
+    { label: 'Hours Learned', value: '0', icon: FaClock, color: 'text-green-500', bg: 'bg-green-50' },
+    { label: 'Certificates Earned', value: '0', icon: FaAward, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+  ];
 
   return (
-    <div className="px-5 md:px-10 lg:px-24 pt-8 md:pt-16 max-w-screen-2xl mx-auto flex flex-col items-center">
-      <div className="w-full max-w-6xl">
-
-      
-      {/* Mobile Header (Hidden on Desktop) */}
-      <div className="flex justify-between items-start mb-8 md:hidden">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 capitalize">Hello, {displayName} <span className="text-xl">👋</span></h1>
-          <p className="text-sm text-gray-600 mt-2 font-medium max-w-[220px]">Ready to begin your wellness journey today?</p>
-        </div>
-        <button className="p-2 text-gray-600 hover:text-brand-green bg-white rounded-full shadow-sm relative">
-          <FaBell size={20} />
-          <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-        </button>
-      </div>
-
-      {/* Desktop Header Greeting */}
-      <div className="hidden md:block mb-10 w-full text-center md:text-left">
-        <motion.h1 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-          className="text-4xl lg:text-5xl font-bold text-gray-800 capitalize"
-        >
-          Welcome back, {displayName} <span className="text-3xl inline-block origin-bottom-right hover:animate-wave">👋</span>
-        </motion.h1>
-        <motion.p 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-lg lg:text-xl text-gray-600 mt-3 font-medium"
-        >
-          Ready to begin your wellness journey today?
-        </motion.p>
-      </div>
-
-      {/* Main Content Grid for Desktop */}
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+    <div className="min-h-screen bg-[#F8F9FA] pt-24 pb-20 md:pb-12 md:pt-28 px-4 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* Left Column (Featured + Categories) */}
-        <div className="flex-1 w-full space-y-8 lg:space-y-12">
-          
-          {/* Featured Class Card */}
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-            className="relative w-full h-[220px] md:h-[300px] lg:h-[340px] rounded-3xl overflow-hidden shadow-lg group hover:shadow-2xl transition-shadow duration-500"
-          >
-            <img 
-              src="/images/yoga_stress.png" 
-              alt="Yoga for Stress Relief" 
-              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#eef2dc]/90 via-[#eef2dc]/70 to-transparent"></div>
-            
-            <div className="absolute inset-0 p-6 md:p-10 flex flex-col justify-center">
-              <span className="text-brand-green-dark font-bold text-sm md:text-base tracking-wide uppercase mb-2">Featured Class</span>
-              <h2 className="text-2xl md:text-4xl font-bold text-[#1a2f23] max-w-[200px] md:max-w-[300px] leading-tight mb-4 md:mb-8">
-                Yoga for Stress Relief
-              </h2>
-              <button className="bg-brand-green hover:bg-brand-green-dark text-white font-semibold py-2.5 md:py-3 px-6 md:px-8 rounded-full shadow-md w-max transition-colors">
-                Join Now
-              </button>
-            </div>
-          </motion.div>
-
-          {/* Categories */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex justify-between md:justify-start md:gap-12 w-full px-2 md:px-0"
-          >
-            {categories.map((category, index) => (
-              <motion.div 
-                key={category.name}
-                whileHover={{ y: -5, scale: 1.05 }}
-                className="flex flex-col items-center gap-2 cursor-pointer group"
-              >
-                <div className={`w-14 h-14 md:w-20 md:h-20 rounded-full ${category.color} text-white flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-300`}>
-                  <category.icon size={28} className="md:w-10 md:h-10" />
-                </div>
-                <span className="text-xs md:text-sm font-semibold text-gray-800">{category.name}</span>
-              </motion.div>
-            ))}
-          </motion.div>
-          
+        {/* Welcome Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 tracking-tight">
+              Welcome back, <span className="text-[#C08552]">{displayName}</span> <span className="inline-block animate-wave">👋</span>
+            </h1>
+            <p className="text-gray-500 mt-2 font-medium">Continue your journey of learning and growth.</p>
+          </div>
+          <button onClick={() => navigate('/courses')} className="bg-[#C08552] hover:bg-[#a06b3e] text-white px-6 py-2.5 rounded-full font-semibold shadow-sm transition-colors w-max">
+            Explore Courses
+          </button>
         </div>
 
-        {/* Right Column (Continue Learning) */}
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="w-full lg:w-[400px]"
-        >
-          <div className="flex justify-between items-end mb-4">
-            <h3 className="text-lg md:text-xl font-bold text-gray-800">Continue Learning</h3>
-            <a href="#" className="text-brand-green font-semibold text-sm hover:underline">View All</a>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {stats.map((stat, i) => (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+              key={i} 
+              className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center gap-4"
+            >
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.bg} ${stat.color}`}>
+                <stat.icon size={20} />
+              </div>
+              <div>
+                <div className="text-2xl font-black text-gray-800">{stat.value}</div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">{stat.label}</div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Main Content Area */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Hero / Next Class Banner */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}
+              className="relative w-full h-[280px] md:h-[320px] rounded-3xl overflow-hidden shadow-md group"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-900 via-gray-900/80 to-transparent z-10"></div>
+              {/* Replace with a solid dynamic pattern if no image is available, or use a default one */}
+              <div className="absolute inset-0 bg-[#2D2D2D] w-full h-full">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                <div className="absolute bottom-0 right-10 w-40 h-40 bg-[#C08552]/20 rounded-full blur-2xl"></div>
+              </div>
+              
+              <div className="absolute inset-0 z-20 p-8 md:p-10 flex flex-col justify-center text-left">
+                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full w-max mb-4 border border-white/10">
+                  <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse"></span>
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">Up Next</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold text-white max-w-lg leading-tight mb-2">
+                  {upcomingClass ? (upcomingClass.title || upcomingClass.course?.title || 'Live Class Session') : 'Welcome to SDF Learning'}
+                </h2>
+                <p className="text-gray-300 mb-8 max-w-md line-clamp-2">
+                  {upcomingClass ? `Join your upcoming session on ${new Date(upcomingClass.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} at ${upcomingClass.time}.` : 'Explore our catalog and start a new journey today.'}
+                </p>
+                
+                <button 
+                  onClick={() => upcomingClass?.zoomLink ? window.open(upcomingClass.zoomLink, '_blank') : navigate('/dashboard/learning')} 
+                  className="bg-[#C08552] hover:bg-[#a06b3e] text-white font-bold py-3 px-8 rounded-full shadow-lg w-max transition-transform hover:scale-105 flex items-center gap-2"
+                >
+                  <FaPlay size={12}/> {upcomingClass?.zoomLink ? 'Join Live Session' : 'Go to Classes'}
+                </button>
+              </div>
+            </motion.div>
+
           </div>
 
-          {/* Horizontal Card */}
-          <div className="bg-white rounded-3xl p-3 flex gap-4 items-center shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer">
-            <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden shrink-0">
-              <img 
-                src="/images/morning_yoga.png" 
-                alt="Morning Yoga Flow" 
-                className="w-full h-full object-cover"
-              />
-            </div>
+          {/* Sidebar Area */}
+          <div className="space-y-6">
             
-            <div className="flex-1 pr-4">
-              <h4 className="font-bold text-gray-800 text-[15px] md:text-base leading-tight mb-1">Morning Yoga Flow</h4>
-              <p className="text-xs text-gray-500 mb-4">Beginner Level</p>
-              
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-brand-green rounded-full" style={{ width: '60%' }}></div>
+            {/* Resume Learning Card */}
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-gray-900">Resume Learning</h3>
+              </div>
+
+              <div className="group cursor-pointer">
+                <div className="w-full h-32 rounded-xl bg-gray-100 overflow-hidden mb-4 relative">
+                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors z-10"></div>
+                  <div className="w-full h-full bg-[#E5D9C5] flex items-center justify-center">
+                    <FaBookOpen className="text-[#C08552] opacity-50" size={40}/>
+                  </div>
+                  <div className="absolute inset-0 z-20 flex items-center justify-center">
+                    <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                      <FaPlay className="text-[#C08552] ml-1" size={14}/>
+                    </div>
+                  </div>
                 </div>
-                <span className="text-xs font-bold text-gray-800">60%</span>
+                <h4 className="font-bold text-gray-800 text-base leading-tight mb-1 group-hover:text-[#C08552] transition-colors">Mindfulness Fundamentals</h4>
+                <p className="text-xs text-gray-500 mb-3">Module 3: Breathing Techniques</p>
+                
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#C08552] rounded-full" style={{ width: '65%' }}></div>
+                  </div>
+                  <span className="text-xs font-bold text-gray-700">65%</span>
+                </div>
               </div>
             </div>
-          </div>
-        </motion.div>
 
-      </div>
+            {/* Quick Links */}
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
+              <div className="space-y-3">
+                <button onClick={() => navigate('/dashboard/learning')} className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors group border border-transparent hover:border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#C08552]/10 flex items-center justify-center text-[#C08552]">
+                      <FaBookOpen size={16}/>
+                    </div>
+                    <span className="font-semibold text-gray-700 group-hover:text-[#C08552] transition-colors">My Courses</span>
+                  </div>
+                  <FaChevronRight className="text-gray-400 group-hover:text-[#C08552] text-xs"/>
+                </button>
+                
+                <button onClick={() => navigate('/dashboard/profile')} className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors group border border-transparent hover:border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600">
+                      <FaUser size={16}/>
+                    </div>
+                    <span className="font-semibold text-gray-700 group-hover:text-gray-900 transition-colors">Edit Profile</span>
+                  </div>
+                  <FaChevronRight className="text-gray-400 group-hover:text-gray-600 text-xs"/>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -53,6 +53,7 @@ const translations = {
     login_welcome: 'Welcome back!',
     login_subtitle: 'Login to manage your learning & courses',
     login_email_placeholder: 'Email or Phone Number',
+    login_password_placeholder: 'Enter your password',
     login_password: 'Password', login_forgot: 'Forgot password?',
     login_trouble: 'Having trouble logging in?',
     login_btn: 'Login', login_loading: 'Logging in...',
@@ -173,6 +174,7 @@ const translations = {
     login_welcome: 'తిరిగి స్వాగతం!',
     login_subtitle: 'మీ అభ్యాసం & కోర్సులను నిర్వహించడానికి లాగిన్ చేయండి',
     login_email_placeholder: 'ఇమెయిల్ లేదా ఫోన్ నంబర్',
+    login_password_placeholder: 'పాస్‌వర్డ్ నమోదు చేయండి',
     login_password: 'పాస్వర్డ్', login_forgot: 'పాస్వర్డ్ మర్చిపోయారా?',
     login_trouble: 'లాగిన్ చేయడంలో సమస్య ఉందా?',
     login_btn: 'లాగిన్', login_loading: 'లాగిన్ అవుతోంది...',
@@ -258,26 +260,42 @@ export const LanguageProvider = ({ children }) => {
 export const useLanguage = () => useContext(LanguageContext);
 
 // ─── Auto-translate hook for dynamic DB content ───────────────────────────────
-// Uses free MyMemory API with localStorage caching.
-// Falls back to preTranslated field (e.g. title_te from DB), then API, then English.
+// When lang is 'en', ALWAYS returns the English text.
+// When lang is 'te', uses preTranslated field (e.g. title_te from DB) or fetches Telugu translation.
 export const useAutoTranslate = (text, preTranslated = '') => {
   const { lang } = useLanguage();
-  const [result, setResult] = useState(preTranslated || text || '');
+  const [result, setResult] = useState(lang === 'te' ? (preTranslated || text || '') : (text || ''));
 
   useEffect(() => {
-    // If preTranslated exists (admin entered it manually), always use it
-    if (preTranslated) { setResult(preTranslated); return; }
-    // If English or no text, return as-is
-    if (lang !== 'te' || !text) { setResult(text || ''); return; }
+    // If English or no text, always return English
+    if (lang !== 'te') {
+      setResult(text || '');
+      return;
+    }
 
-    // Check localStorage cache
+    // If Telugu mode:
+    // 1. If preTranslated exists (e.g. title_te from DB), use it
+    if (preTranslated) {
+      setResult(preTranslated);
+      return;
+    }
+
+    if (!text) {
+      setResult('');
+      return;
+    }
+
+    // 2. Check localStorage cache
     const CACHE_KEY = 'sdf_te_cache_v1';
     let cache = {};
     try { cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch {}
 
-    if (cache[text]) { setResult(cache[text]); return; }
+    if (cache[text]) {
+      setResult(cache[text]);
+      return;
+    }
 
-    // Fetch from MyMemory API
+    // 3. Fetch from MyMemory API for Telugu translation
     const controller = new AbortController();
     fetch(
       `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|te`,
@@ -294,7 +312,9 @@ export const useAutoTranslate = (text, preTranslated = '') => {
           setResult(translated);
         }
       })
-      .catch(() => {}); // silently keep English on error
+      .catch(() => {
+        setResult(text || '');
+      });
 
     return () => controller.abort();
   }, [text, lang, preTranslated]);

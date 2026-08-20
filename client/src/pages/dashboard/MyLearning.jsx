@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { FaArrowLeft, FaImage } from 'react-icons/fa';
+import { FaUser, FaQuestionCircle, FaBell, FaVideo, FaGraduationCap, FaChevronRight } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 
 const MyLearning = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('In Progress');
   const [courses, setCourses] = useState([]);
+  const [upcomingClass, setUpcomingClass] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const tabs = ['In Progress', 'Completed', 'Wishlisted'];
-
   useEffect(() => {
-    fetchMyCourses();
+    fetchData();
   }, []);
 
-  const fetchMyCourses = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
@@ -26,167 +24,168 @@ const MyLearning = () => {
         return;
       }
 
-      const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/payments/history`, {
+      // Fetch enrolled courses
+      const coursesRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/payments/history`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (data.success) {
-        // Map enrollments to course format
-        const fetchedCourses = data.data.map(enrollment => {
-          // Since progress isn't tracked in backend yet, we'll assign a random one for UI visualization, 
-          // or you could store this in the Enrollment model later.
-          const mockProgress = Math.floor(Math.random() * 60) + 10; 
-          
+      // Fetch all classes
+      const classesRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/classes/student`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (coursesRes.data.success) {
+        const fetchedCourses = coursesRes.data.data.map(enrollment => {
           return {
             id: enrollment._id,
             courseId: enrollment.course?._id,
             title: enrollment.course?.title || 'Unknown Course',
             category: enrollment.course?.category || 'General',
             image: enrollment.course?.thumbnailUrl || '',
-            progress: mockProgress, 
-            status: enrollment.paymentStatus
+            progress: Math.floor(Math.random() * 60) + 10 // Mock progress
           };
         });
-        
         setCourses(fetchedCourses);
       }
+
+      if (classesRes.data.success) {
+        const now = new Date();
+        const futureClasses = classesRes.data.data.filter(cls => {
+          const classTime = new Date(`${cls.date.split('T')[0]}T${cls.time}:00`);
+          return classTime > now;
+        }).sort((a, b) => {
+          const aTime = new Date(`${a.date.split('T')[0]}T${a.time}:00`);
+          const bTime = new Date(`${b.date.split('T')[0]}T${b.time}:00`);
+          return aTime - bTime;
+        });
+
+        if (futureClasses.length > 0) {
+          setUpcomingClass(futureClasses[0]);
+        }
+      }
+
     } catch (err) {
-      console.error('Error fetching courses:', err);
+      console.error('Error fetching learning data:', err);
       setError('Failed to load your learning data.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Filter based on tabs (For now everything goes to In Progress since we mock progress)
-  // In a real app, you'd filter by progress == 100 for Completed, etc.
-  const displayCourses = courses.filter(course => {
-    if (activeTab === 'Completed') return false; // Mocking no completed courses for now
-    if (activeTab === 'Wishlisted') return false; // Mocking no wishlisted courses for now
-    return true; // All fetched go to In Progress
-  });
+  const getCategoryColor = (category) => {
+    const colors = {
+      'Yoga': 'bg-[#f4efe6] text-amber-800',
+      'Meditation': 'bg-[#e9f1e8] text-green-800',
+      'General': 'bg-[#e8ebf4] text-blue-800'
+    };
+    return colors[category] || colors['General'];
+  };
 
   return (
-    <div className="min-h-screen bg-bg-cream">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12 flex flex-col h-full">
+    <div className="min-h-screen bg-[#F9F7F5] pb-24 md:pb-8 pt-20 md:pt-8">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-6">
         
-        {/* Mobile Header */}
-        <div className="flex md:hidden items-center mb-6 mt-2">
-          <button onClick={() => navigate(-1)} className="mr-4 text-brand-green">
-            <FaArrowLeft size={20} />
-          </button>
-          <h1 className="text-xl font-bold text-brand-green">My Learning</h1>
-        </div>
-
-        {/* Desktop Header */}
-        <div className="hidden md:block mb-10 text-center relative z-10">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-brand-green-dark mb-4 tracking-tight">My Learning</h1>
-          <p className="text-gray-600 max-w-2xl mx-auto text-lg">
-            Track your progress and continue your journey.
-          </p>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex justify-between md:justify-center md:gap-12 border-b border-gray-200 mb-8 max-w-3xl mx-auto w-full z-10">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`pb-3 px-2 text-sm md:text-base font-semibold transition-colors relative ${
-                activeTab === tab
-                  ? 'text-brand-green'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {tab}
-              {activeTab === tab && (
-                <motion.div 
-                  layoutId="activeTabIndicator"
-                  className="absolute bottom-0 left-0 w-full h-0.5 md:h-1 bg-brand-green rounded-t-md" 
-                />
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Course List */}
-        <div className="flex-1 pb-20 z-10">
-          {loading ? (
-            <div className="flex justify-center items-center h-40">
-              <div className="w-10 h-10 border-4 border-brand-green border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          ) : error ? (
-            <div className="text-center text-red-500 mt-10 p-4 bg-red-50 rounded-xl max-w-md mx-auto border border-red-100">
-              {error}
-            </div>
-          ) : displayCourses.length === 0 ? (
-            <div className="text-center bg-white/40 backdrop-blur-md rounded-3xl p-10 max-w-md mx-auto shadow-sm border border-white">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaImage className="text-gray-400" size={24} />
+        {loading ? (
+           <div className="flex justify-center p-10"><div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div></div>
+        ) : error ? (
+           <div className="text-center text-red-500 p-4">{error}</div>
+        ) : (
+          <div className="space-y-6">
+            
+            {/* Upcoming Class Card */}
+            <div className="bg-[#f5f4ef] rounded-2xl p-6 md:p-8 border border-[#e6e2d3] flex flex-col md:flex-row items-center justify-between shadow-sm relative overflow-hidden max-w-4xl mx-auto w-full gap-6">
+              <div className="absolute top-0 left-0 w-full md:w-2 md:h-full h-1 md:bg-gradient-to-b bg-gradient-to-r from-yellow-300 to-yellow-500"></div>
+              
+              <div className="flex flex-col items-center md:items-start text-center md:text-left">
+                <h2 className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-widest">Upcoming Class</h2>
+                {upcomingClass ? (
+                  <>
+                    <h3 className="text-xl md:text-2xl font-black text-gray-800 line-clamp-1">{upcomingClass.title || upcomingClass.courseId?.title}</h3>
+                    <div className="flex items-center justify-center md:justify-start gap-2 mt-2 text-sm font-medium text-gray-600">
+                      <FaVideo className="text-yellow-500"/>
+                      <span>{new Date(`${upcomingClass.date.split('T')[0]}T${upcomingClass.time}:00`).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                      <span className="w-px h-3 bg-gray-300 mx-1"></span>
+                      <span>{new Date(upcomingClass.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-2 text-gray-500 font-medium">No upcoming classes scheduled.</div>
+                )}
               </div>
-              <h3 className="text-lg font-bold text-gray-800 mb-2">No courses here</h3>
-              <p className="text-gray-500 text-sm mb-6">You haven't enrolled in any courses yet.</p>
-              <button 
-                onClick={() => navigate('/courses')}
-                className="bg-brand-green text-white px-6 py-2.5 rounded-full font-medium hover:bg-brand-green-dark transition-colors shadow-sm"
-              >
-                Browse Classes
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-              {displayCourses.map((course, index) => (
-                <motion.div 
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  key={course.id} 
-                  onClick={() => course.courseId && navigate(`/courses/${course.courseId}`)}
-                  className="bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_4px_20px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-[20px] p-3 md:p-4 flex flex-row md:flex-col gap-4 h-32 md:h-auto items-center md:items-stretch cursor-pointer transition-all duration-300 hover:-translate-y-1 group"
+
+              {upcomingClass && (
+                <a 
+                  href={upcomingClass.zoomLink || '#'} 
+                  target={upcomingClass.zoomLink ? "_blank" : "_self"}
+                  className={`bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900 font-bold px-8 py-3.5 rounded-full text-lg shadow-[0_4px_15px_rgba(252,213,54,0.3)] transition-all hover:scale-105 flex items-center gap-2 whitespace-nowrap ${!upcomingClass.zoomLink && 'opacity-70 cursor-not-allowed'}`}
                 >
-                  {/* Image */}
-                  <div className="h-full w-28 md:w-full md:h-48 rounded-xl md:rounded-[16px] overflow-hidden flex-shrink-0 bg-gray-100 relative">
-                    {course.image ? (
-                      <img 
-                        src={course.image.startsWith('http') ? course.image : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/${course.image.replace(/\\/g, '/')}`}
-                        onError={(e) => { e.target.onerror = null; e.target.src = course.image; }} // Fallback
-                        alt={course.title} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300">
-                        <FaImage size={24} />
-                      </div>
-                    )}
-                    <div className="hidden md:block absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-md text-[10px] font-bold text-brand-green uppercase tracking-wide">
-                      {course.category}
-                    </div>
-                  </div>
-                  
-                  {/* Details */}
-                  <div className="flex flex-col justify-center md:justify-start flex-1 h-full py-1 md:pt-2 md:px-1">
-                    <h3 className="font-bold text-gray-900 text-[15px] md:text-[18px] mb-2 md:mb-4 leading-tight group-hover:text-brand-green transition-colors">{course.title}</h3>
-                    
-                    <div className="mt-auto w-full">
-                      <div className="flex justify-between items-end mb-2">
-                        <p className="text-[11px] md:text-[13px] text-gray-500 font-semibold">{course.progress}% Complete</p>
-                        <span className="text-xs md:text-[14px] font-black text-gray-800">{course.progress}%</span>
-                      </div>
-                      <div className="h-1.5 md:h-2 bg-[#f0f0f0] rounded-full w-full overflow-hidden shadow-inner">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${course.progress}%` }}
-                          transition={{ duration: 1, ease: "easeOut" }}
-                          className="h-full bg-brand-green rounded-full" 
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  Join Now
+                </a>
+              )}
             </div>
-          )}
-        </div>
+
+            <div className="pt-4">
+              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><FaGraduationCap className="text-yellow-500" /> My Enrolled Courses</h2>
+              {/* Course Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {courses.map((course, index) => {
+                  const colors = getCategoryColor(course.category);
+                  return (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}
+                      key={course.id}
+                      className="bg-white rounded-[20px] border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col relative group"
+                    >
+                      {/* Top colored banner */}
+                      <div className={`${colors} px-5 py-3 flex justify-between items-center border-b border-white/50`}>
+                        <span className="font-bold text-sm tracking-tight">{course.category}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wide opacity-80 flex items-center gap-1 bg-white/30 px-2 py-0.5 rounded-full">
+                          Enrolled
+                        </span>
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-6 flex-1 flex flex-col">
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="w-14 h-14 rounded-xl bg-gray-50 shrink-0 overflow-hidden border border-gray-100 flex items-center justify-center">
+                            {course.image ? <img src={course.image.startsWith('http') ? course.image : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/${course.image.replace(/\\/g, '/')}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : <FaGraduationCap className="text-gray-300 size-6" />}
+                          </div>
+                          <div className="flex-1 min-w-0 pt-1">
+                            <h3 className="text-lg font-black text-gray-800 leading-snug line-clamp-2">{course.title}</h3>
+                          </div>
+                        </div>
+
+                        <div className="mt-auto pt-4 border-t border-gray-50">
+                          <div className="flex justify-between items-center mb-2">
+                            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Progress</div>
+                            <div className="text-sm font-bold text-gray-700">{course.progress}%</div>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-1.5 mb-6">
+                            <div className="bg-[#fcd536] h-1.5 rounded-full" style={{ width: `${course.progress}%` }}></div>
+                          </div>
+
+                          <button 
+                            onClick={() => navigate(`/dashboard/learning/${course.courseId}`)}
+                            className="w-full bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900 font-bold px-4 py-3 rounded-xl text-sm shadow-sm transition-transform active:scale-95 flex justify-center items-center gap-2 group-hover:shadow-[0_4px_10px_rgba(252,213,54,0.3)]"
+                          >
+                            View Details <FaChevronRight className="text-[10px]" />
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+                
+                {courses.length === 0 && (
+                  <div className="col-span-full text-center p-12 bg-white rounded-2xl border border-dashed border-gray-300 text-gray-500 font-medium">
+                    You haven't enrolled in any courses yet.
+                  </div>
+                )}
+              </div>
+            </div>
+            
+          </div>
+        )}
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ const Register = () => {
   const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ emailOrPhone: '', password: '', confirmPassword: '' });
+  const [agreed, setAgreed] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -20,6 +21,9 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!agreed) {
+      return setError('Please accept the Terms & Conditions and Privacy Policy to register.');
+    }
     if (formData.password !== formData.confirmPassword) {
       return setError('Passwords do not match');
     }
@@ -118,10 +122,23 @@ const Register = () => {
               />
             </div>
 
+            {/* Terms and Privacy Agreement Checkbox */}
+            <label className="flex items-start gap-2.5 text-xs text-gray-600 cursor-pointer select-none mt-1">
+              <input 
+                type="checkbox" 
+                checked={agreed} 
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5 rounded border-gray-300 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer" 
+              />
+              <span className="leading-snug">
+                I agree to the <Link to="/terms" target="_blank" className="text-brand-green font-bold hover:underline">Terms & Conditions</Link>, <Link to="/privacy" target="_blank" className="text-brand-green font-bold hover:underline">Privacy Policy</Link>, and <Link to="/refund-policy" target="_blank" className="text-brand-green font-bold hover:underline">Refund Policy</Link>.
+              </span>
+            </label>
+
             <button 
               type="submit" 
               disabled={isLoading}
-              className="w-full py-3.5 mt-4 rounded-full bg-brand-green text-white font-semibold text-[16px] shadow-md hover:shadow-lg hover:-translate-y-0.5 hover:bg-brand-green-dark transition-all duration-300 flex justify-center items-center"
+              className="w-full py-3.5 mt-2 rounded-full bg-brand-green text-white font-semibold text-[16px] shadow-md hover:shadow-lg hover:-translate-y-0.5 hover:bg-brand-green-dark transition-all duration-300 flex justify-center items-center"
             >
               {isLoading ? t('register_loading') : t('register_btn')}
             </button>

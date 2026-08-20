@@ -31,12 +31,12 @@ const ProfileMenu = () => {
   };
 
   const menuItems = [
-    { title: 'My Certificates', icon: PiCertificate, path: '/certificates' },
-    { title: 'My Wishlist', icon: PiHeart, path: '#' },
-    { title: 'My Enrollments', icon: PiBookOpen, path: '/learning' },
-    { title: 'Payment History', icon: PiCreditCard, path: '/payment-history' },
-    { title: 'Settings', icon: PiGearSix, path: '/settings' },
-    { title: 'Help & Support', icon: PiQuestion, path: '#' },
+    { title: 'My Wishlist', icon: PiHeart, path: '/dashboard/wishlist' },
+    { title: 'My Enrollments', icon: PiBookOpen, path: '/dashboard/learning' },
+    { title: 'Payment History', icon: PiCreditCard, path: '/dashboard/payment-history' },
+    { title: 'My Certificates', icon: PiCertificate, path: '/dashboard/certificates' },
+    { title: 'Settings', icon: PiGearSix, path: '/dashboard/settings' },
+    { title: 'Help & Support', icon: PiQuestion, path: '/dashboard/support' },
     { title: 'Logout', icon: PiSignOut, path: '/login', action: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');

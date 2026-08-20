@@ -10,6 +10,7 @@ const ScrollToTop = () => {
 };
 import Login from '../pages/Login';
 import Register from '../pages/Register';
+import ForgotPassword from '../pages/ForgotPassword';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import PublicLayout from '../components/layout/PublicLayout';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
@@ -18,14 +19,19 @@ import ProtectedRoute from '../components/auth/ProtectedRoute';
 import Home from '../pages/public/Home';
 import About from '../pages/public/About';
 import Contact from '../pages/public/Contact';
+import TermsAndConditions from '../pages/public/TermsAndConditions';
+import PrivacyPolicy from '../pages/public/PrivacyPolicy';
+import RefundPolicy from '../pages/public/RefundPolicy';
 
 // Admin
 import AdminLogin from '../pages/admin/AdminLogin';
 import AdminLayout from '../components/admin/AdminLayout';
+import AdminProtectedRoute from '../components/admin/AdminProtectedRoute';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import CourseManagement from '../pages/admin/CourseManagement';
-import ClassScheduling from '../pages/admin/ClassScheduling';
 import UserManagement from '../pages/admin/UserManagement';
+import MaterialManagement from '../pages/admin/MaterialManagement';
+import AdminRecords from '../pages/admin/AdminRecords';
 
 // Dashboard / Course
 import DashboardHome from '../pages/dashboard/Home';
@@ -38,6 +44,8 @@ import PaymentHistory from '../pages/dashboard/PaymentHistory';
 import MyLearning from '../pages/dashboard/MyLearning';
 import Certificates from '../pages/dashboard/Certificates';
 import Settings from '../pages/dashboard/Settings';
+import Wishlist from '../pages/dashboard/Wishlist';
+import HelpSupport from '../pages/dashboard/HelpSupport';
 
 const AppRoutes = () => {
   return (
@@ -51,18 +59,31 @@ const AppRoutes = () => {
           <Route path="/contact" element={<Contact />} />
           <Route path="/courses" element={<CourseList />} />
           <Route path="/courses/:slug" element={<CourseDetails />} />
+          <Route path="/terms" element={<TermsAndConditions />} />
+          <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/return-policy" element={<RefundPolicy />} />
+          <Route path="/cancellation-policy" element={<RefundPolicy />} />
           {/* Auth Routes inside PublicLayout for Navbar */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
         </Route>
         
-        {/* Admin Routes */}
+        {/* Admin Login (Unprotected) */}
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="courses" element={<CourseManagement />} />
-          <Route path="classes" element={<ClassScheduling />} />
-          <Route path="users" element={<UserManagement />} />
+        
+        {/* Protected Admin Routes */}
+        <Route element={<AdminProtectedRoute />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="courses" element={<CourseManagement />} />
+            <Route path="materials" element={<MaterialManagement />} />
+            <Route path="records" element={<AdminRecords />} />
+            <Route path="users" element={<UserManagement />} />
+          </Route>
         </Route>
 
         {/* Protected User Dashboard Routes */}
@@ -70,12 +91,14 @@ const AppRoutes = () => {
           <Route path="/dashboard" element={<DashboardLayout />}>
             {/* The base path for Dashboard is now /dashboard/... */}
             <Route index element={<DashboardHome />} />
-            <Route path="classes" element={<StudentClasses />} />
             <Route path="learning" element={<MyLearning />} />
+            <Route path="learning/:courseId" element={<StudentClasses />} />
             <Route path="profile" element={<Profile />} />
             <Route path="settings" element={<Settings />} />
             <Route path="certificates" element={<Certificates />} />
             <Route path="payment-history" element={<PaymentHistory />} />
+            <Route path="wishlist" element={<Wishlist />} />
+            <Route path="support" element={<HelpSupport />} />
           </Route>
           {/* Checkout needs protection but doesn't necessarily need the dashboard layout wrapper depending on design, but let's keep it separate or in dashboard */}
           <Route path="/checkout/:id" element={<Checkout />} />

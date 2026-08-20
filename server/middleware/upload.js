@@ -1,13 +1,20 @@
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('../utils/cloudinary');
+const cloudinary = require('cloudinary').v2;
+const dotenv = require('dotenv');
+dotenv.config();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'sdf_lms',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'mp4', 'pdf'],
-    resource_type: 'auto' // Automatically determine if image, video, or raw
+    resource_type: 'auto'
   },
 });
 

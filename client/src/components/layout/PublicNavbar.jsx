@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaHome, FaBook, FaInfoCircle, FaUser, FaGlobe } from 'react-icons/fa';
+import { FaHome, FaBook, FaInfoCircle, FaUser, FaGlobe, FaArrowLeft } from 'react-icons/fa';
 import { useLanguage } from '../../context/LanguageContext';
 
 const PublicNavbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
   const { lang, setLang, t } = useLanguage();
+
+  const isCourseDetails = location.pathname.startsWith('/courses/') && location.pathname !== '/courses';
+  const isCourseList = location.pathname === '/courses';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,9 +24,6 @@ const PublicNavbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-
-
 
   const navLinks = [
     { name: t('nav_home'), path: '/' },
@@ -38,18 +39,31 @@ const PublicNavbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
-      className={`fixed top-0 w-full z-50 transition-all duration-300 bg-white ${isScrolled ? 'py-3 shadow-md' : 'py-5 shadow-sm'}`}
+      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 bg-white flex items-center h-18 md:h-20 ${isScrolled ? 'shadow-md border-b border-gray-100' : 'shadow-sm'}`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="flex justify-between items-center w-full relative">
           
-          {/* Mobile Spacer (for flex balance & container height) */}
-          <div className="w-8 h-16 md:h-auto md:hidden"></div>
+          {/* Far Left on Mobile (Back button if on course pages, otherwise empty spacer) */}
+          <div className="flex items-center">
+            {isCourseDetails || isCourseList ? (
+              <button onClick={() => navigate(-1)} className="md:hidden flex items-center gap-1.5 text-brand-green-dark p-2 -ml-2 hover:bg-brand-green/10 rounded-full transition-colors">
+                <FaArrowLeft size={17} />
+              </button>
+            ) : (
+              <div className="w-8 h-10 md:hidden"></div>
+            )}
 
-          {/* Logo */}
-          <Link to="/" className="flex-shrink-0 flex items-center gap-2 absolute md:relative left-1/2 transform -translate-x-1/2 md:translate-x-0 md:left-0">
-            <img src="/Swamy logo.png" alt="Logo" className="h-16 md:h-20 w-auto" />
-            <span className="font-outfit font-bold text-lg text-brand-green-dark hidden lg:block">Swamy Dwija Foundation</span>
+            {/* Desktop Logo */}
+            <Link to="/" className="hidden md:flex flex-shrink-0 items-center gap-2">
+              <img src="/Swamy logo.png" alt="Logo" className="h-16 w-auto object-contain" />
+              <span className="font-outfit font-bold text-lg text-brand-green-dark hidden lg:block">Swamy Dwija Foundation</span>
+            </Link>
+          </div>
+
+          {/* Mobile-Centered Large Logo */}
+          <Link to="/" className="md:hidden absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-auto">
+            <img src="/Swamy logo.png" alt="Logo" className="h-14 w-auto object-contain" />
           </Link>
 
           {/* Desktop Nav */}

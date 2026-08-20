@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaClock, FaGlobe, FaStar, FaArrowRight, FaCheckCircle, FaAward, FaChalkboardTeacher, FaGraduationCap, FaLeaf, FaHeartbeat, FaOm, FaAppleAlt, FaQuoteLeft, FaPlayCircle } from 'react-icons/fa';
 import { useLanguage, useAutoTranslate } from '../../context/LanguageContext';
+import SEO from '../../components/common/SEO';
+
 // --- Typewriter Component ---
 const TypewriterText = ({ text }) => {
   const [displayText, setDisplayText] = useState('');
@@ -185,6 +187,12 @@ const Home = () => {
 
   return (
     <div className="bg-bg-cream overflow-hidden">
+      <SEO 
+        title="Ancient Himalayan Yoga, Pranayama & Vedic Sciences"
+        description="Master authentic Himalayan Yoga, Pranayama & Vedic Wellness with live interactive masterclasses and accredited digital certifications from Swamy Dwija Foundation."
+        keywords="Swamy Dwija Foundation, Yoga online classes, Pranayama, Hatha Yoga, Vedic Meditation, Ayurveda course India, Hyderabad yoga academy"
+        url="https://swamydwija.org"
+      />
 
       {/* --- HERO SECTION --- */}
       <section className="relative pt-16 pb-20 md:pt-20 md:pb-24 overflow-hidden bg-dark-bg">

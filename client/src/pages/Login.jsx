@@ -13,6 +13,7 @@ const Login = () => {
   const [formData, setFormData] = useState({ emailOrPhone: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [agreed, setAgreed] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,6 +38,10 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!agreed) {
+      setError('Please agree to the Terms & Conditions and Privacy Policy.');
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, formData, { timeout: 10000 });
@@ -52,6 +57,10 @@ const Login = () => {
 
   // Google Identity Services callback
   const handleGoogleResponse = async (response) => {
+    if (!agreed) {
+      setError('Please agree to the Terms & Conditions and Privacy Policy.');
+      return;
+    }
     setIsGoogleLoading(true);
     setError('');
     try {
@@ -99,6 +108,10 @@ const Login = () => {
   }, []);
 
   const handleGoogleButtonClick = () => {
+    if (!agreed) {
+      setError('Please agree to the Terms & Conditions and Privacy Policy.');
+      return;
+    }
     if (!GOOGLE_CLIENT_ID) {
       setError('Google login is not configured yet. Please add your Google Client ID.');
       return;
@@ -151,7 +164,7 @@ const Login = () => {
               <input 
                 name="password"
                 type={showPassword ? "text" : "password"} 
-                placeholder={t('login_password_placeholder')} 
+                placeholder={t('login_password_placeholder') || 'Enter your password'} 
                 value={formData.password}
                 onChange={handleChange}
                 required
@@ -166,10 +179,22 @@ const Login = () => {
               </button>
             </div>
 
-            <div className="flex justify-between items-center mt-[-4px]">
+            <div className="flex justify-end items-center mt-[-4px]">
               <Link to="/forgot-password" className="text-[13px] text-[#2F80ED] font-extrabold hover:underline transition-colors">{t('login_forgot')}</Link>
-              <a href="#" className="text-[12px] text-gray-600 font-bold hover:text-gray-800 transition-colors">{t('login_trouble')}</a>
             </div>
+
+            {/* Terms and Privacy Checkbox */}
+            <label className="flex items-start gap-2.5 text-xs text-gray-600 cursor-pointer select-none mt-1">
+              <input 
+                type="checkbox" 
+                checked={agreed} 
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5 rounded border-gray-300 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer" 
+              />
+              <span className="leading-snug">
+                I agree to the <Link to="/terms" target="_blank" className="text-brand-green font-bold hover:underline">Terms & Conditions</Link>, <Link to="/privacy" target="_blank" className="text-brand-green font-bold hover:underline">Privacy Policy</Link>, and <Link to="/refund-policy" target="_blank" className="text-brand-green font-bold hover:underline">Refund Policy</Link>.
+              </span>
+            </label>
 
             <button 
               type="submit" 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { FaLock, FaShieldAlt, FaCreditCard, FaCheckCircle } from 'react-icons/fa';
@@ -11,7 +11,16 @@ const Checkout = () => {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [email, setEmail] = useState('');
+  const [agreed, setAgreed] = useState(true);
+  const [email, setEmail] = useState(() => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        return JSON.parse(userStr).emailOrPhone || '';
+      }
+    } catch(e) {}
+    return '';
+  });
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -27,36 +36,101 @@ const Checkout = () => {
     fetchCourse();
   }, [id]);
 
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
   const handleCheckout = async (e) => {
     e.preventDefault();
-    if (!email) return alert('Please enter your email address to continue.');
-    
+    if (!agreed) {
+      alert('Please accept the Terms & Conditions and Refund Policy to proceed with checkout.');
+      return;
+    }
     setProcessing(true);
-    
+
     try {
-      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/payments/mock-checkout`, {
-        courseId: id,
-        email,
-        amount: course.price
-      });
-      
-      setProcessing(false);
-      setSuccess(true);
-      
-      // Redirect to dashboard after 3 seconds
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 3000);
-      
+      // 1. Create order on server
+      const token = localStorage.getItem('token');
+      const orderRes = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/payments/create-order`,
+        { courseId: course._id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const { order, key } = orderRes.data;
+
+      // 2. Initialize Razorpay checkout
+      const options = {
+        key: key,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Swamy Dwija Foundation',
+        description: `Enrollment for ${course.title}`,
+        image: '/logo.png',
+        order_id: order.id,
+        handler: async function (response) {
+          try {
+            // 3. Verify payment on server
+            const verifyRes = await axios.post(
+              `${import.meta.env.VITE_API_BASE_URL}/payments/verify-payment`,
+              {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                courseId: course._id,
+                amountPaid: course.price,
+                studentEmail: email
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (verifyRes.data.success) {
+              setSuccess(true);
+              setTimeout(() => {
+                navigate(`/dashboard/learning/${course._id}`);
+              }, 2500);
+            }
+          } catch (verifyError) {
+            console.error('Payment verification failed:', verifyError);
+            alert('Payment verification failed. Please contact support.');
+          } finally {
+            setProcessing(false);
+          }
+        },
+        prefill: {
+          email: email,
+          contact: ''
+        },
+        theme: {
+          color: '#297838'
+        },
+        modal: {
+          ondismiss: function() {
+            setProcessing(false);
+          }
+        }
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+
     } catch (error) {
+      console.error('Checkout error:', error);
+      alert(error.response?.data?.message || 'Error initializing checkout');
       setProcessing(false);
-      alert('Payment processing failed. Please try again.');
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+      <div className="flex justify-center items-center min-h-screen bg-bg-cream">
         <div className="w-12 h-12 border-4 border-brand-green border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -64,26 +138,32 @@ const Checkout = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center p-4">
         <motion.div 
-          initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-          className="bg-white p-10 rounded-3xl shadow-xl max-w-md w-full text-center"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center"
         >
-          <FaCheckCircle className="text-6xl text-brand-green mx-auto mb-6" />
-          <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Payment Successful!</h2>
-          <p className="text-gray-500 mb-8">You are now enrolled in <strong>{course?.title}</strong>. Check your email for access instructions.</p>
-          <div className="w-8 h-8 border-4 border-gray-200 border-t-brand-green rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm text-gray-400 mt-4">Redirecting to your dashboard...</p>
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-500">
+            <FaCheckCircle size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Payment Successful!</h2>
+          <p className="text-gray-600 mb-6">You have been enrolled into {course?.title}. Redirecting you to your schedule...</p>
+          <div className="w-8 h-8 border-4 border-brand-green border-t-transparent rounded-full animate-spin mx-auto"></div>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-8 flex items-center justify-center gap-3">
-          <FaLock className="text-gray-400" />
+    <div className="min-h-screen bg-bg-cream py-12 px-4 sm:px-6 lg:px-8 font-inter">
+      <div className="max-w-4xl mx-auto">
+        
+        {/* Header */}
+        <div className="mb-8 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-brand-green/10 flex items-center justify-center text-brand-green">
+            <FaLock size={16} />
+          </div>
           <h1 className="text-2xl font-bold text-gray-800">Secure Checkout</h1>
         </div>
 
@@ -94,31 +174,36 @@ const Checkout = () => {
             <h2 className="text-xl font-bold text-gray-900 mb-6">Payment Information</h2>
             
             <form onSubmit={handleCheckout} className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-                <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="student@example.com" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 transition-all outline-none" />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Card Details <span className="text-gray-400 font-normal">(Mock Payment)</span></label>
-                <div className="relative">
-                  <FaCreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="text" placeholder="4242 4242 4242 4242" className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-green outline-none" />
-                </div>
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <input type="text" placeholder="MM/YY" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-green outline-none" />
-                  <input type="text" placeholder="CVC" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-green outline-none" />
-                </div>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Registered Student Account</label>
+                <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="student@example.com" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-green focus:ring-2 focus:ring-brand-green/20 transition-all outline-none text-sm font-medium" />
               </div>
 
-              <div className="pt-4">
-                <button disabled={processing} type="submit" className="w-full py-4 bg-gray-900 hover:bg-brand-green text-white text-lg font-bold rounded-xl shadow-lg hover:shadow-brand-green/30 transition-all duration-300 disabled:opacity-70 flex justify-center items-center gap-2">
-                  {processing ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Processing...</> : `Pay $${course?.price}`}
+              {/* Payment Terms Agreement Checkbox */}
+              <label className="flex items-start gap-2.5 text-xs text-gray-600 cursor-pointer select-none bg-gray-50/80 p-3.5 rounded-xl border border-gray-200">
+                <input 
+                  type="checkbox" 
+                  checked={agreed} 
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="mt-0.5 rounded border-gray-300 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer" 
+                />
+                <span className="leading-relaxed">
+                  I have read and agree to the <Link to="/terms" target="_blank" className="text-brand-green font-bold hover:underline">Terms of Service</Link>, <Link to="/privacy" target="_blank" className="text-brand-green font-bold hover:underline">Privacy Policy</Link>, and <Link to="/refund-policy" target="_blank" className="text-brand-green font-bold hover:underline">Refund & Cancellation Policy</Link>.
+                </span>
+              </label>
+
+              <div className="pt-2">
+                <button disabled={processing} type="submit" className="w-full py-4 bg-brand-green hover:bg-brand-green-dark text-white text-lg font-bold rounded-xl shadow-lg shadow-brand-green/30 hover:shadow-brand-green/50 transition-all duration-300 disabled:opacity-70 flex justify-center items-center gap-3">
+                  {processing ? <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Processing...</> : (
+                    <>
+                      Proceed to Pay ₹{course?.price}
+                    </>
+                  )}
                 </button>
               </div>
               
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mt-6 font-medium">
-                <FaShieldAlt className="text-green-500" /> Guaranteed safe & secure checkout
+              <div className="flex items-center justify-center gap-2 text-xs text-gray-500 mt-4 font-medium">
+                <FaShieldAlt className="text-green-600" /> 256-bit SSL encrypted • Instant course access
               </div>
             </form>
           </div>
@@ -140,18 +225,18 @@ const Checkout = () => {
             <div className="space-y-4 mb-8 flex-1">
               <div className="flex justify-between text-gray-600">
                 <span>Original Price</span>
-                <span>${course?.price}</span>
+                <span>₹{course?.price}</span>
               </div>
               <div className="flex justify-between text-green-600 font-medium">
                 <span>Discount</span>
-                <span>-$0.00</span>
+                <span>-₹0.00</span>
               </div>
             </div>
 
             <div className="border-t border-gray-200 pt-6">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-900 font-bold">Total</span>
-                <span className="text-3xl font-black text-gray-900">${course?.price}</span>
+                <span className="text-3xl font-black text-gray-900">₹{course?.price}</span>
               </div>
             </div>
           </div>

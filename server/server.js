@@ -38,6 +38,60 @@ app.use(async (req, res, next) => {
 app.use(cors());
 app.use(express.json());
 
+// Dynamic SEO Sitemap XML Endpoint
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const Course = require('./models/Course');
+    const courses = await Course.find({}, 'slug _id updatedAt createdAt title');
+
+    const baseUrl = 'https://swamydwija.org';
+    const staticPages = [
+      { loc: `${baseUrl}/`, priority: '1.0', changefreq: 'daily' },
+      { loc: `${baseUrl}/courses`, priority: '0.9', changefreq: 'daily' },
+      { loc: `${baseUrl}/about`, priority: '0.8', changefreq: 'monthly' },
+      { loc: `${baseUrl}/contact`, priority: '0.7', changefreq: 'monthly' },
+      { loc: `${baseUrl}/terms`, priority: '0.5', changefreq: 'yearly' },
+      { loc: `${baseUrl}/privacy`, priority: '0.5', changefreq: 'yearly' },
+      { loc: `${baseUrl}/refund-policy`, priority: '0.5', changefreq: 'yearly' },
+      { loc: `${baseUrl}/login`, priority: '0.6', changefreq: 'monthly' },
+      { loc: `${baseUrl}/register`, priority: '0.6', changefreq: 'monthly' },
+    ];
+
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+
+    // Static URLs
+    staticPages.forEach(page => {
+      xml += `  <url>\n`;
+      xml += `    <loc>${page.loc}</loc>\n`;
+      xml += `    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>\n`;
+      xml += `    <changefreq>${page.changefreq}</changefreq>\n`;
+      xml += `    <priority>${page.priority}</priority>\n`;
+      xml += `  </url>\n`;
+    });
+
+    // Dynamic Course URLs
+    courses.forEach(course => {
+      const courseIdOrSlug = course.slug || course._id;
+      const lastMod = course.updatedAt ? new Date(course.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      xml += `  <url>\n`;
+      xml += `    <loc>${baseUrl}/courses/${courseIdOrSlug}</loc>\n`;
+      xml += `    <lastmod>${lastMod}</lastmod>\n`;
+      xml += `    <changefreq>weekly</changefreq>\n`;
+      xml += `    <priority>0.85</priority>\n`;
+      xml += `  </url>\n`;
+    });
+
+    xml += `</urlset>`;
+
+    res.header('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch (err) {
+    console.error('Sitemap generation error:', err);
+    res.status(500).send('Error generating sitemap');
+  }
+});
+
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/courses', require('./routes/courseRoutes'));

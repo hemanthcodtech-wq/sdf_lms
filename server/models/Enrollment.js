@@ -23,6 +23,30 @@ const enrollmentSchema = new mongoose.Schema({
     default: 0,
     min: 0,
     max: 100
+  },
+  completed: {
+    type: Boolean,
+    default: false
+  },
+  completionDate: {
+    type: Date,
+    default: null
+  },
+  certificateId: {
+    type: String,
+    default: null
+  },
+  invoiceNumber: {
+    type: String,
+    default: null
+  },
+  certificateUrl: {
+    type: String,
+    default: null
+  },
+  invoiceUrl: {
+    type: String,
+    default: null
   }
 }, { timestamps: true });
 

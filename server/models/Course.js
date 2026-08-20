@@ -30,13 +30,35 @@ const courseSchema = new mongoose.Schema({
   instructor: {
     type: String
   },
-  duration: {
-    type: String, // e.g. "4 Weeks", "10 Hours"
-    required: true
+  durationMonths: {
+    type: Number,
+    required: true,
+    default: 1
+  },
+  startDate: {
+    type: Date
+  },
+  endDate: {
+    type: Date
+  },
+  timings: {
+    type: String, // e.g. '10:00 to 12:00'
+  },
+  topics: {
+    type: [String],
+    default: []
+  },
+  topics_te: {
+    type: [String],
+    default: []
   },
   language: {
     type: String,
     default: 'English'
+  },
+  accessValidity: {
+    type: String,
+    default: '2 Months'
   },
   whatYouWillLearn: {
     type: [String],
