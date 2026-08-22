@@ -8,6 +8,12 @@ const userSchema = new mongoose.Schema({
     unique: true,
     trim: true,
   },
+  email: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    default: '',
+  },
   password: {
     type: String,
     minlength: 6,
@@ -19,6 +25,11 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     default: '',
+    trim: true,
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: true,
   },
   avatar: {
     type: String,
@@ -26,9 +37,35 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['student', 'admin'],
+    enum: ['student', 'admin', 'instructor', 'moderator'],
     default: 'student',
   },
+  phone: {
+    type: String,
+    default: '',
+    trim: true,
+  },
+  speciality: {
+    type: String,
+    default: '', // e.g. 'Yoga', 'Meditation', 'Food Nutritionist', 'Pranayama', 'Ayurveda'
+  },
+  experience: {
+    type: String,
+    default: '', // e.g. '5+ Years', 'Senior Yoga Master'
+  },
+  bio: {
+    type: String,
+    default: '',
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active',
+  },
+  assignedCourses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course'
+  }],
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course'

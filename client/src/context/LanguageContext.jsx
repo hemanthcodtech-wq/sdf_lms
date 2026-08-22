@@ -248,8 +248,32 @@ const translations = {
 const LanguageContext = createContext();
 
 export const LanguageProvider = ({ children }) => {
-  const [lang, setLang] = useState('en');
-  const t = (key) => translations[lang][key] || translations['en'][key] || key;
+  const [lang, setLangState] = useState(() => {
+    try {
+      return localStorage.getItem('app_language') || 'en';
+    } catch {
+      return 'en';
+    }
+  });
+
+  const setLang = (newLang) => {
+    setLangState(newLang);
+    try {
+      localStorage.setItem('app_language', newLang);
+    } catch (e) {
+      console.error('Error saving language:', e);
+    }
+  };
+
+  const t = (key) => {
+    if (!key) return '';
+    const currentDict = translations[lang] || translations['en'];
+    if (currentDict && currentDict[key] !== undefined) {
+      return currentDict[key];
+    }
+    return translations['en']?.[key] || key;
+  };
+
   return (
     <LanguageContext.Provider value={{ lang, setLang, t }}>
       {children}

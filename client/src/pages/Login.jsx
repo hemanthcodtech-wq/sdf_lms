@@ -148,34 +148,34 @@ const Login = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
-            <div className="custom-input flex items-center px-4 py-3.5 shadow-sm">
+            <div className="flex items-center px-4 py-3.5 bg-gray-50/80 border border-gray-200/80 rounded-2xl focus-within:bg-white focus-within:border-brand-green focus-within:ring-2 focus-within:ring-brand-green/20 transition-all shadow-xs">
               <input 
                 name="emailOrPhone"
                 type="text"
-                placeholder={t('login_email_placeholder')}
+                placeholder="Email Address or Phone Number"
                 value={formData.emailOrPhone}
                 onChange={handleChange}
                 required
-                className="w-full bg-transparent border-none outline-none text-[15px] placeholder-gray-500 text-gray-800"
+                className="w-full bg-transparent border-none outline-none text-sm placeholder-gray-400 text-gray-800 font-medium"
               />
             </div>
             
-            <div className="custom-input flex items-center px-4 py-3.5 relative shadow-sm">
+            <div className="flex items-center px-4 py-3.5 bg-gray-50/80 border border-gray-200/80 rounded-2xl focus-within:bg-white focus-within:border-brand-green focus-within:ring-2 focus-within:ring-brand-green/20 relative transition-all shadow-xs">
               <input 
                 name="password"
                 type={showPassword ? "text" : "password"} 
-                placeholder={t('login_password_placeholder') || 'Enter your password'} 
+                placeholder="Password" 
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full bg-transparent border-none outline-none text-[15px] placeholder-gray-500 text-gray-800 pr-10"
+                className="w-full bg-transparent border-none outline-none text-sm placeholder-gray-400 text-gray-800 font-medium pr-10"
               />
               <button 
                 type="button"
-                className="absolute right-4 text-gray-500 hover:text-gray-700 transition-colors"
+                className="absolute right-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+                {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
               </button>
             </div>
 

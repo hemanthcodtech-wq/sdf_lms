@@ -7,20 +7,38 @@ import { useLanguage, useAutoTranslate } from '../../context/LanguageContext';
 import SEO from '../../components/common/SEO';
 
 // --- Typewriter Component ---
-const TypewriterText = ({ text }) => {
+const TypewriterText = ({ text = '' }) => {
   const [displayText, setDisplayText] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
 
   useEffect(() => {
+    const chars = Array.from(text || '');
     let i = 0;
+    setDisplayText('');
+    setIsTyping(true);
+
+    if (chars.length === 0) {
+      setIsTyping(false);
+      return;
+    }
+
     const intervalId = setInterval(() => {
-      setDisplayText(text.slice(0, i + 1));
+      setDisplayText(chars.slice(0, i + 1).join(''));
       i++;
-      if (i > text.length) clearInterval(intervalId);
+      if (i >= chars.length) {
+        clearInterval(intervalId);
+        setIsTyping(false);
+      }
     }, 100);
     return () => clearInterval(intervalId);
   }, [text]);
 
-  return <span>{displayText}<span className="animate-pulse">|</span></span>;
+  return (
+    <span>
+      {displayText}
+      {isTyping && <span className="animate-pulse ml-0.5">|</span>}
+    </span>
+  );
 };
 
 // --- Animated Counter Component ---

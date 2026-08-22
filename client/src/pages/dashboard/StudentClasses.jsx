@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaCalendarAlt, FaVideo, FaFilePdf, FaTimes, FaBook, FaArrowLeft, FaChevronRight, FaAward } from 'react-icons/fa';
+import { FaCalendarAlt, FaVideo, FaFilePdf, FaTimes, FaBook, FaArrowLeft, FaChevronRight, FaAward, FaPlayCircle } from 'react-icons/fa';
 import { useParams, useNavigate } from 'react-router-dom';
+import ZoomLiveClassroom from '../../components/classroom/ZoomLiveClassroom';
 
 const StudentClasses = () => {
   const { courseId } = useParams();
@@ -12,6 +13,7 @@ const StudentClasses = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('classes'); // classes, materials
   const [completing, setCompleting] = useState(false);
+  const [selectedLiveClass, setSelectedLiveClass] = useState(null);
   
   const [selectedMaterial, setSelectedMaterial] = useState(null);
 
@@ -267,14 +269,12 @@ const StudentClasses = () => {
                               {/* Dynamic Action Buttons based on Status */}
                               {isToday ? (
                                 cls.zoomLink ? (
-                                  <a 
-                                    href={cls.zoomLink} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    className="text-[11px] font-bold text-white tracking-wider uppercase bg-brand-green hover:bg-brand-green-dark px-4 py-2 rounded-full shadow-md shadow-brand-green/30 transition-all hover:scale-105 flex items-center gap-1.5"
+                                  <button 
+                                    onClick={() => setSelectedLiveClass(cls)}
+                                    className="text-[11px] font-bold text-white tracking-wider uppercase bg-brand-green hover:bg-brand-green-dark px-4 py-2 rounded-full shadow-md shadow-brand-green/30 transition-all hover:scale-105 flex items-center gap-1.5 cursor-pointer"
                                   >
                                     <FaVideo size={12}/> JOIN LIVE
-                                  </a>
+                                  </button>
                                 ) : (
                                   <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full">Link Pending</span>
                                 )
@@ -403,6 +403,15 @@ const StudentClasses = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* In-App Live Classroom with Attendance Check-In */}
+      <ZoomLiveClassroom
+        isOpen={Boolean(selectedLiveClass)}
+        onClose={() => setSelectedLiveClass(null)}
+        liveClass={selectedLiveClass}
+        course={selectedLiveClass?.courseId}
+        userRole="student"
+      />
 
     </div>
   );

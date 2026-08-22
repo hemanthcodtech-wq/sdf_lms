@@ -299,8 +299,9 @@ const generateInvoicePDF = (data) => {
 };
 
 /**
- * Generate a High-Resolution PDF Certificate of Completion with Logo Watermark and Ornate Borders
- * @param {Object} data - { studentName, courseTitle, completionDate, certificateId }
+ * Generate a High-Resolution PDF Certificate of Completion with Classic SDF Parchment Template,
+ * Double Gold & Emerald Borders, Logo Watermark, Course Details, and Instructor & Director Signatures.
+ * @param {Object} data - { studentName, courseTitle, completionDate, certificateId, studentId, instructorName, category, level, duration }
  * @returns {Promise<Buffer>}
  */
 const generateCertificatePDF = (data) => {
@@ -327,7 +328,7 @@ const generateCertificatePDF = (data) => {
       doc.rect(23, 23, width - 46, height - 46).strokeColor('#0A4F2A').lineWidth(1).stroke();
       doc.rect(27, 27, width - 54, height - 54).strokeColor('#D4AF37').lineWidth(1.5).stroke();
 
-      // Corner Ornaments (Gold Squares)
+      // Corner Ornaments (Gold Squares with Accents)
       const cornerSize = 12;
       doc.rect(20, 20, cornerSize, cornerSize).fill('#B8860B');
       doc.rect(width - 32, 20, cornerSize, cornerSize).fill('#B8860B');
@@ -344,9 +345,9 @@ const generateCertificatePDF = (data) => {
       if (logoPath) {
         try {
           doc.save();
-          doc.opacity(0.06);
+          doc.opacity(0.05);
           // Large centered watermark
-          doc.image(logoPath, width / 2 - 150, height / 2 - 130, { width: 300 });
+          doc.image(logoPath, width / 2 - 140, height / 2 - 120, { width: 280 });
           doc.restore();
         } catch (e) {
           console.error("Watermark logo load error:", e);
@@ -354,11 +355,11 @@ const generateCertificatePDF = (data) => {
       }
 
       // 3. Top Logo (Crisp & Foreground)
-      let brandY = 48;
+      let brandY = 44;
       if (logoPath) {
         try {
-          doc.image(logoPath, width / 2 - 28, 42, { width: 56 });
-          brandY = 104;
+          doc.image(logoPath, width / 2 - 24, 38, { width: 48 });
+          brandY = 94;
         } catch (e) {
           console.error("Certificate top logo load error:", e);
         }
@@ -366,89 +367,117 @@ const generateCertificatePDF = (data) => {
 
       // 4. Header Academy Text
       doc.fillColor('#0A4F2A')
-         .fontSize(19)
+         .fontSize(18)
          .font('Helvetica-Bold')
          .text('SWAMY DWIJA FOUNDATION', 0, brandY, { align: 'center' });
 
       doc.fillColor('#854D0E')
-         .fontSize(9.5)
+         .fontSize(9)
          .font('Helvetica-Bold')
-         .text('ACADEMY OF YOGA, PRANAYAMA & VEDIC WELLNESS SCIENCES', 0, brandY + 22, { align: 'center' });
+         .text('ACADEMY OF YOGA, PRANAYAMA & VEDIC SCIENCES', 0, brandY + 20, { align: 'center' });
 
       // 5. Certificate Title
       doc.fillColor('#1E3A24')
-         .fontSize(28)
+         .fontSize(27)
          .font('Times-BoldItalic')
-         .text('Certificate of Completion', 0, brandY + 48, { align: 'center' });
+         .text('Certificate of Completion', 0, brandY + 42, { align: 'center' });
 
       // Subtitle
       doc.fillColor('#6B7280')
-         .fontSize(9.5)
+         .fontSize(9)
          .font('Helvetica')
-         .text('THIS IS PROUDLY AND OFFICIALLY PRESENTED TO', 0, brandY + 84, { align: 'center' });
+         .text('THIS IS PROUDLY AND OFFICIALLY PRESENTED TO', 0, brandY + 76, { align: 'center' });
 
       // 6. Recipient Full Name
+      const studentName = data.studentName || 'Learner';
       doc.fillColor('#0A4F2A')
-         .fontSize(28)
+         .fontSize(26)
          .font('Times-Bold')
-         .text(data.studentName || 'Learner', 0, brandY + 104, { align: 'center' });
+         .text(studentName, 0, brandY + 94, { align: 'center' });
 
       // Decorative Dual Underline for Name
-      doc.moveTo(width / 2 - 180, brandY + 138).lineTo(width / 2 + 180, brandY + 138).strokeColor('#D4AF37').lineWidth(1.5).stroke();
-      doc.moveTo(width / 2 - 120, brandY + 141).lineTo(width / 2 + 120, brandY + 141).strokeColor('#0A4F2A').lineWidth(0.75).stroke();
+      const nameLineWidth = Math.min(360, Math.max(220, studentName.length * 14));
+      doc.moveTo(width / 2 - nameLineWidth / 2, brandY + 126).lineTo(width / 2 + nameLineWidth / 2, brandY + 126).strokeColor('#D4AF37').lineWidth(1.5).stroke();
+      doc.moveTo(width / 2 - nameLineWidth / 3, brandY + 129).lineTo(width / 2 + nameLineWidth / 3, brandY + 129).strokeColor('#0A4F2A').lineWidth(0.75).stroke();
 
       // 7. Achievement Statement
       doc.fillColor('#4B5563')
-         .fontSize(10)
+         .fontSize(9.5)
          .font('Helvetica')
-         .text('for successfully completing the comprehensive instructional curriculum, live training, and assessments in', 0, brandY + 154, { align: 'center' });
+         .text('for successfully completing the comprehensive live instructional curriculum and practice in', 0, brandY + 140, { align: 'center' });
 
-      // 8. Course Title
+      // 8. Course Title & Course Details Badge
+      const courseTitle = data.courseTitle || 'Hatha Yoga & Holistic Wellness Program';
       doc.fillColor('#111827')
-         .fontSize(19)
+         .fontSize(18)
          .font('Helvetica-Bold')
-         .text(data.courseTitle || 'Hatha Yoga & Holistic Wellness Program', 0, brandY + 174, { align: 'center' });
+         .text(courseTitle, 0, brandY + 158, { align: 'center' });
 
-      // 9. Bottom Metadata & Signatures
-      const bottomY = height - 95;
+      // Course & Instructor Details Box
+      const detailsY = brandY + 184;
+      const category = data.category || 'Vedic Yoga';
+      const level = data.level || 'All Levels';
+      const duration = data.duration || '30 Days Live Program';
+      const instructor = data.instructorName || 'Yoga Guru / Faculty';
 
-      // Left: Date & Verified ID
+      doc.rect(width / 2 - 240, detailsY, 480, 20).strokeColor('#E5E7EB').fill('#F9FAFB');
       doc.fillColor('#374151')
-         .fontSize(9)
+         .fontSize(8)
          .font('Helvetica-Bold')
-         .text(`Date of Issue: ${data.completionDate || new Date().toLocaleDateString('en-IN')}`, 55, bottomY)
+         .text(`Category: ${category}   •   Level: ${level}   •   Duration: ${duration}   •   Faculty: ${instructor}`, width / 2 - 240, detailsY + 6, { width: 480, align: 'center' });
+
+      // 9. Bottom Metadata & Dual Signatures
+      const bottomY = height - 88;
+
+      // Left: Date, Verified ID, and Verification Portal
+      const certId = data.certificateId || (data.studentId ? `SDF-CERT-${data.studentId}` : 'SDF-CERT-2026');
+      const issueDate = data.completionDate || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+
+      doc.fillColor('#374151')
+         .fontSize(8.5)
+         .font('Helvetica-Bold')
+         .text(`Date of Issue: ${issueDate}`, 55, bottomY)
          .font('Helvetica')
          .fillColor('#6B7280')
          .fontSize(8)
-         .text(`Certificate ID: ${data.certificateId || 'SDF-CERT-2026'}`, 55, bottomY + 14)
-         .text('Verification: swamydwija.org/verify', 55, bottomY + 26);
+         .text(`Certificate ID: ${certId}`, 55, bottomY + 13)
+         .text('Online Verification: swamydwija.org/verify', 55, bottomY + 25);
 
-      // Center: Gold Seal / Accreditation Emblem
-      doc.rect(width / 2 - 85, bottomY - 6, 170, 36).strokeColor('#D4AF37').lineWidth(1.5).fill('#FEF9C3');
+      // Center: Official Gold Seal / Accreditation Emblem
+      doc.rect(width / 2 - 80, bottomY - 6, 160, 36).strokeColor('#D4AF37').lineWidth(1.5).fill('#FEF9C3');
       doc.fillColor('#854D0E')
-         .fontSize(8.5)
+         .fontSize(8)
          .font('Helvetica-Bold')
-         .text('★ OFFICIALLY VERIFIED ★', width / 2 - 85, bottomY + 4, { width: 170, align: 'center' })
+         .text('★ OFFICIALLY VERIFIED ★', width / 2 - 80, bottomY + 4, { width: 160, align: 'center' })
          .fontSize(7)
          .font('Helvetica')
-         .text('Swamy Dwija Foundation Board', width / 2 - 85, bottomY + 16, { width: 170, align: 'center' });
+         .text('Swamy Dwija Foundation Board', width / 2 - 80, bottomY + 16, { width: 160, align: 'center' });
 
-      // Right: Digital Signature
-      const signX = width - 235;
-      doc.moveTo(signX, bottomY + 12).lineTo(width - 55, bottomY + 12).strokeColor('#374151').lineWidth(1).stroke();
-      
+      // Right: Double Signatures (Instructor + Director)
+      const sig1X = width - 300;
+      const sig2X = width - 150;
+
+      // Signature 1: Lead Instructor
+      doc.moveTo(sig1X, bottomY + 14).lineTo(sig1X + 115, bottomY + 14).strokeColor('#4B5563').lineWidth(1).stroke();
       doc.fillColor('#111827')
-         .fontSize(14)
+         .fontSize(12)
          .font('Times-BoldItalic')
-         .text('Swamy Dwija', signX, bottomY - 6, { width: 180, align: 'center' });
-
+         .text(instructor, sig1X, bottomY - 3, { width: 115, align: 'center' });
       doc.fillColor('#374151')
-         .fontSize(8.5)
+         .fontSize(7.5)
          .font('Helvetica-Bold')
-         .text('Director of Education', signX, bottomY + 16, { width: 180, align: 'center' })
-         .fontSize(7)
-         .font('Helvetica')
-         .text('Swamy Dwija Foundation Academy', signX, bottomY + 27, { width: 180, align: 'center' });
+         .text('Lead Instructor / Guru', sig1X, bottomY + 18, { width: 115, align: 'center' });
+
+      // Signature 2: Director of Education
+      doc.moveTo(sig2X, bottomY + 14).lineTo(sig2X + 115, bottomY + 14).strokeColor('#4B5563').lineWidth(1).stroke();
+      doc.fillColor('#111827')
+         .fontSize(12)
+         .font('Times-BoldItalic')
+         .text('Swamy Dwija', sig2X, bottomY - 3, { width: 115, align: 'center' });
+      doc.fillColor('#374151')
+         .fontSize(7.5)
+         .font('Helvetica-Bold')
+         .text('Director of Education', sig2X, bottomY + 18, { width: 115, align: 'center' });
 
       doc.end();
     } catch (err) {
@@ -461,3 +490,4 @@ module.exports = {
   generateInvoicePDF,
   generateCertificatePDF
 };
+

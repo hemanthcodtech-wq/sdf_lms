@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
+const OtpVerification = require('../models/OtpVerification');
+const { sendRegistrationOtpEmail } = require('../utils/emailService');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -10,27 +12,163 @@ const generateToken = (id) => {
   });
 };
 
+// 1. Send 6-Digit Email Verification Code for Registration
+exports.sendRegisterOtp = async (req, res, next) => {
+  try {
+    const { name, email, phone, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and Password are required' });
+    }
+
+    const emailClean = email.trim().toLowerCase();
+    const phoneClean = (phone || '').trim();
+
+    // Check if user already exists with this email or phone
+    const existingUser = await User.findOne({
+      $or: [
+        { email: emailClean },
+        { emailOrPhone: emailClean },
+        ...(phoneClean ? [{ phone: phoneClean }, { emailOrPhone: phoneClean }] : [])
+      ]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email or phone number already exists. Please login.'
+      });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Delete any existing pending registrations for this email
+    await OtpVerification.deleteMany({ email: emailClean });
+
+    // Store pending registration with OTP (auto-expires in 10 mins)
+    await OtpVerification.create({
+      email: emailClean,
+      otp,
+      name: (name || '').trim(),
+      phone: phoneClean,
+      password,
+    });
+
+    // Send verification email
+    await sendRegistrationOtpEmail({
+      to: emailClean,
+      name: (name || '').trim(),
+      otp
+    });
+
+    res.json({
+      success: true,
+      message: `A 6-digit verification code has been sent to ${emailClean}. Please verify to complete your registration.`
+    });
+  } catch (error) {
+    console.error('Error sending registration OTP:', error);
+    res.status(500).json({ success: false, message: 'Failed to send verification code. Please check your email address and try again.' });
+  }
+};
+
+// 2. Verify OTP & Finalize Registration
+exports.verifyRegisterOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Email and verification code are required' });
+    }
+
+    const emailClean = email.trim().toLowerCase();
+    const record = await OtpVerification.findOne({ email: emailClean, otp: otp.trim() });
+
+    if (!record) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired verification code. Please request a new code.' });
+    }
+
+    // Double check user doesn't already exist
+    let user = await User.findOne({
+      $or: [
+        { email: emailClean },
+        { emailOrPhone: emailClean },
+        ...(record.phone ? [{ phone: record.phone }, { emailOrPhone: record.phone }] : [])
+      ]
+    });
+
+    if (user) {
+      await OtpVerification.deleteMany({ email: emailClean });
+      return res.status(400).json({ success: false, message: 'User already registered. Please log in.' });
+    }
+
+    user = await User.create({
+      name: record.name,
+      email: emailClean,
+      phone: record.phone,
+      emailOrPhone: emailClean,
+      password: record.password,
+      role: 'student',
+      isEmailVerified: true
+    });
+
+    // Clean up OTP record
+    await OtpVerification.deleteMany({ email: emailClean });
+
+    res.status(201).json({
+      success: true,
+      message: 'Account verified and registered successfully!',
+      _id: user._id,
+      email: user.email,
+      emailOrPhone: user.emailOrPhone,
+      name: user.name,
+      phone: user.phone,
+      role: user.role,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    console.error('Error verifying registration OTP:', error);
+    res.status(500).json({ success: false, message: 'Verification failed. Please try again.' });
+  }
+};
+
+// 3. Fallback direct registration
 exports.registerUser = async (req, res, next) => {
   try {
-    const { emailOrPhone, password, role } = req.body;
+    const { name, email, phone, emailOrPhone, password, role } = req.body;
+    const targetEmail = (email || emailOrPhone || '').trim().toLowerCase();
+    const targetPhone = (phone || '').trim();
 
-    const userExists = await User.findOne({ emailOrPhone });
+    const userExists = await User.findOne({
+      $or: [
+        { email: targetEmail },
+        { emailOrPhone: targetEmail },
+        ...(targetPhone ? [{ phone: targetPhone }, { emailOrPhone: targetPhone }] : [])
+      ]
+    });
 
     if (userExists) {
       return res.status(400).json({ success: false, message: 'User already exists' });
     }
 
     const user = await User.create({
-      emailOrPhone,
+      name: (name || '').trim(),
+      email: targetEmail,
+      phone: targetPhone,
+      emailOrPhone: targetEmail || targetPhone,
       password,
-      role
+      role: role || 'student',
+      isEmailVerified: true
     });
 
     if (user) {
       res.status(201).json({
         success: true,
         _id: user._id,
+        email: user.email,
         emailOrPhone: user.emailOrPhone,
+        name: user.name,
+        phone: user.phone,
         role: user.role,
         token: generateToken(user._id),
       });
@@ -42,22 +180,51 @@ exports.registerUser = async (req, res, next) => {
   }
 };
 
+// 4. Enhanced Login supporting either Phone or Email + Password
 exports.loginUser = async (req, res, next) => {
   try {
     const { emailOrPhone, password } = req.body;
 
-    const user = await User.findOne({ emailOrPhone });
+    if (!emailOrPhone || !password) {
+      return res.status(400).json({ success: false, message: 'Email/Phone and Password are required' });
+    }
+
+    const identifier = emailOrPhone.trim();
+
+    const user = await User.findOne({
+      $or: [
+        { email: identifier.toLowerCase() },
+        { phone: identifier },
+        { emailOrPhone: identifier.toLowerCase() },
+        { emailOrPhone: identifier }
+      ]
+    });
 
     if (user && (await user.comparePassword(password))) {
+      if (user.status === 'inactive') {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Account is currently inactive. Please contact the administrator.' 
+        });
+      }
+
       res.json({
         success: true,
         _id: user._id,
+        email: user.email || user.emailOrPhone,
         emailOrPhone: user.emailOrPhone,
+        name: user.name,
+        phone: user.phone,
+        speciality: user.speciality,
+        experience: user.experience,
+        bio: user.bio,
+        avatar: user.avatar,
         role: user.role,
+        status: user.status || 'active',
         token: generateToken(user._id),
       });
     } else {
-      res.status(401).json({ success: false, message: 'Invalid credentials' });
+      res.status(401).json({ success: false, message: 'Invalid credentials. Please check your email or phone number and password.' });
     }
   } catch (error) {
     next(error);
@@ -230,12 +397,30 @@ exports.forgotPassword = async (req, res, next) => {
     user.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     await user.save();
 
-    // Send Email
-    await sendForgotPasswordOtpEmail({ to: user.emailOrPhone, otp });
+    // Determine origin and role-specific direct reset link
+    const rawOrigin = req.headers.origin || process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+    const clientOrigin = rawOrigin.replace(/\/$/, '');
+    let resetLink = `${clientOrigin}/forgot-password?email=${encodeURIComponent(user.emailOrPhone)}`;
+    if (user.role === 'instructor') {
+      resetLink = `${clientOrigin}/instructor/login?forgot=true&email=${encodeURIComponent(user.emailOrPhone)}`;
+    } else if (user.role === 'moderator') {
+      resetLink = `${clientOrigin}/moderator/login?forgot=true&email=${encodeURIComponent(user.emailOrPhone)}`;
+    } else if (user.role === 'admin') {
+      resetLink = `${clientOrigin}/admin/login?forgot=true&email=${encodeURIComponent(user.emailOrPhone)}`;
+    }
+
+    // Send Email with OTP and reset link
+    await sendForgotPasswordOtpEmail({ 
+      to: user.emailOrPhone, 
+      name: user.name || user.firstName || 'User',
+      otp, 
+      resetLink,
+      role: user.role || 'student'
+    });
 
     res.json({
       success: true,
-      message: 'A 6-digit verification code has been sent to your email.'
+      message: 'A 6-digit verification code and reset link have been sent to your email.'
     });
   } catch (error) {
     next(error);

@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { 
   FaShieldAlt, FaLock, FaEnvelope, FaEye, FaEyeSlash, 
-  FaArrowLeft, FaCheckCircle, FaAward, FaCloud, FaServer,
-  FaKey, FaTimes, FaSyncAlt
+  FaArrowLeft, FaUserShield, FaCheckCircle, FaKey, FaTimes
 } from 'react-icons/fa';
 
-const AdminLogin = () => {
+const ModeratorLogin = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
   // Forgot / Reset Password Modal State
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
-  const [forgotStep, setForgotStep] = useState(1); // 1: Enter Email, 2: Enter OTP & New Password, 3: Success
+  const [forgotStep, setForgotStep] = useState(1); // 1: Email, 2: OTP + New Password, 3: Success
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotOtp, setForgotOtp] = useState('');
   const [forgotNewPassword, setForgotNewPassword] = useState('');
@@ -26,6 +27,17 @@ const AdminLogin = () => {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState('');
   const [forgotMessage, setForgotMessage] = useState('');
+
+  // Auto-open forgot password if query params present
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('forgot') === 'true') {
+      const emailParam = params.get('email') || '';
+      setForgotEmail(emailParam);
+      setIsForgotModalOpen(true);
+      setForgotStep(1);
+    }
+  }, [location]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -44,24 +56,30 @@ const AdminLogin = () => {
       });
 
       if (response.data.success) {
-        if (response.data.role !== 'admin') {
-          setError('Access Denied: Administrative privileges required.');
+        if (response.data.role !== 'moderator' && response.data.role !== 'admin') {
+          setError('Access Denied: You must have an active Moderator account to access this portal.');
           setIsLoading(false);
           return;
         }
 
-        localStorage.setItem('adminToken', response.data.token);
-        localStorage.setItem('adminUser', JSON.stringify({ email: response.data.emailOrPhone, role: response.data.role }));
-        navigate('/admin/dashboard');
+        localStorage.setItem('moderatorToken', response.data.token);
+        localStorage.setItem('moderatorUser', JSON.stringify({
+          _id: response.data._id,
+          name: response.data.name,
+          email: response.data.emailOrPhone,
+          role: response.data.role,
+          phone: response.data.phone
+        }));
+
+        navigate('/moderator/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed. Please verify credentials.');
+      setError(err.response?.data?.message || 'Authentication failed. Please check credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Open Forgot Password Modal
   const handleOpenForgotModal = () => {
     setForgotStep(1);
     setForgotEmail(formData.email || '');
@@ -73,11 +91,11 @@ const AdminLogin = () => {
     setIsForgotModalOpen(true);
   };
 
-  // Step 1: Send OTP to Admin Email
+  // Step 1: Send OTP
   const handleSendResetOtp = async (e) => {
     e.preventDefault();
     if (!forgotEmail) {
-      return setForgotError('Please enter your administrative email address.');
+      return setForgotError('Please enter your moderator email address.');
     }
     setForgotError('');
     setForgotLoading(true);
@@ -92,14 +110,14 @@ const AdminLogin = () => {
         setForgotStep(2);
       }
     } catch (err) {
-      setForgotError(err.response?.data?.message || 'Failed to send verification code. Please check your email.');
+      setForgotError(err.response?.data?.message || 'Failed to send OTP code. Please check your email.');
     } finally {
       setForgotLoading(false);
     }
   };
 
-  // Step 2: Verify OTP & Set New Password
-  const handleResetAdminPassword = async (e) => {
+  // Step 2: Verify OTP & Reset Password
+  const handleResetModeratorPassword = async (e) => {
     e.preventDefault();
     if (!forgotOtp || forgotOtp.trim().length < 6) {
       return setForgotError('Please enter the 6-digit OTP code sent to your email.');
@@ -134,25 +152,23 @@ const AdminLogin = () => {
   return (
     <div className="min-h-screen bg-[#FAF7F2] flex items-center justify-center p-4 md:p-8 font-inter relative overflow-hidden">
       
-      {/* Background Ambient Liquid Orbs */}
-      <div className="absolute -top-32 -left-32 w-[550px] h-[550px] bg-[#0A4F2A]/10 rounded-full blur-[140px] pointer-events-none"></div>
-      <div className="absolute -bottom-32 -right-32 w-[550px] h-[550px] bg-[#B8860B]/10 rounded-full blur-[160px] pointer-events-none"></div>
-      <div className="absolute top-1/3 right-1/4 w-[400px] h-[400px] bg-[#2D6A4F]/8 rounded-full blur-[120px] pointer-events-none"></div>
+      {/* Ambient background glows */}
+      <div className="absolute -top-32 -left-32 w-[550px] h-[550px] bg-[#0A4F2A]/12 rounded-full blur-[140px] pointer-events-none"></div>
+      <div className="absolute -bottom-32 -right-32 w-[550px] h-[550px] bg-[#d97706]/10 rounded-full blur-[160px] pointer-events-none"></div>
 
-      {/* Main Container Grid */}
       <div className="w-full max-w-5xl z-10">
         
         {/* Back Link */}
         <div className="mb-6 flex justify-between items-center px-2">
           <Link 
             to="/"
-            className="inline-flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-[#0A4F2A] transition-colors bg-white/80 backdrop-blur-md px-4 py-2 rounded-xl border border-gray-200/80 shadow-xs"
+            className="inline-flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-brand-green transition-colors bg-white/80 backdrop-blur-md px-4 py-2 rounded-xl border border-gray-200/80 shadow-xs"
           >
-            <FaArrowLeft size={11} /> Return to Public Portal
+            <FaArrowLeft size={11} /> Back to Main Portal
           </Link>
-          <div className="flex items-center gap-2 text-[11px] font-bold text-[#0A4F2A] bg-green-50 px-3 py-1.5 rounded-full border border-green-200/60">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
-            System Live & Verified
+          <div className="flex items-center gap-2 text-[11px] font-bold text-brand-green-dark bg-brand-green/10 px-3 py-1.5 rounded-full border border-brand-green/20">
+            <FaShieldAlt />
+            Governance Portal
           </div>
         </div>
 
@@ -162,68 +178,57 @@ const AdminLogin = () => {
           transition={{ duration: 0.5, ease: "easeOut" }}
           className="bg-white/80 backdrop-blur-2xl border border-white shadow-[0_20px_70px_rgba(0,0,0,0.06)] rounded-[2.5rem] overflow-hidden grid grid-cols-1 lg:grid-cols-12"
         >
-          {/* Left Institutional Branding Panel (Desktop Only) */}
-          <div className="lg:col-span-5 bg-gradient-to-br from-[#06331A] via-[#0A4F2A] to-[#125B34] p-8 lg:p-12 text-white relative overflow-hidden flex flex-col justify-between">
-            {/* Background Texture Overlay */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#D4AF37_1px,transparent_1px)] [background-size:16px_16px]"></div>
-            
-            {/* Top Brand Info */}
+          {/* Left Branding Panel */}
+          <div className="lg:col-span-5 bg-gradient-to-br from-[#06331A] via-[#0A4F2A] to-[#14532D] p-8 lg:p-12 text-white relative overflow-hidden flex flex-col justify-between">
             <div className="relative z-10 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-extrabold tracking-widest uppercase text-[#D4AF37]">
-                <FaShieldAlt /> Authorized Personnel Only
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-extrabold tracking-widest uppercase text-emerald-200">
+                <FaShieldAlt /> Platform Operations
               </div>
 
               <div className="space-y-2">
-                <div className="bg-white p-3.5 rounded-2xl inline-block shadow-md mb-2">
+                <div className="bg-white p-3 rounded-2xl inline-block shadow-md mb-2">
                   <img src="/logo.png" alt="SDF Logo" className="h-10 w-auto" />
                 </div>
                 <h2 className="text-xl lg:text-2xl font-black tracking-tight leading-tight">
-                  SWAMY DWIJA FOUNDATION
+                  MODERATOR CONSOLE
                 </h2>
-                <p className="text-xs text-green-100/80 font-medium">
-                  Academy of Yoga, Pranayama & Vedic Wellness Sciences
+                <p className="text-xs text-emerald-100/80 font-medium">
+                  Swamy Dwija Foundation Community Governance
                 </p>
               </div>
 
-              <div className="pt-4 border-t border-white/10 space-y-3.5 text-xs text-green-50/90 font-medium">
+              <div className="pt-4 border-t border-white/10 space-y-3 text-xs text-emerald-50/90 font-medium">
                 <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#D4AF37] shrink-0">
-                    <FaLock size={12} />
+                  <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-emerald-200 shrink-0">
+                    <FaUserShield size={13} />
                   </div>
-                  <span>256-Bit Encrypted Administrative Session</span>
+                  <span>Learner Oversight & Code of Conduct</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#D4AF37] shrink-0">
-                    <FaAward size={12} />
+                  <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-emerald-200 shrink-0">
+                    <FaCheckCircle size={13} />
                   </div>
-                  <span>Watermarked Certificate & Invoice Infrastructure</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#D4AF37] shrink-0">
-                    <FaCloud size={12} />
-                  </div>
-                  <span>Cloudinary Verified Master Vault</span>
+                  <span>Classroom Etiquette & Discussion Review</span>
                 </div>
               </div>
             </div>
 
-            {/* Bottom Status */}
-            <div className="relative z-10 pt-8 mt-8 border-t border-white/10 flex items-center justify-between text-[11px] text-green-200/70">
-              <span>SDF Portal v2.4</span>
-              <span>Hyderabad Central Server</span>
+            <div className="relative z-10 pt-8 mt-8 border-t border-white/10 flex items-center justify-between text-[11px] text-emerald-200/70">
+              <span>Moderator v1.0</span>
+              <span>SDF Trust & Safety</span>
             </div>
           </div>
 
-          {/* Right Login Authentication Console */}
+          {/* Right Login Console */}
           <div className="lg:col-span-7 p-8 lg:p-12 flex flex-col justify-center relative">
             
             <div className="mb-8">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-brand-green/10 text-brand-green-dark rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-                Executive Portal
+                Staff Authentication
               </div>
-              <h1 className="text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">System Sign In</h1>
+              <h1 className="text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">Moderator Sign In</h1>
               <p className="text-gray-500 text-xs lg:text-sm mt-1">
-                Enter your administrative credentials to access the central LMS controller.
+                Enter your credentials or recover your password with OTP.
               </p>
             </div>
 
@@ -234,7 +239,7 @@ const AdminLogin = () => {
                   initial={{ opacity: 0, y: -10 }} 
                   animate={{ opacity: 1, y: 0 }} 
                   exit={{ opacity: 0, y: -10 }}
-                  className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-2xl flex items-center gap-2.5 shadow-xs"
+                  className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-2xl flex items-center gap-2.5"
                 >
                   <FaShieldAlt className="text-red-500 shrink-0" size={14} />
                   <span>{error}</span>
@@ -245,10 +250,9 @@ const AdminLogin = () => {
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
               
-              {/* Admin Email */}
               <div className="space-y-1.5">
                 <label className="block text-gray-700 text-xs font-extrabold uppercase tracking-wider">
-                  Admin Account Email
+                  Moderator Email ID
                 </label>
                 <div className="relative">
                   <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
@@ -258,22 +262,21 @@ const AdminLogin = () => {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    placeholder="Enter administrative email (e.g. admin@sdf.com)"
-                    className="w-full pl-11 pr-4 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl text-sm font-medium text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-[#0A4F2A]/20 focus:border-[#0A4F2A] outline-none transition-all shadow-xs"
+                    placeholder="moderator@swamydwija.org"
+                    className="w-full pl-11 pr-4 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl text-sm font-medium text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all"
                   />
                 </div>
               </div>
 
-              {/* Password */}
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
                   <label className="block text-gray-700 text-xs font-extrabold uppercase tracking-wider">
-                    Administrative Password
+                    Password
                   </label>
                   <button
                     type="button"
                     onClick={handleOpenForgotModal}
-                    className="text-xs text-[#0A4F2A] font-extrabold hover:underline transition-colors cursor-pointer"
+                    className="text-xs text-brand-green font-extrabold hover:underline cursor-pointer"
                   >
                     Forgot Password?
                   </button>
@@ -286,43 +289,43 @@ const AdminLogin = () => {
                     value={formData.password}
                     onChange={handleChange}
                     required
-                    placeholder="Enter administrative password"
-                    className="w-full pl-11 pr-12 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl text-sm font-medium text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-[#0A4F2A]/20 focus:border-[#0A4F2A] outline-none transition-all shadow-xs"
+                    placeholder="••••••••"
+                    className="w-full pl-11 pr-12 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl text-sm font-medium text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                   >
                     {showPassword ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
                   </button>
                 </div>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-[#0A4F2A] hover:bg-[#06331A] text-white font-extrabold py-4 rounded-2xl shadow-lg shadow-[#0A4F2A]/25 hover:shadow-[#0A4F2A]/40 transition-all duration-300 disabled:opacity-60 flex items-center justify-center gap-2 text-sm tracking-wide mt-2 cursor-pointer"
+                className="w-full bg-brand-green hover:bg-brand-green-dark text-white font-extrabold py-4 rounded-2xl shadow-lg shadow-brand-green/25 transition-all duration-300 disabled:opacity-60 flex items-center justify-center gap-2 text-sm cursor-pointer mt-2"
               >
                 {isLoading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Verifying Credentials...</span>
+                    <span>Verifying Staff Credentials...</span>
                   </>
                 ) : (
                   <>
                     <FaShieldAlt />
-                    <span>Authorize & Open Controller</span>
+                    <span>Enter Moderator Console</span>
                   </>
                 )}
               </button>
             </form>
 
-            {/* Bottom Security Notice */}
             <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400 font-medium">
-              <span>Encrypted SSL Gateway</span>
-              <span>Swamy Dwija Foundation © 2026</span>
+              <span>Trust & Governance Portal</span>
+              <Link to="/admin/login" className="text-gray-500 hover:text-brand-green font-bold">
+                Admin Login ↗
+              </Link>
             </div>
 
           </div>
@@ -330,7 +333,7 @@ const AdminLogin = () => {
         </motion.div>
       </div>
 
-      {/* ADMIN FORGOT PASSWORD / RESET PASSWORD MODAL */}
+      {/* MODERATOR FORGOT PASSWORD MODAL */}
       <AnimatePresence>
         {isForgotModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -355,16 +358,16 @@ const AdminLogin = () => {
                   </div>
                   <div>
                     <h2 className="text-lg font-black text-gray-900">
-                      {forgotStep === 1 && 'Reset Admin Password'}
+                      {forgotStep === 1 && 'Reset Moderator Password'}
                       {forgotStep === 2 && 'Verify 6-Digit OTP'}
                       {forgotStep === 3 && 'Password Reset Complete!'}
                     </h2>
-                    <p className="text-xs text-gray-400">Secure administrative account recovery</p>
+                    <p className="text-xs text-gray-400">Moderator security recovery</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsForgotModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-all"
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-all cursor-pointer"
                 >
                   <FaTimes size={13} />
                 </button>
@@ -387,7 +390,7 @@ const AdminLogin = () => {
                 <form onSubmit={handleSendResetOtp} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="block text-xs font-extrabold text-gray-700 uppercase tracking-wider">
-                      Registered Admin Email
+                      Moderator Registered Email
                     </label>
                     <div className="relative">
                       <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
@@ -396,12 +399,12 @@ const AdminLogin = () => {
                         required
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
-                        placeholder="admin@sdf.com"
+                        placeholder="moderator@swamydwija.org"
                         className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
                       />
                     </div>
                     <p className="text-[11px] text-gray-400">
-                      We will send a 6-digit verification code to your registered email.
+                      We will send a 6-digit verification code and reset link directly to your inbox.
                     </p>
                   </div>
 
@@ -413,7 +416,7 @@ const AdminLogin = () => {
                     {forgotLoading ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Sending Code...</span>
+                        <span>Sending OTP Code...</span>
                       </>
                     ) : (
                       <span>Send 6-Digit OTP Code</span>
@@ -424,7 +427,7 @@ const AdminLogin = () => {
 
               {/* STEP 2: Enter OTP & New Password */}
               {forgotStep === 2 && (
-                <form onSubmit={handleResetAdminPassword} className="space-y-4">
+                <form onSubmit={handleResetModeratorPassword} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="block text-xs font-extrabold text-gray-700 uppercase tracking-wider">
                       6-Digit OTP Code
@@ -483,7 +486,7 @@ const AdminLogin = () => {
                       onClick={() => setForgotStep(1)}
                       className="text-gray-500 hover:underline font-bold"
                     >
-                      ← Resend OTP
+                      ← Resend Code
                     </button>
                   </div>
 
@@ -511,7 +514,7 @@ const AdminLogin = () => {
                     <FaCheckCircle size={28} />
                   </div>
                   <p className="text-xs text-gray-600">
-                    Your administrative password has been updated securely. You can now log in with your new password.
+                    Your moderator account password has been updated securely. You can now log in with your new password.
                   </p>
                   <button
                     type="button"
@@ -521,7 +524,7 @@ const AdminLogin = () => {
                     }}
                     className="w-full py-3.5 bg-brand-green hover:bg-brand-green-dark text-white text-xs font-bold rounded-2xl shadow-md transition-all cursor-pointer"
                   >
-                    Sign In with New Password →
+                    Sign In to Moderator Console →
                   </button>
                 </div>
               )}
@@ -534,4 +537,4 @@ const AdminLogin = () => {
   );
 };
 
-export default AdminLogin;
+export default ModeratorLogin;

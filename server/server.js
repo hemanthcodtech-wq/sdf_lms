@@ -100,6 +100,12 @@ app.use('/api/classes', require('./routes/classRoutes'));
 const adminRoutes = require('./routes/adminRoutes');
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/users', require('./routes/userManagementRoutes'));
+app.use('/api/admin/instructors', require('./routes/instructorManagementRoutes'));
+app.use('/api/admin/moderators', require('./routes/moderatorManagementRoutes'));
+app.use('/api/instructor', require('./routes/instructorPortalRoutes'));
+app.use('/api/moderator', require('./routes/moderatorPortalRoutes'));
+app.use('/api/zoom', require('./routes/zoomWebhookRoutes'));
+app.use('/api/live-classes', require('./routes/liveClassRoutes'));
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

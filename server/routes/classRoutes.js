@@ -103,6 +103,88 @@ router.put('/:id', protect, admin, async (req, res) => {
   }
 });
 
+// POST /api/classes/:id/reschedule - Reschedule a class session with a fresh Zoom meeting
+router.post('/:id/reschedule', protect, admin, async (req, res) => {
+  try {
+    const classId = req.params.id;
+    const { newDate, newTime, newTitle, durationMinutes } = req.body;
+
+    if (!newDate || !newTime) {
+      return res.status(400).json({ success: false, message: 'New date and time are required to reschedule' });
+    }
+
+    const liveClass = await Class.findById(classId).populate('courseId');
+    if (!liveClass) {
+      return res.status(404).json({ success: false, message: 'Class not found' });
+    }
+
+    const oldDateStr = new Date(liveClass.date).toISOString().split('T')[0];
+    const newDateStr = newDate;
+
+    // Generate new Zoom meeting for the new date and time
+    let formattedTime = newTime;
+    // Format 12-hour or 24-hour time to ISO format
+    let hours = 6, minutes = 0;
+    if (newTime.includes(':')) {
+      const parts = newTime.split(':');
+      hours = parseInt(parts[0], 10);
+      minutes = parseInt(parts[1], 10);
+      if (newTime.toLowerCase().includes('pm') && hours < 12) hours += 12;
+      if (newTime.toLowerCase().includes('am') && hours === 12) hours = 0;
+    }
+
+    const startTimeObj = new Date(newDate);
+    startTimeObj.setHours(hours, minutes, 0, 0);
+
+    const classTitle = newTitle || liveClass.title || `${liveClass.courseId?.title || 'SDF'} Class`;
+    const classDuration = parseInt(durationMinutes, 10) || liveClass.durationMinutes || 60;
+
+    const zoomDetails = await createZoomMeeting(classTitle, startTimeObj.toISOString(), classDuration);
+
+    // Update the class document
+    liveClass.title = classTitle;
+    liveClass.date = new Date(newDate);
+    liveClass.time = formattedTime;
+    liveClass.durationMinutes = classDuration;
+    liveClass.zoomLink = zoomDetails.joinUrl;
+    liveClass.zoomMeetingId = zoomDetails.meetingId;
+    await liveClass.save();
+
+    // Update Course sessionDates array to stay in sync
+    if (liveClass.courseId) {
+      const course = await Course.findById(liveClass.courseId._id || liveClass.courseId);
+      if (course && Array.isArray(course.sessionDates)) {
+        const updatedDates = course.sessionDates.filter(d => d !== oldDateStr);
+        if (!updatedDates.includes(newDateStr)) {
+          updatedDates.push(newDateStr);
+        }
+        updatedDates.sort();
+        course.sessionDates = updatedDates;
+        await course.save();
+      }
+    }
+
+    // Send notifications to enrolled students
+    try {
+      const enrollments = await Enrollment.find({ course: liveClass.courseId?._id || liveClass.courseId });
+      for (const en of enrollments) {
+        await sendClassUpdateAlert(en.studentEmail, liveClass.courseId?.title || 'Course', liveClass.title, liveClass.date, liveClass.time);
+      }
+    } catch (emailErr) {
+      console.error('[Class Reschedule] Alert email error:', emailErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `Class "${liveClass.title}" rescheduled successfully to ${newDate} at ${newTime} with a new Zoom meeting link!`,
+      data: liveClass
+    });
+  } catch (error) {
+    console.error('Error rescheduling class:', error);
+    res.status(500).json({ success: false, message: 'Error rescheduling class', error: error.message });
+  }
+});
+
 // POST send class reminder (admin)
 router.post('/:id/remind', protect, admin, async (req, res) => {
   try {

@@ -27,7 +27,18 @@ const courseSchema = new mongoose.Schema({
     required: true,
     enum: ['Yoga', 'Meditation', 'Nutrition', 'Ayurveda', 'Other']
   },
+  instructorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   instructor: {
+    type: String
+  },
+  moderatorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  moderator: {
     type: String
   },
   durationMonths: {
@@ -41,8 +52,21 @@ const courseSchema = new mongoose.Schema({
   endDate: {
     type: Date
   },
+  startTime: {
+    type: String
+  },
+  endTime: {
+    type: String
+  },
   timings: {
-    type: String, // e.g. '10:00 to 12:00'
+    type: String, // e.g. '06:00 to 07:15'
+  },
+  sessionDates: {
+    type: [String],
+    default: []
+  },
+  zoomMeetingLink: {
+    type: String
   },
   topics: {
     type: [String],

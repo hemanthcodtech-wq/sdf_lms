@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FaArrowLeft, FaAward, FaDownload, FaCheckCircle, FaBookOpen, FaExternalLinkAlt, FaClock } from 'react-icons/fa';
+import { 
+  FaArrowLeft, FaAward, FaDownload, FaCheckCircle, 
+  FaBookOpen, FaExternalLinkAlt, FaClock, FaEdit, 
+  FaTimes, FaUserCheck, FaChalkboardTeacher
+} from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -11,8 +15,13 @@ const Certificates = () => {
   const [completedEnrollments, setCompletedEnrollments] = useState([]);
   const [inProgressEnrollments, setInProgressEnrollments] = useState([]);
   const [selectedCertIndex, setSelectedCertIndex] = useState(0);
-  const [studentName, setStudentName] = useState('Student');
+  const [studentName, setStudentName] = useState('Learner');
   const [toastMessage, setToastMessage] = useState('');
+
+  // Name Editing Modal State
+  const [isEditNameOpen, setIsEditNameOpen] = useState(false);
+  const [editNameInput, setEditNameInput] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -33,7 +42,7 @@ const Certificates = () => {
         })
       ]);
 
-      let name = 'Student';
+      let name = 'Learner';
       if (profileRes.data.success && profileRes.data.data) {
         const { firstName, lastName, emailOrPhone, name: fullName } = profileRes.data.data;
         if (fullName) {
@@ -46,6 +55,7 @@ const Certificates = () => {
         }
       }
       setStudentName(name);
+      setEditNameInput(name);
 
       if (enrollmentsRes.data.success && enrollmentsRes.data.data) {
         const allEnr = enrollmentsRes.data.data;
@@ -55,6 +65,11 @@ const Certificates = () => {
         
         setCompletedEnrollments(completed);
         setInProgressEnrollments(inProgress);
+
+        if (completed.length > 0 && completed[0].studentName) {
+          setStudentName(completed[0].studentName);
+          setEditNameInput(completed[0].studentName);
+        }
       }
     } catch (err) {
       console.error('Error fetching certificate data:', err);
@@ -63,17 +78,47 @@ const Certificates = () => {
     }
   };
 
+  const handleOpenEditName = () => {
+    const active = completedEnrollments[selectedCertIndex];
+    setEditNameInput(active?.studentName || studentName);
+    setIsEditNameOpen(true);
+  };
+
+  const handleSaveName = async (e) => {
+    e.preventDefault();
+    const active = completedEnrollments[selectedCertIndex];
+    if (!active || !editNameInput.trim()) return;
+
+    setSavingName(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/courses/certificate/${active._id}/update-name`,
+        { studentName: editNameInput.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        setStudentName(editNameInput.trim());
+        setCompletedEnrollments(prev => prev.map((enr, i) => 
+          i === selectedCertIndex ? { ...enr, studentName: editNameInput.trim(), certificateUrl: res.data.enrollment?.certificateUrl || enr.certificateUrl } : enr
+        ));
+        setToastMessage('Official certificate name updated & regenerated successfully!');
+        setIsEditNameOpen(false);
+        setTimeout(() => setToastMessage(''), 4000);
+      }
+    } catch (err) {
+      console.error('Error updating name:', err);
+      alert(err.response?.data?.message || 'Failed to update certificate name.');
+    } finally {
+      setSavingName(false);
+    }
+  };
+
   const handleDownloadPDF = async (enrollment) => {
     if (!enrollment) return;
     setDownloading(true);
     try {
-      // If Cloudinary URL exists, open directly
-      if (enrollment.certificateUrl) {
-        window.open(enrollment.certificateUrl, '_blank');
-        setDownloading(false);
-        return;
-      }
-
       const token = localStorage.getItem('token');
       const response = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/courses/certificate/${enrollment._id}/download`,
@@ -93,7 +138,11 @@ const Certificates = () => {
       link.remove();
     } catch (err) {
       console.error('Error downloading certificate PDF:', err);
-      alert('Failed to download certificate PDF. Please try again.');
+      if (enrollment.certificateUrl) {
+        window.open(enrollment.certificateUrl, '_blank');
+      } else {
+        alert('Failed to download certificate PDF. Please try again.');
+      }
     } finally {
       setDownloading(false);
     }
@@ -101,13 +150,22 @@ const Certificates = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-bg-cream">
+      <div className="min-h-screen flex items-center justify-center bg-[#FAF7F2]">
         <div className="w-10 h-10 border-4 border-brand-green border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   const activeCert = completedEnrollments[selectedCertIndex] || null;
+  const currentPrintedName = activeCert?.studentName || studentName;
+  const certCourse = activeCert?.course || {};
+  const instructorName = certCourse.instructorId?.name || certCourse.instructor || 'Lead Yoga Guru';
+  const categoryName = certCourse.category || 'Vedic Yoga';
+  const levelName = certCourse.level || 'All Levels';
+  const durationName = certCourse.duration || `${certCourse.sessionDates?.length || 30} Live Sessions`;
+  const issueDateFormatted = activeCert?.completionDate 
+    ? new Date(activeCert.completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+    : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] flex flex-col px-4 sm:px-6 lg:px-8 py-8 font-inter pb-24 md:pb-12">
@@ -129,7 +187,7 @@ const Certificates = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-8 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-xl bg-white text-brand-green hover:bg-gray-50 border border-gray-200 transition-colors shadow-xs">
+          <button onClick={() => navigate(-1)} className="p-2 rounded-xl bg-white text-brand-green hover:bg-gray-50 border border-gray-200 transition-colors shadow-xs cursor-pointer">
             <FaArrowLeft size={16} />
           </button>
           <div>
@@ -155,7 +213,7 @@ const Certificates = () => {
                   <button
                     key={enr._id}
                     onClick={() => setSelectedCertIndex(idx)}
-                    className={`w-full text-left p-4 rounded-2xl transition-all border flex items-center justify-between ${
+                    className={`w-full text-left p-4 rounded-2xl transition-all border flex items-center justify-between cursor-pointer ${
                       selectedCertIndex === idx 
                         ? 'bg-brand-green text-white border-brand-green shadow-md shadow-brand-green/20' 
                         : 'bg-white text-gray-800 border-gray-200/80 hover:bg-gray-50'
@@ -191,7 +249,7 @@ const Certificates = () => {
                       </p>
                       <button
                         onClick={() => navigate(`/dashboard/learning/${inEnr.course?._id || inEnr.course}`)}
-                        className="w-full py-2 bg-gray-50 hover:bg-brand-green/10 text-brand-green text-xs font-bold rounded-xl border border-gray-200 transition-all flex items-center justify-center gap-1.5"
+                        className="w-full py-2 bg-gray-50 hover:bg-brand-green/10 text-brand-green text-xs font-bold rounded-xl border border-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         View Live Schedule & Classes →
                       </button>
@@ -201,7 +259,7 @@ const Certificates = () => {
               )}
             </div>
 
-            {/* Right Column: High-Resolution Certificate Preview with Logo Watermark */}
+            {/* Right Column: High-Resolution Classic Certificate Preview */}
             <div className="lg:col-span-8 flex flex-col items-center">
               {activeCert && (
                 <div className="w-full space-y-5">
@@ -209,7 +267,8 @@ const Certificates = () => {
                     key={activeCert._id}
                     initial={{ opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="w-full bg-[#FCFAF6] p-6 md:p-10 rounded-3xl shadow-[0_15px_50px_rgba(0,0,0,0.08)] border-4 border-[#B8860B] relative overflow-hidden flex flex-col items-center text-center aspect-[1.38/1]"
+                    className="w-full bg-[#FCFAF6] p-6 md:p-8 rounded-3xl shadow-[0_15px_50px_rgba(0,0,0,0.08)] border-4 border-[#B8860B] relative overflow-hidden flex flex-col items-center justify-between text-center select-none"
+                    style={{ aspectRatio: '1.414/1' }}
                   >
                     {/* Double Ornate Filigree Border */}
                     <div className="absolute inset-2 border border-[#0A4F2A] pointer-events-none rounded-2xl" />
@@ -223,79 +282,113 @@ const Certificates = () => {
 
                     {/* Translucent Background Watermark Logo */}
                     <div 
-                      className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.07] z-0"
+                      className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-0"
                     >
                       <img src="/logo.png" alt="Watermark" className="w-72 h-auto" />
                     </div>
 
                     {/* Certificate Foreground Content */}
-                    <div className="relative z-10 w-full flex flex-col items-center">
-                      <div className="flex flex-col items-center gap-1 mb-1">
-                        <img src="/logo.png" alt="SDF Logo" className="h-12 w-auto mb-1" />
-                        <h2 className="text-sm md:text-base font-extrabold tracking-widest text-[#0A4F2A] uppercase">
+                    <div className="relative z-10 w-full flex flex-col items-center justify-between h-full">
+                      
+                      {/* Top Branding */}
+                      <div className="flex flex-col items-center gap-0.5 pt-1">
+                        <img src="/logo.png" alt="SDF Logo" className="h-10 w-auto mb-0.5" />
+                        <h2 className="text-xs md:text-sm font-black tracking-widest text-[#0A4F2A] uppercase">
                           SWAMY DWIJA FOUNDATION
                         </h2>
+                        <p className="text-[8px] md:text-[9px] text-[#854D0E] font-bold tracking-widest uppercase">
+                          ACADEMY OF YOGA, PRANAYAMA & VEDIC SCIENCES
+                        </p>
                       </div>
-                      <p className="text-[9px] text-[#854D0E] font-bold tracking-widest uppercase mb-3">
-                        ACADEMY OF YOGA, PRANAYAMA & VEDIC WELLNESS SCIENCES
-                      </p>
 
-                      <h3 className="text-2xl md:text-3xl font-serif italic text-[#1E3A24] font-bold mb-1">
-                        Certificate of Completion
-                      </h3>
-                      <p className="text-[9px] text-gray-500 uppercase tracking-widest mb-2 font-medium">
-                        THIS IS PROUDLY AND OFFICIALLY PRESENTED TO
-                      </p>
+                      {/* Certificate Title */}
+                      <div className="my-0.5">
+                        <h3 className="text-xl md:text-2xl font-serif italic text-[#1E3A24] font-bold">
+                          Certificate of Completion
+                        </h3>
+                        <p className="text-[8px] md:text-[9px] text-gray-500 uppercase tracking-widest font-medium">
+                          THIS IS PROUDLY AND OFFICIALLY PRESENTED TO
+                        </p>
+                      </div>
 
-                      <h1 className="text-2xl md:text-3xl font-serif font-black text-[#0A4F2A] mb-1 pb-1 px-6 max-w-md truncate">
-                        {studentName}
-                      </h1>
-                      
-                      {/* Dual underline */}
-                      <div className="w-48 h-0.5 bg-[#D4AF37] mb-0.5" />
-                      <div className="w-32 h-px bg-[#0A4F2A] mb-2" />
+                      {/* Recipient Student Name */}
+                      <div className="my-0.5">
+                        <h1 className="text-xl md:text-2xl font-serif font-black text-[#0A4F2A] px-6 max-w-md truncate">
+                          {currentPrintedName}
+                        </h1>
+                        <div className="w-44 h-0.5 bg-[#D4AF37] mx-auto mt-0.5 mb-0.5" />
+                        <div className="w-28 h-px bg-[#0A4F2A] mx-auto" />
+                      </div>
 
-                      <p className="text-[10px] text-gray-600 max-w-md mb-2 leading-tight">
-                        for successfully completing the comprehensive instructional curriculum, live training, and assessments in
-                      </p>
+                      {/* Achievement Statement & Course Title */}
+                      <div className="space-y-0.5 max-w-lg">
+                        <p className="text-[9px] md:text-[10px] text-gray-600 leading-tight">
+                          for successfully completing the comprehensive live instructional curriculum and practice in
+                        </p>
+                        <h4 className="text-sm md:text-base font-bold text-gray-900">
+                          {certCourse.title || 'Hatha Yoga & Holistic Wellness Program'}
+                        </h4>
+                      </div>
 
-                      <h4 className="text-base md:text-lg font-bold text-gray-900 mb-4">
-                        {activeCert.course?.title || 'Yoga Program'}
-                      </h4>
+                      {/* Course Details & Faculty Badge Pill */}
+                      <div className="px-4 py-1 rounded-lg bg-gray-50 border border-gray-200 text-[8px] md:text-[9px] font-bold text-gray-700 max-w-md truncate">
+                        Category: <span className="text-[#0A4F2A]">{categoryName}</span> • Level: <span className="text-[#0A4F2A]">{levelName}</span> • Duration: <span className="text-[#0A4F2A]">{durationName}</span> • Faculty: <span className="text-[#0A4F2A]">{instructorName}</span>
+                      </div>
 
-                      {/* Footer Details */}
-                      <div className="flex justify-between items-end w-full px-4 mt-auto pt-3 border-t border-gray-200/80">
-                        <div className="text-left text-[9px] text-gray-500 space-y-0.5">
+                      {/* Footer Details & Double Signatures */}
+                      <div className="flex justify-between items-end w-full px-3 pt-2 border-t border-gray-200/80 mt-auto">
+                        <div className="text-left text-[8px] md:text-[9px] text-gray-500 space-y-0.5">
                           <p className="font-bold text-gray-800">
-                            Date of Issue: {new Date(activeCert.completionDate || activeCert.updatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            Date of Issue: {issueDateFormatted}
                           </p>
                           <p className="font-mono text-gray-500">
                             Certificate ID: {activeCert.certificateId || `SDF-CERT-${activeCert._id.slice(-6).toUpperCase()}`}
                           </p>
+                          <p className="text-[7px] text-gray-400">swamydwija.org/verify</p>
                         </div>
 
-                        <div className="px-3 py-1 bg-[#FEF9C3] border border-[#D4AF37] rounded-md text-[#854D0E] text-[8px] font-bold">
+                        <div className="px-2.5 py-1 bg-[#FEF9C3] border border-[#D4AF37] rounded text-[#854D0E] text-[7px] md:text-[8px] font-bold">
                           ★ OFFICIALLY VERIFIED ★
                         </div>
 
-                        <div className="text-right text-[9px] text-gray-500">
-                          <div className="font-serif italic text-sm text-gray-900 border-b border-gray-400 pb-0.5 font-bold">
-                            Swamy Dwija
+                        {/* Double Signatures */}
+                        <div className="flex items-center gap-4 text-right">
+                          <div className="text-center">
+                            <span className="font-serif italic text-xs text-gray-900 font-bold block border-b border-gray-400 pb-0.5">
+                              {instructorName}
+                            </span>
+                            <span className="text-[7px] text-gray-600 font-bold block mt-0.5">Lead Guru</span>
                           </div>
-                          <span className="font-bold text-[8px] text-gray-700 block mt-0.5">
-                            Director of Education
-                          </span>
+
+                          <div className="text-center">
+                            <span className="font-serif italic text-xs text-gray-900 font-bold block border-b border-gray-400 pb-0.5">
+                              Swamy Dwija
+                            </span>
+                            <span className="text-[7px] text-gray-600 font-bold block mt-0.5">Director</span>
+                          </div>
                         </div>
                       </div>
+
                     </div>
                   </motion.div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-3 w-full">
+                  <div className="flex flex-wrap gap-3 w-full">
+                    
+                    {/* Correct Name Button */}
+                    <button
+                      onClick={handleOpenEditName}
+                      className="px-5 py-4 bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-extrabold rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+                    >
+                      <FaEdit className="text-brand-green" />
+                      <span>Correct / Edit Legal Name</span>
+                    </button>
+
+                    {/* Download PDF Button */}
                     <button
                       onClick={() => handleDownloadPDF(activeCert)}
                       disabled={downloading}
-                      className="flex-1 py-4 bg-brand-green hover:bg-brand-green-dark text-white font-extrabold rounded-2xl shadow-lg shadow-brand-green/20 hover:shadow-brand-green/40 transition-all duration-300 flex items-center justify-center gap-2 text-sm disabled:opacity-70 cursor-pointer"
+                      className="flex-1 py-4 bg-brand-green hover:bg-brand-green-dark text-white font-extrabold rounded-2xl shadow-lg shadow-brand-green/20 hover:shadow-brand-green/40 transition-all duration-300 flex items-center justify-center gap-2 text-xs sm:text-sm disabled:opacity-70 cursor-pointer"
                     >
                       {downloading ? (
                         <>
@@ -315,9 +408,9 @@ const Certificates = () => {
                         href={activeCert.certificateUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-5 py-4 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold rounded-2xl text-sm flex items-center justify-center gap-2 transition-colors shadow-xs"
+                        className="px-4 py-4 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors shadow-xs"
                       >
-                        <FaExternalLinkAlt size={12} /> View Cloud Archive
+                        <FaExternalLinkAlt size={12} />
                       </a>
                     )}
                   </div>
@@ -350,7 +443,7 @@ const Certificates = () => {
                     </div>
                     <button
                       onClick={() => navigate(`/dashboard/learning/${enr.course?._id || enr.course}`)}
-                      className="px-4 py-2 bg-brand-green hover:bg-brand-green-dark text-white text-xs font-bold rounded-xl transition-all shadow-xs"
+                      className="px-4 py-2 bg-brand-green hover:bg-brand-green-dark text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
                     >
                       Go to Classes →
                     </button>
@@ -360,7 +453,7 @@ const Certificates = () => {
             ) : (
               <button
                 onClick={() => navigate('/courses')}
-                className="px-8 py-3.5 bg-brand-green hover:bg-brand-green-dark text-white font-bold text-sm rounded-2xl shadow-md transition-all inline-flex items-center gap-2"
+                className="px-8 py-3.5 bg-brand-green hover:bg-brand-green-dark text-white font-bold text-sm rounded-2xl shadow-md transition-all inline-flex items-center gap-2 cursor-pointer"
               >
                 <FaBookOpen /> Explore Programs
               </button>
@@ -369,6 +462,82 @@ const Certificates = () => {
         )}
 
       </div>
+
+      {/* EDIT PRINTED NAME MODAL */}
+      <AnimatePresence>
+        {isEditNameOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => !savingName && setIsEditNameOpen(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 15 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative bg-white w-full max-w-md rounded-3xl p-6 md:p-8 shadow-2xl z-10 space-y-5"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h3 className="font-black text-lg text-gray-900 flex items-center gap-2">
+                  <FaUserCheck className="text-brand-green" /> Correct Printed Legal Name
+                </h3>
+                <button 
+                  onClick={() => !savingName && setIsEditNameOpen(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 rounded-full cursor-pointer"
+                >
+                  <FaTimes size={14} />
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Please enter your full official legal name exactly as you wish it to be printed and permanently verified on your Certificate of Completion.
+              </p>
+
+              <form onSubmit={handleSaveName} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Full Legal Name *
+                  </label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={editNameInput} 
+                    onChange={e => setEditNameInput(e.target.value)} 
+                    placeholder="e.g. Rama Raju Koyyalagadda"
+                    className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-brand-green/20 outline-none font-bold text-gray-900"
+                  />
+                </div>
+
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 text-[11px] leading-relaxed">
+                  ✓ Your official PDF certificate and verification records will be automatically regenerated with this name.
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3">
+                  <button 
+                    type="button" 
+                    disabled={savingName}
+                    onClick={() => setIsEditNameOpen(false)}
+                    className="px-5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={savingName}
+                    className="px-6 py-2.5 rounded-xl bg-brand-green hover:bg-brand-green-dark text-white font-extrabold text-xs shadow-md disabled:opacity-60 flex items-center gap-2 cursor-pointer"
+                  >
+                    {savingName ? (
+                      <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Regenerating...</>
+                    ) : 'Save & Regenerate Certificate'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };

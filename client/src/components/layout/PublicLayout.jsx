@@ -55,10 +55,6 @@ const PublicLayout = () => {
               {/* Contact Info List */}
               <div className="space-y-2.5 text-xs text-gray-300 pt-1">
                 <div className="flex items-center gap-2.5">
-                  <FaMapMarkerAlt className="text-[#D4AF37] shrink-0" size={13} />
-                  <span>Hitec City, Hyderabad, Telangana - 500081, India</span>
-                </div>
-                <div className="flex items-center gap-2.5">
                   <FaEnvelope className="text-[#D4AF37] shrink-0" size={13} />
                   <a href="mailto:support@swamydwija.org" className="hover:text-white transition-colors">support@swamydwija.org</a>
                 </div>

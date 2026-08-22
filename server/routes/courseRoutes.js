@@ -10,7 +10,10 @@ const router = express.Router();
 // Get all courses (admin)
 router.get('/', protect, admin, async (req, res) => {
   try {
-    const courses = await Course.find().sort('-createdAt');
+    const courses = await Course.find()
+      .populate('instructorId', 'name emailOrPhone speciality phone')
+      .populate('moderatorId', 'name emailOrPhone phone')
+      .sort('-createdAt');
     res.json({ success: true, data: courses });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
@@ -33,7 +36,10 @@ router.get('/:id/enrollments', protect, admin, async (req, res) => {
 // Get all courses (public)
 router.get('/public', async (req, res) => {
   try {
-    const courses = await Course.find({ isPublished: true }).sort('-createdAt');
+    const courses = await Course.find({ isPublished: true })
+      .populate('instructorId', 'name emailOrPhone speciality phone bio')
+      .populate('moderatorId', 'name emailOrPhone phone')
+      .sort('-createdAt');
     res.json({ success: true, data: courses });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
@@ -49,12 +55,16 @@ router.get('/public/:slugOrId', async (req, res) => {
     // Check if it's a valid ObjectId
     const mongoose = require('mongoose');
     if (mongoose.isValidObjectId(slugOrId)) {
-      course = await Course.findById(slugOrId);
+      course = await Course.findById(slugOrId)
+        .populate('instructorId', 'name emailOrPhone speciality phone bio')
+        .populate('moderatorId', 'name emailOrPhone phone');
     }
     
     // If not found by ID, try finding by slug
     if (!course) {
-      course = await Course.findOne({ slug: slugOrId });
+      course = await Course.findOne({ slug: slugOrId })
+        .populate('instructorId', 'name emailOrPhone speciality phone bio')
+        .populate('moderatorId', 'name emailOrPhone phone');
     }
 
     if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
@@ -67,7 +77,11 @@ router.get('/public/:slugOrId', async (req, res) => {
 // Create new course
 router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1 }, { name: 'content', maxCount: 1 }]), async (req, res) => {
   try {
-    const { title, description, category, durationMonths, startDate, endDate, level, language, accessValidity, startTime, endTime, price } = req.body;
+    const { 
+      title, description, category, durationMonths, startDate, endDate, level, language, 
+      accessValidity, startTime, endTime, price, instructorId, moderatorId, zoomMeetingLink 
+    } = req.body;
+
     let whatYouWillLearn = [];
     let topics = [];
     let selectedSessionDates = [];
@@ -94,12 +108,44 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
     const timings = (startTime && endTime) ? `${startTime} to ${endTime}` : '';
     const coursePrice = price !== undefined && price !== '' ? Number(price) : 0;
 
+    let instructorName = '';
+    if (instructorId) {
+      const instUser = await User.findById(instructorId);
+      if (instUser) instructorName = instUser.name || instUser.emailOrPhone;
+    }
+
+    let moderatorName = '';
+    if (moderatorId) {
+      const modUser = await User.findById(moderatorId);
+      if (modUser) moderatorName = modUser.name || modUser.emailOrPhone;
+    }
+
     const course = await Course.create({
-      title, slug, description, category, durationMonths, startDate, endDate, timings, topics, level, language: language || 'English',
+      title, slug, description, category, durationMonths, startDate, endDate, 
+      startTime: startTime || '',
+      endTime: endTime || '',
+      timings, 
+      sessionDates: selectedSessionDates,
+      topics, 
+      level, 
+      language: language || 'English',
       accessValidity: accessValidity || '2 Months',
       price: coursePrice,
-      thumbnailUrl, contentUrl
+      thumbnailUrl, 
+      contentUrl,
+      instructorId: instructorId || undefined,
+      instructor: instructorName,
+      moderatorId: moderatorId || undefined,
+      moderator: moderatorName,
+      zoomMeetingLink: zoomMeetingLink || ''
     });
+
+    // Link assigned course to instructor user
+    if (instructorId) {
+      await User.findByIdAndUpdate(instructorId, {
+        $addToSet: { assignedCourses: course._id }
+      });
+    }
 
     // Handle automated Class and Zoom meeting generation with sequential Session and Topic names
     if (selectedSessionDates.length > 0 && startTime && endTime) {
@@ -119,17 +165,29 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
           const classTitle = `${title} - Session ${sessionIndex}${topicName}`;
 
           const startTimeObj = new Date(`${sessionDate}T${startTime}:00`);
-          const zoomDetails = await createZoomMeeting(classTitle, startTimeObj.toISOString(), durationMinutes > 0 ? durationMinutes : 60);
+          let zoomJoinUrl = zoomMeetingLink || '';
+          let zoomId = '';
+
+          try {
+            const zoomDetails = await createZoomMeeting(classTitle, startTimeObj.toISOString(), durationMinutes > 0 ? durationMinutes : 60);
+            if (zoomDetails?.joinUrl) {
+              zoomJoinUrl = zoomDetails.joinUrl;
+              zoomId = zoomDetails.meetingId;
+            }
+          } catch (zErr) {
+            console.log('Zoom API not active or configured; using fallback session link.');
+          }
           
           await Class.create({
             title: classTitle,
             courseId: course._id,
+            instructor: instructorName,
             date: sessionDate,
             time: startTime,
             durationMinutes: durationMinutes > 0 ? durationMinutes : 60,
             isRecurring: false,
-            zoomLink: zoomDetails.joinUrl,
-            zoomMeetingId: zoomDetails.meetingId
+            zoomLink: zoomJoinUrl,
+            zoomMeetingId: zoomId
           });
         } catch (err) {
           console.error(`Error generating class for ${sessionDate}:`, err);
@@ -137,7 +195,11 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
       }
     }
 
-    res.status(201).json({ success: true, data: course });
+    const populatedCourse = await Course.findById(course._id)
+      .populate('instructorId', 'name emailOrPhone speciality phone')
+      .populate('moderatorId', 'name emailOrPhone phone');
+
+    res.status(201).json({ success: true, data: populatedCourse });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error creating course', error: error.message });
   }
@@ -149,7 +211,10 @@ router.put('/:id', protect, admin, upload.fields([{ name: 'thumbnail', maxCount:
     const course = await Course.findById(req.params.id);
     if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
 
-    const { title, description, category, durationMonths, startDate, endDate, timings, level, language, accessValidity, price, startTime, endTime } = req.body;
+    const { 
+      title, description, category, durationMonths, startDate, endDate, timings, level, 
+      language, accessValidity, price, startTime, endTime, instructorId, moderatorId, zoomMeetingLink 
+    } = req.body;
     
     let whatYouWillLearn = course.whatYouWillLearn;
     if (req.body.whatYouWillLearn) {
@@ -163,8 +228,13 @@ router.put('/:id', protect, admin, upload.fields([{ name: 'thumbnail', maxCount:
       slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
     }
 
-    let updateData = { title, slug, description, category, durationMonths, startDate, endDate, level, language: language || 'English', whatYouWillLearn };
+    let updateData = { 
+      title, slug, description, category, durationMonths, startDate, endDate, 
+      level, language: language || 'English', whatYouWillLearn 
+    };
 
+    if (startTime !== undefined) updateData.startTime = startTime;
+    if (endTime !== undefined) updateData.endTime = endTime;
     if (accessValidity) updateData.accessValidity = accessValidity;
     if (timings) updateData.timings = timings;
     else if (startTime && endTime) updateData.timings = `${startTime} to ${endTime}`;
@@ -173,10 +243,37 @@ router.put('/:id', protect, admin, upload.fields([{ name: 'thumbnail', maxCount:
       updateData.price = Number(price);
     }
 
+    if (zoomMeetingLink !== undefined) {
+      updateData.zoomMeetingLink = zoomMeetingLink;
+    }
+
     if (req.body.topics) {
       try {
         updateData.topics = JSON.parse(req.body.topics);
       } catch (e) {}
+    }
+
+    if (instructorId !== undefined) {
+      updateData.instructorId = instructorId || null;
+      if (instructorId) {
+        const instUser = await User.findById(instructorId);
+        if (instUser) {
+          updateData.instructor = instUser.name || instUser.emailOrPhone;
+          await User.findByIdAndUpdate(instructorId, { $addToSet: { assignedCourses: course._id } });
+        }
+      } else {
+        updateData.instructor = '';
+      }
+    }
+
+    if (moderatorId !== undefined) {
+      updateData.moderatorId = moderatorId || null;
+      if (moderatorId) {
+        const modUser = await User.findById(moderatorId);
+        if (modUser) updateData.moderator = modUser.name || modUser.emailOrPhone;
+      } else {
+        updateData.moderator = '';
+      }
     }
 
     if (req.files) {
@@ -184,7 +281,15 @@ router.put('/:id', protect, admin, upload.fields([{ name: 'thumbnail', maxCount:
       if (req.files.content) updateData.contentUrl = req.files.content[0].location || req.files.content[0].path;
     }
 
-    const updatedCourse = await Course.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    if (req.body.selectedSessionDates) {
+      try {
+        updateData.sessionDates = JSON.parse(req.body.selectedSessionDates);
+      } catch (e) {}
+    }
+
+    const updatedCourse = await Course.findByIdAndUpdate(req.params.id, updateData, { new: true })
+      .populate('instructorId', 'name emailOrPhone speciality phone')
+      .populate('moderatorId', 'name emailOrPhone phone');
 
     // If new session dates are supplied in update, create any missing sessions
     if (req.body.selectedSessionDates) {
@@ -200,16 +305,27 @@ router.put('/:id', protect, admin, upload.fields([{ name: 'thumbnail', maxCount:
           const existingClass = await Class.findOne({ courseId: updatedCourse._id, date: new Date(sessionDate) });
           if (!existingClass) {
             const startTimeObj = new Date(`${sessionDate}T${sTime}:00`);
-            const zoomDetails = await createZoomMeeting(`${updatedCourse.title} Class`, startTimeObj.toISOString(), durationMinutes > 0 ? durationMinutes : 60);
+            let zoomJoinUrl = updatedCourse.zoomMeetingLink || '';
+            let zoomId = '';
+
+            try {
+              const zoomDetails = await createZoomMeeting(`${updatedCourse.title} Class`, startTimeObj.toISOString(), durationMinutes > 0 ? durationMinutes : 60);
+              if (zoomDetails?.joinUrl) {
+                zoomJoinUrl = zoomDetails.joinUrl;
+                zoomId = zoomDetails.meetingId;
+              }
+            } catch (zErr) {}
+
             await Class.create({
               title: `${updatedCourse.title} Session`,
               courseId: updatedCourse._id,
+              instructor: updatedCourse.instructor,
               date: sessionDate,
               time: sTime,
               durationMinutes: durationMinutes > 0 ? durationMinutes : 60,
               isRecurring: false,
-              zoomLink: zoomDetails.joinUrl,
-              zoomMeetingId: zoomDetails.meetingId
+              zoomLink: zoomJoinUrl,
+              zoomMeetingId: zoomId
             });
           }
         }
@@ -298,7 +414,9 @@ const { uploadBufferToCloudinary } = require('../utils/cloudinaryUploader');
 router.post('/:id/complete', protect, async (req, res) => {
   try {
     const courseId = req.params.id;
-    const course = await Course.findById(courseId);
+    const { studentName: customName } = req.body;
+
+    const course = await Course.findById(courseId).populate('instructorId');
     if (!course) {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
@@ -319,11 +437,19 @@ router.post('/:id/complete', protect, async (req, res) => {
     enrollment.completed = true;
     enrollment.completionDate = completionDate;
     enrollment.certificateId = certId;
+    if (customName && customName.trim()) {
+      enrollment.studentName = customName.trim();
+    }
     await enrollment.save();
 
     // Get user full name
     const user = await User.findById(req.user._id);
-    let studentName = user?.name;
+    if (customName && customName.trim() && user) {
+      user.name = customName.trim();
+      await user.save();
+    }
+
+    let studentName = customName || enrollment.studentName || user?.name;
     if (!studentName && user?.firstName) {
       studentName = `${user.firstName} ${user.lastName || ''}`.trim();
     }
@@ -331,10 +457,16 @@ router.post('/:id/complete', protect, async (req, res) => {
       studentName = req.user.emailOrPhone.split('@')[0];
     }
 
+    const instructorName = course.instructorId?.name || course.instructor || 'Lead Yoga Guru';
+
     // Generate Certificate PDF, upload to Cloudinary, and send completion email asynchronously
     generateCertificatePDF({
       studentName,
       courseTitle: course.title,
+      category: course.category || 'Yoga & Vedic Sciences',
+      level: course.level || 'All Levels',
+      duration: course.duration || `${course.sessionDates?.length || 30} Live Sessions`,
+      instructorName,
       completionDate: new Date(completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
       certificateId: certId
     }).then(async (certPdfBuffer) => {
@@ -367,6 +499,64 @@ router.post('/:id/complete', protect, async (req, res) => {
   } catch (error) {
     console.error("Error completing course:", error);
     res.status(500).json({ success: false, message: 'Error completing course', error: error.message });
+  }
+});
+
+// Update Student Name on Certificate & Regenerate
+router.post('/certificate/:enrollmentId/update-name', protect, async (req, res) => {
+  try {
+    const { studentName } = req.body;
+    if (!studentName || !studentName.trim()) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid student name' });
+    }
+
+    const enrollment = await Enrollment.findById(req.params.enrollmentId).populate('course');
+    if (!enrollment) {
+      return res.status(404).json({ success: false, message: 'Enrollment not found' });
+    }
+
+    // Verify ownership or admin
+    if (enrollment.studentEmail !== req.user.emailOrPhone && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    enrollment.studentName = studentName.trim();
+    const certId = enrollment.certificateId || `SDF-CERT-${Date.now().toString().slice(-6)}`;
+    const compDate = enrollment.completionDate || new Date();
+
+    const certPdfBuffer = await generateCertificatePDF({
+      studentName: studentName.trim(),
+      courseTitle: enrollment.course?.title || 'Workshop',
+      completionDate: new Date(compDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
+      certificateId: certId
+    });
+
+    try {
+      const cloudUrl = await uploadBufferToCloudinary(certPdfBuffer, certId, 'sdf_certificates');
+      if (cloudUrl) {
+        enrollment.certificateUrl = cloudUrl;
+      }
+    } catch (cErr) {
+      console.error('Cloudinary update error:', cErr);
+    }
+
+    await enrollment.save();
+
+    // Also update user profile name if current student
+    const user = await User.findOne({ emailOrPhone: enrollment.studentEmail });
+    if (user) {
+      user.name = studentName.trim();
+      await user.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Certificate name updated successfully!',
+      enrollment
+    });
+  } catch (err) {
+    console.error('Error updating certificate name:', err);
+    res.status(500).json({ success: false, message: 'Error updating certificate name', error: err.message });
   }
 });
 

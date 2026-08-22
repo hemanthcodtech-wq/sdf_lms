@@ -29,9 +29,23 @@ import AdminLayout from '../components/admin/AdminLayout';
 import AdminProtectedRoute from '../components/admin/AdminProtectedRoute';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import CourseManagement from '../pages/admin/CourseManagement';
+import InstructorManagement from '../pages/admin/InstructorManagement';
+import ModeratorManagement from '../pages/admin/ModeratorManagement';
 import UserManagement from '../pages/admin/UserManagement';
 import MaterialManagement from '../pages/admin/MaterialManagement';
 import AdminRecords from '../pages/admin/AdminRecords';
+
+// Instructor
+import InstructorLogin from '../pages/instructor/InstructorLogin';
+import InstructorProtectedRoute from '../components/instructor/InstructorProtectedRoute';
+import InstructorLayout from '../components/instructor/InstructorLayout';
+import InstructorDashboard from '../pages/instructor/InstructorDashboard';
+
+// Moderator
+import ModeratorLogin from '../pages/moderator/ModeratorLogin';
+import ModeratorProtectedRoute from '../components/moderator/ModeratorProtectedRoute';
+import ModeratorLayout from '../components/moderator/ModeratorLayout';
+import ModeratorDashboard from '../pages/moderator/ModeratorDashboard';
 
 // Dashboard / Course
 import DashboardHome from '../pages/dashboard/Home';
@@ -80,9 +94,29 @@ const AppRoutes = () => {
           <Route path="/admin" element={<AdminLayout />}>
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="courses" element={<CourseManagement />} />
+            <Route path="instructors" element={<InstructorManagement />} />
+            <Route path="moderators" element={<ModeratorManagement />} />
             <Route path="materials" element={<MaterialManagement />} />
             <Route path="records" element={<AdminRecords />} />
             <Route path="users" element={<UserManagement />} />
+          </Route>
+        </Route>
+
+        {/* Instructor Login & Protected Workspace */}
+        <Route path="/instructor/login" element={<InstructorLogin />} />
+        <Route element={<InstructorProtectedRoute />}>
+          <Route path="/instructor" element={<InstructorLayout />}>
+            <Route index element={<Navigate to="/instructor/dashboard" replace />} />
+            <Route path="dashboard" element={<InstructorDashboard />} />
+          </Route>
+        </Route>
+
+        {/* Moderator Login & Protected Workspace */}
+        <Route path="/moderator/login" element={<ModeratorLogin />} />
+        <Route element={<ModeratorProtectedRoute />}>
+          <Route path="/moderator" element={<ModeratorLayout />}>
+            <Route index element={<Navigate to="/moderator/dashboard" replace />} />
+            <Route path="dashboard" element={<ModeratorDashboard />} />
           </Route>
         </Route>
 
@@ -100,7 +134,7 @@ const AppRoutes = () => {
             <Route path="wishlist" element={<Wishlist />} />
             <Route path="support" element={<HelpSupport />} />
           </Route>
-          {/* Checkout needs protection but doesn't necessarily need the dashboard layout wrapper depending on design, but let's keep it separate or in dashboard */}
+          {/* Checkout needs protection */}
           <Route path="/checkout/:id" element={<Checkout />} />
         </Route>
         
