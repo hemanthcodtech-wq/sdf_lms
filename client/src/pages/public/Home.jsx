@@ -180,10 +180,12 @@ const Home = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const { data } = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses/public`);
-        setFeaturedCourses(data.data.slice(0, 4)); // Get top 4 courses
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/courses/public`);
+        const list = response?.data?.data || (Array.isArray(response?.data) ? response.data : []);
+        setFeaturedCourses(Array.isArray(list) ? list.slice(0, 4) : []);
       } catch (error) {
         console.error('Error fetching featured courses:', error);
+        setFeaturedCourses([]);
       } finally {
         setLoading(false);
       }
