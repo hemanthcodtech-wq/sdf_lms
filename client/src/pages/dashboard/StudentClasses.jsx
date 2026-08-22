@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaCalendarAlt, FaVideo, FaFilePdf, FaTimes, FaBook, FaArrowLeft, FaChevronRight, FaAward, FaPlayCircle } from 'react-icons/fa';
+import { 
+  FaCalendarAlt, FaVideo, FaFilePdf, FaTimes, FaBook, 
+  FaArrowLeft, FaChevronRight, FaAward, FaPlayCircle, FaWhatsapp 
+} from 'react-icons/fa';
 import { useParams, useNavigate } from 'react-router-dom';
 import ZoomLiveClassroom from '../../components/classroom/ZoomLiveClassroom';
 
@@ -186,6 +189,35 @@ const StudentClasses = () => {
 
                 {/* Action Pills */}
                 <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
+                  
+                  {/* WhatsApp Batch Group Join Card */}
+                  {(() => {
+                    const currentCourse = allClasses.find(c => (c.courseId?._id || c.courseId) === courseId)?.courseId || allClasses[0]?.courseId;
+                    const whatsappLink = currentCourse?.whatsappGroupLink;
+
+                    if (!whatsappLink) return null;
+
+                    return (
+                      <a 
+                        href={whatsappLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-2xl p-4 bg-gradient-to-br from-[#25D366] to-[#128C7E] text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all flex flex-col gap-2 group block cursor-pointer col-span-2 lg:col-span-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 font-extrabold text-sm">
+                            <FaWhatsapp size={22} className="group-hover:scale-110 transition-transform" />
+                            <span>Batch WhatsApp Group</span>
+                          </div>
+                          <span className="text-[10px] bg-white/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Join Group →</span>
+                        </div>
+                        <p className="text-[11px] text-emerald-50 leading-relaxed font-medium">
+                          Connect with your peers, receive live class reminders & ask questions directly.
+                        </p>
+                      </a>
+                    );
+                  })()}
+
                   <button 
                     onClick={() => setActiveTab('classes')}
                     className={`rounded-xl py-4 px-5 flex items-center justify-between shadow-sm border transition-all duration-300 ${activeTab === 'classes' ? 'bg-[#C08552] border-[#C08552] text-white shadow-[#C08552]/20' : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-700'}`}

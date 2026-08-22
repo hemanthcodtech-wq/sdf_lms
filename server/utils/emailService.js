@@ -76,6 +76,16 @@ const sendCourseEnrollmentEmail = async ({ to, studentName, course, invoiceNumbe
               <p style="margin: 4px 0; font-size: 13px; color: #374151;"><strong>Invoice ID:</strong> ${invoiceNumber}</p>
             </div>
 
+            ${course.whatsappGroupLink ? `
+            <div style="background-color: #ecfdf5; border: 1px solid #6ee7b7; padding: 18px; border-radius: 12px; margin: 20px 0; text-align: center;">
+              <h3 style="margin: 0 0 6px 0; color: #065f46; font-size: 15px;">💬 Official Batch WhatsApp Group:</h3>
+              <p style="font-size: 12px; color: #047857; margin: 0 0 14px 0;">Join the WhatsApp group for live class reminders, guru announcements & batch updates.</p>
+              <a href="${course.whatsappGroupLink}" style="background-color: #25D366; color: #ffffff; padding: 10px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 13px; display: inline-block; box-shadow: 0 2px 8px rgba(37,211,102,0.3);">
+                Join WhatsApp Group Now →
+              </a>
+            </div>
+            ` : ''}
+
             <h3 style="color: #1f2937; font-size: 15px; margin-bottom: 8px;">How to Join Your Live Sessions:</h3>
             <ol style="font-size: 13px; color: #4b5563; line-height: 1.6; padding-left: 20px;">
               <li>Log in to your student portal at <a href="${dashboardUrl}" style="color: #0a4f2a; font-weight: bold;">My Learning Dashboard</a>.</li>

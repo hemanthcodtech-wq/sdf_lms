@@ -5,7 +5,7 @@ import {
   FaPlus, FaEdit, FaTrash, FaTimes, FaCloudUploadAlt, 
   FaImage, FaChalkboardTeacher, FaShieldAlt, FaClock, 
   FaCheckCircle, FaUserCheck, FaCalendarAlt, FaHistory,
-  FaPlayCircle, FaExternalLinkAlt, FaSyncAlt
+  FaPlayCircle, FaExternalLinkAlt, FaSyncAlt, FaWhatsapp
 } from 'react-icons/fa';
 
 const CourseManagement = () => {
@@ -34,7 +34,8 @@ const CourseManagement = () => {
     accessValidity: '2 Months', 
     whatYouWillLearn: '',
     instructorId: '',
-    moderatorId: ''
+    moderatorId: '',
+    whatsappGroupLink: ''
   });
 
   const [newSessionDate, setNewSessionDate] = useState('');
@@ -151,7 +152,8 @@ const CourseManagement = () => {
         accessValidity: course.accessValidity || '2 Months',
         whatYouWillLearn: course.whatYouWillLearn ? course.whatYouWillLearn.join('\n') : '',
         instructorId: instId,
-        moderatorId: modId
+        moderatorId: modId,
+        whatsappGroupLink: course.whatsappGroupLink || ''
       });
     } else {
       setEditingCourse(null);
@@ -173,7 +175,8 @@ const CourseManagement = () => {
         accessValidity: '2 Months', 
         whatYouWillLearn: '',
         instructorId: instructors.length > 0 ? instructors[0]._id : '',
-        moderatorId: moderators.length > 0 ? moderators[0]._id : ''
+        moderatorId: moderators.length > 0 ? moderators[0]._id : '',
+        whatsappGroupLink: ''
       });
     }
     setNewSessionDate('');
@@ -864,6 +867,26 @@ const CourseManagement = () => {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* WHATSAPP BATCH GROUP LINK */}
+                  <div className="col-span-full">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                      <FaWhatsapp className="text-[#25D366]" size={16} /> Official Batch WhatsApp Group Link
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type="url" 
+                        value={formData.whatsappGroupLink} 
+                        onChange={e => setFormData({...formData, whatsappGroupLink: e.target.value})} 
+                        className="w-full p-3.5 pl-10 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl focus:border-brand-green focus:bg-white/70 focus:ring-2 focus:ring-brand-green/20 outline-none shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-all font-medium text-sm" 
+                        placeholder="https://chat.whatsapp.com/..." 
+                      />
+                      <FaWhatsapp className="absolute left-3.5 top-4 text-[#25D366]" size={16} />
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Enrolled students will see this WhatsApp link in their learning portal & confirmation email to join the batch community.
+                    </p>
                   </div>
 
                   {/* Fee */}

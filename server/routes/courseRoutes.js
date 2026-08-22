@@ -79,7 +79,8 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
   try {
     const { 
       title, description, category, durationMonths, startDate, endDate, level, language, 
-      accessValidity, startTime, endTime, price, instructorId, moderatorId, zoomMeetingLink 
+      accessValidity, startTime, endTime, price, instructorId, moderatorId, zoomMeetingLink,
+      whatsappGroupLink
     } = req.body;
 
     let whatYouWillLearn = [];
@@ -137,7 +138,8 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
       instructor: instructorName,
       moderatorId: moderatorId || undefined,
       moderator: moderatorName,
-      zoomMeetingLink: zoomMeetingLink || ''
+      zoomMeetingLink: zoomMeetingLink || '',
+      whatsappGroupLink: (whatsappGroupLink || '').trim()
     });
 
     // Link assigned course to instructor user
@@ -213,7 +215,8 @@ router.put('/:id', protect, admin, upload.fields([{ name: 'thumbnail', maxCount:
 
     const { 
       title, description, category, durationMonths, startDate, endDate, timings, level, 
-      language, accessValidity, price, startTime, endTime, instructorId, moderatorId, zoomMeetingLink 
+      language, accessValidity, price, startTime, endTime, instructorId, moderatorId, zoomMeetingLink,
+      whatsappGroupLink
     } = req.body;
     
     let whatYouWillLearn = course.whatYouWillLearn;
@@ -245,6 +248,10 @@ router.put('/:id', protect, admin, upload.fields([{ name: 'thumbnail', maxCount:
 
     if (zoomMeetingLink !== undefined) {
       updateData.zoomMeetingLink = zoomMeetingLink;
+    }
+
+    if (whatsappGroupLink !== undefined) {
+      updateData.whatsappGroupLink = (whatsappGroupLink || '').trim();
     }
 
     if (req.body.topics) {

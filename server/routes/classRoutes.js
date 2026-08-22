@@ -20,7 +20,7 @@ router.get('/student', protect, async (req, res) => {
 
     // Find all scheduled classes for those courses
     const classes = await Class.find({ courseId: { $in: enrolledCourseIds } })
-      .populate('courseId', 'title category level thumbnailUrl')
+      .populate('courseId', 'title category level thumbnailUrl whatsappGroupLink instructor timings')
       .sort('date time');
       
     res.json({ success: true, data: classes });
@@ -33,7 +33,7 @@ router.get('/student', protect, async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const classes = await Class.find()
-      .populate('courseId', 'title category level')
+      .populate('courseId', 'title category level thumbnailUrl whatsappGroupLink instructor timings')
       .sort('date time');
     res.json({ success: true, data: classes });
   } catch (error) {

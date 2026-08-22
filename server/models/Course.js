@@ -68,6 +68,11 @@ const courseSchema = new mongoose.Schema({
   zoomMeetingLink: {
     type: String
   },
+  whatsappGroupLink: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   topics: {
     type: [String],
     default: []

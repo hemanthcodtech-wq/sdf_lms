@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaUser, FaQuestionCircle, FaBell, FaVideo, FaGraduationCap, FaChevronRight } from 'react-icons/fa';
+import { FaUser, FaQuestionCircle, FaBell, FaVideo, FaGraduationCap, FaChevronRight, FaWhatsapp } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -42,6 +42,7 @@ const MyLearning = () => {
             title: enrollment.course?.title || 'Unknown Course',
             category: enrollment.course?.category || 'General',
             image: enrollment.course?.thumbnailUrl || '',
+            whatsappGroupLink: enrollment.course?.whatsappGroupLink || '',
             progress: Math.floor(Math.random() * 60) + 10 // Mock progress
           };
         });
@@ -164,12 +165,26 @@ const MyLearning = () => {
                             <div className="bg-[#fcd536] h-1.5 rounded-full" style={{ width: `${course.progress}%` }}></div>
                           </div>
 
-                          <button 
-                            onClick={() => navigate(`/dashboard/learning/${course.courseId}`)}
-                            className="w-full bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900 font-bold px-4 py-3 rounded-xl text-sm shadow-sm transition-transform active:scale-95 flex justify-center items-center gap-2 group-hover:shadow-[0_4px_10px_rgba(252,213,54,0.3)]"
-                          >
-                            View Details <FaChevronRight className="text-[10px]" />
-                          </button>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => navigate(`/dashboard/learning/${course.courseId}`)}
+                              className="flex-1 bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900 font-bold px-3 py-3 rounded-xl text-xs sm:text-sm shadow-sm transition-transform active:scale-95 flex justify-center items-center gap-1.5 cursor-pointer"
+                            >
+                              <span>View Classes</span> <FaChevronRight className="text-[10px]" />
+                            </button>
+
+                            {course.whatsappGroupLink && (
+                              <a
+                                href={course.whatsappGroupLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3.5 py-3 bg-[#25D366] hover:bg-[#1ebc59] text-white rounded-xl shadow-xs transition-transform active:scale-95 flex items-center justify-center cursor-pointer"
+                                title="Join Batch WhatsApp Group"
+                              >
+                                <FaWhatsapp size={17} />
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </motion.div>
