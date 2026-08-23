@@ -305,6 +305,29 @@ router.post('/certificate/custom-generate-and-send', protect, admin, async (req,
           : completionDate)
       : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
 
+    // Look up assigned course instructor from Course model if needed
+    let finalInstructorName = instructorName;
+    let finalInstructorTitle = instructorTitle;
+    let finalDuration = duration;
+
+    try {
+      const Course = require('../models/Course');
+      const foundCourse = await Course.findOne({ title: { $regex: new RegExp(`^${courseTitle.trim()}$`, 'i') } }).populate('instructorId', 'name speciality');
+      if (foundCourse) {
+        if (!finalInstructorName || finalInstructorName === 'RISHI KRISHNA') {
+          finalInstructorName = foundCourse.instructorId?.name || foundCourse.instructor || 'Lead Yoga Guru';
+        }
+        if (!finalInstructorTitle) {
+          finalInstructorTitle = foundCourse.instructorId?.speciality || 'Yoga Instructor';
+        }
+        if (!finalDuration) {
+          finalDuration = foundCourse.duration || '30 Days\n(20 Hours)';
+        }
+      }
+    } catch (cErr) {
+      console.error('Error finding course instructor:', cErr.message);
+    }
+
     // Generate the High-Resolution PDF Certificate
     const certPdfBuffer = await generateCertificatePDF({
       studentName: studentName.trim(),
@@ -312,9 +335,9 @@ router.post('/certificate/custom-generate-and-send', protect, admin, async (req,
       completionDate: formattedDate,
       certificateId: finalCertId,
       studentId: studentId || (finalCertId.replace(/[^0-9]/g, '').slice(-8) ? `SDWFY${finalCertId.replace(/[^0-9]/g, '').slice(-8)}` : undefined),
-      duration: duration || '30 Days\n(20 Hours)',
-      instructorName: instructorName || 'RISHI KRISHNA',
-      instructorTitle: instructorTitle || 'Yoga Instructor',
+      duration: finalDuration || '30 Days\n(20 Hours)',
+      instructorName: finalInstructorName || 'Lead Yoga Guru',
+      instructorTitle: finalInstructorTitle || 'Yoga Instructor',
       instructorSubtitle: instructorSubtitle || 'Certified Yoga Professional',
       directorTitle: directorTitle || 'Founder & Director',
       directorSubtitle: directorSubtitle || 'Swamy Dwija Foundation'
@@ -328,71 +351,65 @@ router.post('/certificate/custom-generate-and-send', protect, admin, async (req,
       console.error('Cloudinary certificate upload error:', cErr.message);
     }
 
-    // Update Enrollment in MongoDB if enrollmentId provided or if matching studentEmail & courseTitle
+    // If enrollmentId is provided and updateEnrollment is true, update DB record
     let updatedEnrollment = null;
-    if (updateEnrollment) {
-      if (enrollmentId) {
-        updatedEnrollment = await Enrollment.findById(enrollmentId);
-      } else if (studentEmail) {
-        updatedEnrollment = await Enrollment.findOne({ studentEmail });
-      }
-
-      if (updatedEnrollment) {
-        updatedEnrollment.studentName = studentName.trim();
-        updatedEnrollment.certificateId = finalCertId;
-        updatedEnrollment.completed = true;
-        updatedEnrollment.progress = 100;
-        updatedEnrollment.completionDate = new Date();
-        if (certificateUrl) {
-          updatedEnrollment.certificateUrl = certificateUrl;
-        }
-        await updatedEnrollment.save();
-      }
+    if (enrollmentId && updateEnrollment) {
+      const Enrollment = require('../models/Enrollment');
+      updatedEnrollment = await Enrollment.findByIdAndUpdate(
+        enrollmentId,
+        {
+          completed: true,
+          progress: 100,
+          certificateId: finalCertId,
+          certificateUrl: certificateUrl || undefined,
+          completionDate: new Date()
+        },
+        { new: true }
+      ).populate('course');
     }
 
-    // Send Email to Learner if requested
+    // Send Email if requested
     let emailSent = false;
-    let emailError = null;
     if (sendEmail && studentEmail) {
       try {
-        await sendCourseCompletionEmail({
-          to: studentEmail.trim(),
-          studentName: studentName.trim(),
-          course: { title: courseTitle.trim() },
-          certId: finalCertId,
-          certificatePdfBuffer: certPdfBuffer
-        });
+        await sendCertificateEmail(
+          studentEmail.trim(),
+          studentName.trim(),
+          courseTitle.trim(),
+          certPdfBuffer,
+          finalCertId
+        );
         emailSent = true;
-      } catch (eErr) {
-        console.error('Email dispatch error:', eErr);
-        emailError = eErr.message;
+      } catch (emailErr) {
+        console.error('Failed to send certificate email:', emailErr.message);
       }
     }
 
     res.json({
       success: true,
       message: emailSent
-        ? `Certificate ${finalCertId} generated & emailed successfully to ${studentEmail}!`
+        ? `Certificate ${finalCertId} generated and successfully emailed to ${studentEmail}!`
         : `Certificate ${finalCertId} generated successfully!`,
-      certificateId: finalCertId,
-      certificateUrl,
-      emailSent,
-      emailError,
-      enrollment: updatedEnrollment,
-      pdfBase64: certPdfBuffer.toString('base64')
+      data: {
+        certificateId: finalCertId,
+        certificateUrl,
+        emailSent,
+        enrollment: updatedEnrollment
+      }
     });
+
   } catch (error) {
     console.error('Error generating custom certificate:', error);
-    res.status(500).json({ success: false, message: 'Server error generating certificate', error: error.message });
+    res.status(500).json({ success: false, message: 'Server Error generating certificate', error: error.message });
   }
 });
 
-// Admin: Preview Certificate PDF directly as binary stream
+// Admin: Certificate PDF Preview (Streams buffer directly to browser tab for live test)
 router.post('/certificate/preview-pdf', protect, admin, async (req, res) => {
   try {
     const {
-      studentName = 'Learner Name',
-      courseTitle = 'Yoga for Wellness and Inner Balance',
+      studentName,
+      courseTitle,
       completionDate,
       certificateId,
       studentId,
@@ -412,15 +429,37 @@ router.post('/certificate/preview-pdf', protect, admin, async (req, res) => {
 
     const finalCertId = certificateId || `SDF-CERT-PREVIEW`;
 
+    let finalInstructorName = instructorName;
+    let finalInstructorTitle = instructorTitle;
+    let finalDuration = duration;
+
+    try {
+      const Course = require('../models/Course');
+      const foundCourse = await Course.findOne({ title: { $regex: new RegExp(`^${(courseTitle || '').trim()}$`, 'i') } }).populate('instructorId', 'name speciality');
+      if (foundCourse) {
+        if (!finalInstructorName || finalInstructorName === 'RISHI KRISHNA') {
+          finalInstructorName = foundCourse.instructorId?.name || foundCourse.instructor || 'Lead Yoga Guru';
+        }
+        if (!finalInstructorTitle) {
+          finalInstructorTitle = foundCourse.instructorId?.speciality || 'Yoga Instructor';
+        }
+        if (!finalDuration) {
+          finalDuration = foundCourse.duration || '30 Days\n(20 Hours)';
+        }
+      }
+    } catch (cErr) {
+      console.error('Error finding course instructor for preview:', cErr.message);
+    }
+
     const certPdfBuffer = await generateCertificatePDF({
-      studentName: studentName.trim(),
-      courseTitle: courseTitle.trim(),
+      studentName: (studentName || 'Learner Name').trim(),
+      courseTitle: (courseTitle || 'Yoga for Wellness and Inner Balance').trim(),
       completionDate: formattedDate,
       certificateId: finalCertId,
       studentId: studentId || 'SDWFY250501',
-      duration: duration || '30 Days\n(20 Hours)',
-      instructorName: instructorName || 'RISHI KRISHNA',
-      instructorTitle: instructorTitle || 'Yoga Instructor',
+      duration: finalDuration || '30 Days\n(20 Hours)',
+      instructorName: finalInstructorName || 'Lead Yoga Guru',
+      instructorTitle: finalInstructorTitle || 'Yoga Instructor',
       instructorSubtitle: instructorSubtitle || 'Certified Yoga Professional',
       directorTitle: directorTitle || 'Founder & Director',
       directorSubtitle: directorSubtitle || 'Swamy Dwija Foundation'
