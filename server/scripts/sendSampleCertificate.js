@@ -3,28 +3,34 @@ const { generateCertificatePDF } = require('../utils/pdfGenerator');
 const { sendCourseCompletionEmail } = require('../utils/emailService');
 
 async function main() {
-  const recipientEmail = 'ramarajukoyyalagadda123@gmail.com';
+  const recipientEmail = 'ramarajukoyyalagadda@gmail.com';
   const studentName = 'Rama Raju Koyyalagadda';
-  const courseTitle = 'Master Class in Asana, Pranayama & Vedic Wellness';
-  const certificateId = 'SDF-CERT-2026-849201';
-  const completionDate = '22 August 2026';
+  const courseTitle = 'Yoga for Wellness and Inner Balance';
+  const studentId = 'SDWFY250501';
+  const certificateId = 'SDWFY260823001';
+  const completionDate = '23 August 2026';
+  const duration = '30 Days (20 Hours)';
+  const instructorName = 'Rishi Krishna';
+  const instructorTitle = 'Yoga Instructor';
+  const instructorSubtitle = 'Certified Yoga Professional';
 
-  console.log(`Generating Certificate PDF for ${studentName} using improved classic template...`);
+  console.log(`Generating Certificate PDF for ${studentName} on new official template...`);
 
   try {
     const certPdfBuffer = await generateCertificatePDF({
       studentName,
+      studentId,
       courseTitle,
-      category: 'Ancient Himalayan Yoga',
-      level: 'Mastery / Advanced',
-      duration: '30 Days Live Program (60 Hours)',
-      instructorName: 'Guru Madhulika (Senior Yoga Master)',
+      duration,
+      instructorName,
+      instructorTitle,
+      instructorSubtitle,
       completionDate,
       certificateId
     });
 
     console.log(`Certificate PDF generated successfully (${certPdfBuffer.length} bytes).`);
-    console.log(`Sending updated sample certificate email to ${recipientEmail}...`);
+    console.log(`Sending demo certificate email to ${recipientEmail}...`);
 
     const result = await sendCourseCompletionEmail({
       to: recipientEmail,
@@ -43,3 +49,4 @@ async function main() {
 }
 
 main();
+

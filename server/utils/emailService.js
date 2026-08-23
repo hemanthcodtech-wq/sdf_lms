@@ -518,6 +518,107 @@ const sendRegistrationOtpEmail = async ({ to, name, otp }) => {
   }
 };
 
+/**
+ * Send Contact Us Form Inquiry Notification to Foundation Admin & Auto-Reply to Learner
+ */
+const sendContactInquiryEmail = async ({ name, email, phone, queryType, message }) => {
+  try {
+    const from = `"Swamy Dwija Foundation" <${process.env.SMTP_USER || 'support@swamydwija.org'}>`;
+    const transporter = createTransporter();
+
+    // 1. Notification to Foundation Admin Team
+    const adminRecipients = ['support@swamydwija.org', 'ramarajukoyyalagadda@gmail.com', process.env.SMTP_USER].filter(Boolean);
+    const adminMailOptions = {
+      from,
+      to: adminRecipients.join(', '),
+      subject: `📩 New Contact Form Inquiry from ${name} (${queryType || 'General Inquiry'})`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FAF7F2; padding: 25px; border-radius: 16px; color: #333333;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #0a4f2a; margin: 0; font-size: 22px;">Swamy Dwija Foundation</h1>
+            <p style="color: #666666; font-size: 12px; margin: 4px 0 0 0;">New Portal Contact Inquiry</p>
+          </div>
+
+          <div style="background-color: #ffffff; padding: 25px; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+            <h2 style="color: #1f2937; font-size: 18px; margin-top: 0;">New Learner Query Received 📬</h2>
+            <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 15px; border-radius: 6px; margin: 15px 0;">
+              <p style="margin: 4px 0; font-size: 13px; color: #374151;"><strong>Sender Name:</strong> ${name}</p>
+              <p style="margin: 4px 0; font-size: 13px; color: #374151;"><strong>Email Address:</strong> <a href="mailto:${email}" style="color: #0a4f2a;">${email}</a></p>
+              ${phone ? `<p style="margin: 4px 0; font-size: 13px; color: #374151;"><strong>Mobile / Phone:</strong> ${phone}</p>` : ''}
+              <p style="margin: 4px 0; font-size: 13px; color: #374151;"><strong>Topic / Category:</strong> ${queryType || 'General'}</p>
+              <p style="margin: 4px 0; font-size: 13px; color: #374151;"><strong>Date & Time:</strong> ${new Date().toLocaleString('en-IN')}</p>
+            </div>
+
+            <h3 style="color: #1f2937; font-size: 14px; margin-bottom: 6px;">Message Content:</h3>
+            <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 14px; border-radius: 8px; font-size: 13px; color: #4b5563; line-height: 1.6; white-space: pre-wrap;">
+${message}
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+              <a href="mailto:${email}?subject=Re: Inquiry with Swamy Dwija Foundation" style="background-color: #0a4f2a; color: #ffffff; padding: 10px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; font-size: 13px; display: inline-block;">
+                Reply Directly to ${name} →
+              </a>
+            </div>
+          </div>
+        </div>
+      `
+    };
+
+    const adminInfo = await transporter.sendMail(adminMailOptions);
+    console.log(`[EmailService] Admin contact notification sent:`, adminInfo.messageId || 'Success');
+
+    // 2. Automated Confirmation Email to Learner
+    if (email && email.includes('@')) {
+      try {
+        const userMailOptions = {
+          from,
+          to: email,
+          subject: `🙏 Thank you for contacting Swamy Dwija Foundation`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; background-color: #FAF7F2; padding: 25px; border-radius: 16px; color: #333333;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="color: #0a4f2a; margin: 0; font-size: 22px;">Swamy Dwija Foundation</h1>
+                <p style="color: #666666; font-size: 12px; margin: 4px 0 0 0;">Academy of Yoga & Vedic Wellness Sciences</p>
+              </div>
+
+              <div style="background-color: #ffffff; padding: 25px; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                <h2 style="color: #1f2937; font-size: 17px; margin-top: 0;">Namaste ${name || 'Seeker'}, 🙏</h2>
+                <p style="font-size: 13px; line-height: 1.6; color: #4b5563;">
+                  Thank you for reaching out to <strong>Swamy Dwija Foundation</strong>. We have received your inquiry regarding <em>"${queryType || 'General Inquiries'}"</em>.
+                </p>
+
+                <p style="font-size: 13px; line-height: 1.6; color: #4b5563;">
+                  Our support coordinators and gurus review every message with care. We will get back to you via email or phone within <strong>24 hours</strong>.
+                </p>
+
+                <div style="background-color: #fdfbf7; border-left: 4px solid #d4af37; padding: 12px; border-radius: 6px; margin: 18px 0; font-size: 12px; color: #78350f;">
+                  📍 <strong>Campus & Office:</strong><br/>
+                  B Block - 505, Northface Grandeur Apartments,<br/>
+                  Opposite Ayyappa Swamy Temple, Gollapudi,<br/>
+                  NTR District, Andhra Pradesh - 521225<br/>
+                  📞 <strong>Mobile:</strong> +91 9640275275
+                </div>
+
+                <p style="font-size: 12px; color: #9ca3af; text-align: center; margin-top: 20px; border-top: 1px solid #f3f4f6; padding-top: 12px;">
+                  Om Shanti • Swamy Dwija Foundation
+                </p>
+              </div>
+            </div>
+          `
+        };
+        await transporter.sendMail(userMailOptions);
+      } catch (userMailErr) {
+        console.error(`[EmailService] User confirmation email skipped:`, userMailErr.message);
+      }
+    }
+
+    return { success: true, messageId: adminInfo.messageId };
+  } catch (err) {
+    console.error(`[EmailService] Error in sendContactInquiryEmail:`, err.message);
+    return { success: false, error: err.message };
+  }
+};
+
 module.exports = {
   getClientBaseUrl,
   sendCourseEnrollmentEmail,
@@ -525,5 +626,6 @@ module.exports = {
   sendForgotPasswordOtpEmail,
   sendRegistrationOtpEmail,
   sendInstructorCredentialsEmail,
-  sendModeratorCredentialsEmail
+  sendModeratorCredentialsEmail,
+  sendContactInquiryEmail
 };

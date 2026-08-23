@@ -176,11 +176,34 @@ const Home = () => {
   const { t } = useLanguage();
   const [featuredCourses, setFeaturedCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [platformStats, setPlatformStats] = useState({
+    studentsCount: 5000,
+    studentsSuffix: '+',
+    studentsLabel: 'Students',
+    coursesCount: 25,
+    coursesSuffix: '+',
+    coursesLabel: 'Courses',
+    instructorsCount: 15,
+    instructorsSuffix: '+',
+    instructorsLabel: 'Instructors',
+    satisfactionRate: 99,
+    satisfactionSuffix: '%',
+    satisfactionLabel: 'Satisfaction'
+  });
 
   useEffect(() => {
+    // Fetch dynamic public stats
+    axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/settings/stats`)
+      .then(res => {
+        if (res.data?.success && res.data?.data) {
+          setPlatformStats(res.data.data);
+        }
+      })
+      .catch(() => {});
+
     const fetchCourses = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/courses/public`);
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses/public`);
         const list = response?.data?.data || (Array.isArray(response?.data) ? response.data : []);
         setFeaturedCourses(Array.isArray(list) ? list.slice(0, 4) : []);
       } catch (error) {
@@ -257,27 +280,27 @@ const Home = () => {
             <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-6 animate-fade-in-up">
               <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
                 <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
-                  <AnimatedCounter from={0} to={10} suffix="K+" duration={2.5} />
+                  <AnimatedCounter from={0} to={platformStats.studentsCount || 5000} suffix={platformStats.studentsSuffix || '+'} duration={2.5} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{t('stat_students')}</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{platformStats.studentsLabel || t('stat_students')}</div>
               </div>
               <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
                 <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
-                  <AnimatedCounter from={0} to={50} suffix="+" duration={2} />
+                  <AnimatedCounter from={0} to={platformStats.coursesCount || 50} suffix={platformStats.coursesSuffix || '+'} duration={2} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{t('stat_courses')}</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{platformStats.coursesLabel || t('stat_courses')}</div>
               </div>
               <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
                 <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
-                  <AnimatedCounter from={0} to={20} suffix="+" duration={2} />
+                  <AnimatedCounter from={0} to={platformStats.instructorsCount || 20} suffix={platformStats.instructorsSuffix || '+'} duration={2} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{t('stat_instructors')}</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{platformStats.instructorsLabel || t('stat_instructors')}</div>
               </div>
               <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
                 <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
-                  <AnimatedCounter from={0} to={99} suffix="%" duration={2.5} />
+                  <AnimatedCounter from={0} to={platformStats.satisfactionRate || 99} suffix={platformStats.satisfactionSuffix || '%'} duration={2.5} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{t('stat_satisfaction')}</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{platformStats.satisfactionLabel || t('stat_satisfaction')}</div>
               </div>
             </div>
           </motion.div>

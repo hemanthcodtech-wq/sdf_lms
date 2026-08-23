@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FaUsers, FaBookOpen, FaGraduationCap, FaVideo, FaRupeeSign, FaUserCircle, FaPlus, FaFolderOpen, FaArrowRight, FaCalendarCheck, FaClock } from 'react-icons/fa';
-import { motion } from 'framer-motion';
+import { 
+  FaUsers, FaBookOpen, FaGraduationCap, FaVideo, FaRupeeSign, 
+  FaUserCircle, FaPlus, FaFolderOpen, FaArrowRight, FaCalendarCheck, 
+  FaClock, FaSlidersH, FaCheckCircle, FaTimes, FaSave, FaGlobe, FaAward
+} from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
@@ -17,24 +21,88 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Public Stats Modal State
+  const [statsModalOpen, setStatsModalOpen] = useState(false);
+  const [publicStats, setPublicStats] = useState({
+    studentsCount: 5000,
+    studentsSuffix: '+',
+    studentsLabel: 'Transformed Seekers',
+    coursesCount: 25,
+    coursesSuffix: '+',
+    coursesLabel: 'Master Curricula',
+    instructorsCount: 15,
+    instructorsSuffix: '+',
+    instructorsLabel: 'Expert Gurus',
+    satisfactionRate: 99,
+    satisfactionSuffix: '%',
+    satisfactionLabel: 'Satisfaction',
+    communitiesCount: 15,
+    communitiesSuffix: '+',
+    communitiesLabel: 'Global Communities',
+    lineageRate: 100,
+    lineageSuffix: '%',
+    lineageLabel: 'Authentic Vedic Lineage'
+  });
+  const [savingStats, setSavingStats] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const token = localStorage.getItem('adminToken');
-        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/analytics`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.data.success) {
-          setStats(res.data.data);
-        }
-      } catch (err) {
-        console.error("Error fetching analytics", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchStats();
+    fetchPublicStats();
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/analytics`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setStats(res.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching analytics", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPublicStats = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/settings/stats`);
+      if (res.data.success && res.data.data) {
+        setPublicStats(res.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching public stats", err);
+    }
+  };
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 4000);
+  };
+
+  const handleSavePublicStats = async (e) => {
+    e.preventDefault();
+    setSavingStats(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const res = await axios.put(
+        `${import.meta.env.VITE_API_BASE_URL}/admin/settings/stats`,
+        publicStats,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.success) {
+        showToast('Public platform metrics updated successfully across Home & About pages!');
+        setStatsModalOpen(false);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error updating platform stats');
+    } finally {
+      setSavingStats(false);
+    }
+  };
 
   const statCards = [
     { 
@@ -81,6 +149,20 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-8 font-inter">
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-24 right-8 z-50 bg-brand-green text-white px-6 py-3.5 rounded-2xl shadow-2xl font-bold text-sm flex items-center gap-2 border border-brand-green-dark"
+          >
+            <FaCheckCircle className="text-yellow-300" /> {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Top Banner with Glassmorphism */}
       <div className="bg-white/60 backdrop-blur-2xl rounded-[2.5rem] p-6 lg:p-8 border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.03)] flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -95,6 +177,17 @@ const AdminDashboard = () => {
 
         {/* Quick Action Buttons */}
         <div className="flex flex-wrap items-center gap-3">
+          
+          {/* Edit Public Stats Button */}
+          <button
+            onClick={() => setStatsModalOpen(true)}
+            className="px-4 py-3 bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-800 border border-amber-300 rounded-2xl text-xs lg:text-sm font-bold shadow-xs transition-all flex items-center gap-2"
+            title="Edit public metrics shown on Home and About pages"
+          >
+            <FaSlidersH size={13} />
+            <span>Edit Public Stats</span>
+          </button>
+
           <button
             onClick={() => navigate('/admin/courses')}
             className="px-5 py-3 bg-brand-green hover:bg-brand-green-dark text-white rounded-2xl text-xs lg:text-sm font-bold shadow-[0_4px_16px_rgba(41,120,56,0.3)] transition-all flex items-center gap-2 group"
@@ -102,6 +195,7 @@ const AdminDashboard = () => {
             <FaPlus size={12} className="group-hover:rotate-90 transition-transform" />
             <span>Create Course</span>
           </button>
+          
           <button
             onClick={() => navigate('/admin/materials')}
             className="px-5 py-3 bg-white/90 hover:bg-white text-gray-700 border border-gray-200/80 rounded-2xl text-xs lg:text-sm font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-2"
@@ -244,6 +338,239 @@ const AdminDashboard = () => {
         </div>
 
       </div>
+
+      {/* 🌟 EDIT PUBLIC PLATFORM METRICS MODAL */}
+      <AnimatePresence>
+        {statsModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-[2.5rem] max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-white/80 my-8 space-y-6 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center text-xl border border-amber-200">
+                    <FaSlidersH />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-gray-900">Manage Public Platform Stats</h3>
+                    <p className="text-xs text-gray-500">
+                      Sync and edit metrics shown on Home & About pages (eliminates contradictions & errors).
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setStatsModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-all"
+                >
+                  <FaTimes size={13} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSavePublicStats} className="space-y-4">
+                
+                {/* Students Metric */}
+                <div className="grid grid-cols-3 gap-3 p-3.5 bg-gray-50 rounded-2xl border border-gray-100 items-center">
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Students Count</label>
+                    <input
+                      type="number"
+                      required
+                      value={publicStats.studentsCount}
+                      onChange={(e) => setPublicStats({ ...publicStats, studentsCount: Number(e.target.value) })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Suffix</label>
+                    <input
+                      type="text"
+                      value={publicStats.studentsSuffix}
+                      onChange={(e) => setPublicStats({ ...publicStats, studentsSuffix: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                      placeholder="e.g. +"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Label</label>
+                    <input
+                      type="text"
+                      value={publicStats.studentsLabel}
+                      onChange={(e) => setPublicStats({ ...publicStats, studentsLabel: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-brand-green"
+                      placeholder="e.g. Transformed Seekers"
+                    />
+                  </div>
+                </div>
+
+                {/* Courses Metric */}
+                <div className="grid grid-cols-3 gap-3 p-3.5 bg-gray-50 rounded-2xl border border-gray-100 items-center">
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Courses Count</label>
+                    <input
+                      type="number"
+                      required
+                      value={publicStats.coursesCount}
+                      onChange={(e) => setPublicStats({ ...publicStats, coursesCount: Number(e.target.value) })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Suffix</label>
+                    <input
+                      type="text"
+                      value={publicStats.coursesSuffix}
+                      onChange={(e) => setPublicStats({ ...publicStats, coursesSuffix: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                      placeholder="e.g. +"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Label</label>
+                    <input
+                      type="text"
+                      value={publicStats.coursesLabel}
+                      onChange={(e) => setPublicStats({ ...publicStats, coursesLabel: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-brand-green"
+                      placeholder="e.g. Master Curricula"
+                    />
+                  </div>
+                </div>
+
+                {/* Instructors Metric */}
+                <div className="grid grid-cols-3 gap-3 p-3.5 bg-gray-50 rounded-2xl border border-gray-100 items-center">
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Instructors Count</label>
+                    <input
+                      type="number"
+                      required
+                      value={publicStats.instructorsCount}
+                      onChange={(e) => setPublicStats({ ...publicStats, instructorsCount: Number(e.target.value) })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Suffix</label>
+                    <input
+                      type="text"
+                      value={publicStats.instructorsSuffix}
+                      onChange={(e) => setPublicStats({ ...publicStats, instructorsSuffix: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                      placeholder="e.g. +"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Label</label>
+                    <input
+                      type="text"
+                      value={publicStats.instructorsLabel}
+                      onChange={(e) => setPublicStats({ ...publicStats, instructorsLabel: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-brand-green"
+                      placeholder="e.g. Expert Gurus"
+                    />
+                  </div>
+                </div>
+
+                {/* Satisfaction Rate */}
+                <div className="grid grid-cols-3 gap-3 p-3.5 bg-gray-50 rounded-2xl border border-gray-100 items-center">
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Satisfaction Rate</label>
+                    <input
+                      type="number"
+                      required
+                      value={publicStats.satisfactionRate}
+                      onChange={(e) => setPublicStats({ ...publicStats, satisfactionRate: Number(e.target.value) })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Suffix</label>
+                    <input
+                      type="text"
+                      value={publicStats.satisfactionSuffix}
+                      onChange={(e) => setPublicStats({ ...publicStats, satisfactionSuffix: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                      placeholder="e.g. %"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Label</label>
+                    <input
+                      type="text"
+                      value={publicStats.satisfactionLabel}
+                      onChange={(e) => setPublicStats({ ...publicStats, satisfactionLabel: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-brand-green"
+                      placeholder="e.g. Satisfaction"
+                    />
+                  </div>
+                </div>
+
+                {/* Global Communities */}
+                <div className="grid grid-cols-3 gap-3 p-3.5 bg-gray-50 rounded-2xl border border-gray-100 items-center">
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Communities Count</label>
+                    <input
+                      type="number"
+                      required
+                      value={publicStats.communitiesCount}
+                      onChange={(e) => setPublicStats({ ...publicStats, communitiesCount: Number(e.target.value) })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Suffix</label>
+                    <input
+                      type="text"
+                      value={publicStats.communitiesSuffix}
+                      onChange={(e) => setPublicStats({ ...publicStats, communitiesSuffix: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                      placeholder="e.g. +"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block">Label</label>
+                    <input
+                      type="text"
+                      value={publicStats.communitiesLabel}
+                      onChange={(e) => setPublicStats({ ...publicStats, communitiesLabel: e.target.value })}
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-brand-green"
+                      placeholder="e.g. Global Communities"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setStatsModalOpen(false)}
+                    className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingStats}
+                    className="px-6 py-2.5 bg-brand-green hover:bg-brand-green-dark text-white font-extrabold rounded-xl text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {savingStats ? (
+                      <span>Saving...</span>
+                    ) : (
+                      <>
+                        <FaSave size={12} />
+                        <span>Save & Sync All Pages</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </form>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

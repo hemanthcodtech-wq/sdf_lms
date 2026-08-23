@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FaArrowLeft, FaWhatsapp, FaEnvelope, FaPhoneAlt, FaChevronDown, FaPaperPlane, FaCheckCircle, FaQuestionCircle } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const HelpSupport = () => {
   const navigate = useNavigate();
   const [activeFaq, setActiveFaq] = useState(null);
   const [formData, setFormData] = useState({ name: '', email: '', queryType: 'General', message: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const faqs = [
     {
@@ -32,13 +34,28 @@ const HelpSupport = () => {
     }
   ];
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setFormData({ name: '', email: '', queryType: 'General', message: '' });
-    }, 4000);
+    setLoading(true);
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+      await axios.post(`${apiBase}/contact/submit`, {
+        name: formData.name,
+        email: formData.email,
+        queryType: formData.queryType,
+        message: formData.message
+      });
+      setSubmitted(true);
+      setTimeout(() => {
+        setSubmitted(false);
+        setFormData({ name: '', email: '', queryType: 'General', message: '' });
+      }, 5000);
+    } catch (err) {
+      console.error('Help support form submit error:', err);
+      alert('Could not submit message. Please contact support via WhatsApp or Email.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -62,7 +79,7 @@ const HelpSupport = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* WhatsApp Support */}
         <a
-          href="https://wa.me/919876543210?text=Hello%20Swamy%20Dwija%20Foundation,%20I%20need%20assistance%20with%20my%20classes."
+          href="https://wa.me/919640275275?text=Hello%20Swamy%20Dwija%20Foundation,%20I%20need%20assistance%20with%20my%20classes."
           target="_blank"
           rel="noreferrer"
           className="bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/30 p-6 rounded-3xl flex flex-col items-center text-center transition-all group shadow-sm"
@@ -89,14 +106,17 @@ const HelpSupport = () => {
         </a>
 
         {/* Helpline Support */}
-        <div className="bg-amber-500/10 border border-amber-500/30 p-6 rounded-3xl flex flex-col items-center text-center shadow-sm">
-          <div className="w-14 h-14 bg-amber-500 text-white rounded-2xl flex items-center justify-center text-2xl mb-3 shadow-md">
+        <a
+          href="tel:+919640275275"
+          className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 p-6 rounded-3xl flex flex-col items-center text-center shadow-sm transition-all block"
+        >
+          <div className="w-14 h-14 bg-amber-500 text-white rounded-2xl flex items-center justify-center text-2xl mb-3 shadow-md mx-auto">
             <FaPhoneAlt />
           </div>
           <h3 className="font-bold text-gray-900 text-base">Helpline Hours</h3>
           <p className="text-xs text-gray-500 mt-1">Mon - Sat: 6:00 AM - 8:00 PM</p>
-          <span className="mt-3 text-xs font-bold text-amber-700 bg-white px-3 py-1 rounded-full shadow-xs">+91 98765 43210</span>
-        </div>
+          <span className="mt-3 text-xs font-bold text-amber-700 bg-white px-3 py-1 rounded-full shadow-xs inline-block">+91 9640275275</span>
+        </a>
       </div>
 
       {/* Main Grid: FAQs & Ticket Form */}

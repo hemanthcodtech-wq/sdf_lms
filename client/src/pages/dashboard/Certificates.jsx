@@ -267,106 +267,74 @@ const Certificates = () => {
                     key={activeCert._id}
                     initial={{ opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="w-full bg-[#FCFAF6] p-6 md:p-8 rounded-3xl shadow-[0_15px_50px_rgba(0,0,0,0.08)] border-4 border-[#B8860B] relative overflow-hidden flex flex-col items-center justify-between text-center select-none"
+                    className="w-full bg-[#FCFAF6] rounded-3xl shadow-[0_15px_50px_rgba(0,0,0,0.08)] border-4 border-[#0A4F2A]/30 relative overflow-hidden flex flex-col items-center justify-between text-center select-none"
                     style={{ aspectRatio: '1.414/1' }}
                   >
-                    {/* Double Ornate Filigree Border */}
-                    <div className="absolute inset-2 border border-[#0A4F2A] pointer-events-none rounded-2xl" />
-                    <div className="absolute inset-3 border-2 border-[#D4AF37] pointer-events-none rounded-2xl" />
-                    
-                    {/* Corner Ornaments */}
-                    <div className="absolute top-2 left-2 w-3 h-3 bg-[#B8860B]" />
-                    <div className="absolute top-2 right-2 w-3 h-3 bg-[#B8860B]" />
-                    <div className="absolute bottom-2 left-2 w-3 h-3 bg-[#B8860B]" />
-                    <div className="absolute bottom-2 right-2 w-3 h-3 bg-[#B8860B]" />
+                    {/* Official Certificate Template Background Image */}
+                    <img 
+                      src="/certificate_template.jpg" 
+                      alt="Certificate Background" 
+                      className="absolute inset-0 w-full h-full object-fill pointer-events-none"
+                    />
 
-                    {/* Translucent Background Watermark Logo */}
-                    <div 
-                      className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05] z-0"
-                    >
-                      <img src="/logo.png" alt="Watermark" className="w-72 h-auto" />
-                    </div>
-
-                    {/* Certificate Foreground Content */}
-                    <div className="relative z-10 w-full flex flex-col items-center justify-between h-full">
+                    {/* Certificate Foreground Overlays */}
+                    <div className="relative z-10 w-full h-full flex flex-col justify-between p-4 md:p-6 text-left">
                       
-                      {/* Top Branding */}
-                      <div className="flex flex-col items-center gap-0.5 pt-1">
-                        <img src="/logo.png" alt="SDF Logo" className="h-10 w-auto mb-0.5" />
-                        <h2 className="text-xs md:text-sm font-black tracking-widest text-[#0A4F2A] uppercase">
-                          SWAMY DWIJA FOUNDATION
-                        </h2>
-                        <p className="text-[8px] md:text-[9px] text-[#854D0E] font-bold tracking-widest uppercase">
-                          ACADEMY OF YOGA, PRANAYAMA & VEDIC SCIENCES
-                        </p>
+                      {/* Left Sidebar Meta Information Overlay */}
+                      <div className="absolute left-[12%] top-[39.5%] text-[7.5px] md:text-[9.5px] font-bold text-gray-900 text-left w-[12%] pl-1">
+                        {activeCert.studentId || `SDWFY${activeCert._id.slice(-6).toUpperCase()}`}
+                      </div>
+                      <div className="absolute left-[12%] top-[51%] text-[7.5px] md:text-[9.5px] font-bold text-gray-900 text-left w-[12%] pl-1">
+                        {issueDateFormatted}
+                      </div>
+                      <div className="absolute left-[12%] top-[58.5%] text-[7px] md:text-[9px] font-bold text-gray-900 text-left w-[12%] bg-[#FAF7F2] py-0.5 pl-1 rounded">
+                        <div>{durationName?.includes('(') ? durationName.split('(')[0] : (durationName || '30 Days')}</div>
+                        <div className="text-[6.5px] md:text-[8px] text-gray-800">{durationName?.includes('(') ? `(${durationName.split('(')[1]}` : '(20 Hours)'}</div>
+                      </div>
+                      <div className="absolute left-[12%] top-[70.5%] text-[7px] md:text-[9px] font-bold text-gray-900 text-left w-[12%] pl-1">
+                        {activeCert.certificateId || `SDWFY${activeCert._id.slice(-8).toUpperCase()}`}
                       </div>
 
-                      {/* Certificate Title */}
-                      <div className="my-0.5">
-                        <h3 className="text-xl md:text-2xl font-serif italic text-[#1E3A24] font-bold">
-                          Certificate of Completion
-                        </h3>
-                        <p className="text-[8px] md:text-[9px] text-gray-500 uppercase tracking-widest font-medium">
-                          THIS IS PROUDLY AND OFFICIALLY PRESENTED TO
-                        </p>
-                      </div>
-
-                      {/* Recipient Student Name */}
-                      <div className="my-0.5">
-                        <h1 className="text-xl md:text-2xl font-serif font-black text-[#0A4F2A] px-6 max-w-md truncate">
+                      {/* Recipient Student Name (Center, above green line) */}
+                      <div className="absolute left-[20%] right-[20%] top-[48.5%] text-center">
+                        <h1 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-serif italic font-black text-[#0A4F2A] truncate tracking-wide px-2">
                           {currentPrintedName}
                         </h1>
-                        <div className="w-44 h-0.5 bg-[#D4AF37] mx-auto mt-0.5 mb-0.5" />
-                        <div className="w-28 h-px bg-[#0A4F2A] mx-auto" />
                       </div>
 
-                      {/* Achievement Statement & Course Title */}
-                      <div className="space-y-0.5 max-w-lg">
-                        <p className="text-[9px] md:text-[10px] text-gray-600 leading-tight">
-                          for successfully completing the comprehensive live instructional curriculum and practice in
+                      {/* Dynamic Course Title (Center, below 'has successfully completed the') */}
+                      {(certCourse.title && certCourse.title !== 'Yoga for Wellness and Inner Balance') && (
+                        <div className="absolute left-[24%] right-[20%] top-[61.5%] text-center bg-[#FAF7F2] py-0.5 rounded px-2">
+                          <h4 className="text-xs sm:text-sm md:text-base font-extrabold text-gray-900 truncate">
+                            {certCourse.title}
+                          </h4>
+                        </div>
+                      )}
+
+                      {/* Bottom Instructor Details (Left, Centered under left diamond ornament) */}
+                      <div className="absolute left-[24.5%] -translate-x-1/2 bottom-[9%] text-center w-[22%]">
+                        <p className="font-extrabold text-[8px] md:text-[10px] text-[#0A4F2A] uppercase tracking-tight">
+                          {instructorName || 'RISHI KRISHNA'}
                         </p>
-                        <h4 className="text-sm md:text-base font-bold text-gray-900">
-                          {certCourse.title || 'Hatha Yoga & Holistic Wellness Program'}
-                        </h4>
+                        <p className="text-[6.5px] md:text-[8px] text-gray-600 font-medium">
+                          Yoga Instructor
+                        </p>
+                        <p className="text-[6px] md:text-[7px] text-gray-500">
+                          Certified Yoga Professional
+                        </p>
                       </div>
 
-                      {/* Course Details & Faculty Badge Pill */}
-                      <div className="px-4 py-1 rounded-lg bg-gray-50 border border-gray-200 text-[8px] md:text-[9px] font-bold text-gray-700 max-w-md truncate">
-                        Category: <span className="text-[#0A4F2A]">{categoryName}</span> • Level: <span className="text-[#0A4F2A]">{levelName}</span> • Duration: <span className="text-[#0A4F2A]">{durationName}</span> • Faculty: <span className="text-[#0A4F2A]">{instructorName}</span>
-                      </div>
-
-                      {/* Footer Details & Double Signatures */}
-                      <div className="flex justify-between items-end w-full px-3 pt-2 border-t border-gray-200/80 mt-auto">
-                        <div className="text-left text-[8px] md:text-[9px] text-gray-500 space-y-0.5">
-                          <p className="font-bold text-gray-800">
-                            Date of Issue: {issueDateFormatted}
-                          </p>
-                          <p className="font-mono text-gray-500">
-                            Certificate ID: {activeCert.certificateId || `SDF-CERT-${activeCert._id.slice(-6).toUpperCase()}`}
-                          </p>
-                          <p className="text-[7px] text-gray-400">swamydwija.org/verify</p>
-                        </div>
-
-                        <div className="px-2.5 py-1 bg-[#FEF9C3] border border-[#D4AF37] rounded text-[#854D0E] text-[7px] md:text-[8px] font-bold">
-                          ★ OFFICIALLY VERIFIED ★
-                        </div>
-
-                        {/* Double Signatures */}
-                        <div className="flex items-center gap-4 text-right">
-                          <div className="text-center">
-                            <span className="font-serif italic text-xs text-gray-900 font-bold block border-b border-gray-400 pb-0.5">
-                              {instructorName}
-                            </span>
-                            <span className="text-[7px] text-gray-600 font-bold block mt-0.5">Lead Guru</span>
-                          </div>
-
-                          <div className="text-center">
-                            <span className="font-serif italic text-xs text-gray-900 font-bold block border-b border-gray-400 pb-0.5">
-                              Swamy Dwija
-                            </span>
-                            <span className="text-[7px] text-gray-600 font-bold block mt-0.5">Director</span>
-                          </div>
-                        </div>
+                      {/* Bottom Director Details (Right, Centered under right diamond ornament) */}
+                      <div className="absolute left-[64%] -translate-x-1/2 bottom-[9%] text-center w-[22%]">
+                        <p className="font-extrabold text-[8px] md:text-[10px] text-[#0A4F2A] uppercase tracking-tight">
+                          SWAMY DWIJA
+                        </p>
+                        <p className="text-[6.5px] md:text-[8px] text-gray-600 font-medium">
+                          Founder & Director
+                        </p>
+                        <p className="text-[6px] md:text-[7px] text-gray-500">
+                          Swamy Dwija Foundation
+                        </p>
                       </div>
 
                     </div>

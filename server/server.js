@@ -106,6 +106,7 @@ app.use('/api/instructor', require('./routes/instructorPortalRoutes'));
 app.use('/api/moderator', require('./routes/moderatorPortalRoutes'));
 app.use('/api/zoom', require('./routes/zoomWebhookRoutes'));
 app.use('/api/live-classes', require('./routes/liveClassRoutes'));
+app.use('/api/contact', require('./routes/contactRoutes'));
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

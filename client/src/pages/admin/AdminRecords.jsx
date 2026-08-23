@@ -4,7 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaAward, FaFileInvoice, FaSearch, FaCheckCircle, FaClock, 
   FaDownload, FaExternalLinkAlt, FaTimes, FaShieldAlt, FaSyncAlt, 
-  FaRupeeSign, FaEnvelope, FaTrashAlt, FaFileCsv, FaEye, FaUserGraduate
+  FaRupeeSign, FaEnvelope, FaTrashAlt, FaFileCsv, FaEye, FaUserGraduate,
+  FaEdit, FaPlus, FaPaperPlane, FaMagic, FaCalendarAlt, FaUser, FaBook,
+  FaIdCard, FaChalkboardTeacher
 } from 'react-icons/fa';
 
 const AdminRecords = () => {
@@ -22,11 +24,34 @@ const AdminRecords = () => {
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState('');
 
-  // Live Certificate Preview Modal
+  // Live Certificate Preview Modal (Existing)
   const [previewRecord, setPreviewRecord] = useState(null);
+
+  // 📝 Custom / Edit Certificate Modal State
+  const [customModalOpen, setCustomModalOpen] = useState(false);
+  const [customModalMode, setCustomModalMode] = useState('create'); // 'create' | 'edit'
+  const [coursesList, setCoursesList] = useState([]);
+  const [customForm, setCustomForm] = useState({
+    enrollmentId: null,
+    studentName: '',
+    studentEmail: '',
+    courseTitle: '',
+    completionDate: new Date().toISOString().split('T')[0],
+    certificateId: '',
+    studentId: '',
+    duration: '30 Days (20 Hours)',
+    instructorName: 'RISHI KRISHNA',
+    instructorTitle: 'Yoga Instructor',
+    instructorSubtitle: 'Certified Yoga Professional',
+    sendEmail: true,
+    updateEnrollment: true
+  });
+  const [customSubmitting, setCustomSubmitting] = useState(false);
+  const [customPreviewing, setCustomPreviewing] = useState(false);
 
   useEffect(() => {
     fetchRecords();
+    fetchCourses();
   }, []);
 
   const fetchRecords = async () => {
@@ -45,28 +70,157 @@ const AdminRecords = () => {
     }
   };
 
+  const fetchCourses = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses/public`);
+      if (res.data.success && Array.isArray(res.data.data)) {
+        setCoursesList(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching courses:', err);
+    }
+  };
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  // Issue / Re-issue Certificate
-  const handleIssueCertificate = async (enrollmentId) => {
-    setActionLoading(prev => ({ ...prev, [enrollmentId]: 'issuing' }));
+  // Helper to generate a random authentic certificate ID
+  const generateNewCertId = () => {
+    const timestamp = Date.now().toString().slice(-6);
+    const rand = Math.floor(100 + Math.random() * 900);
+    return `SDF-CERT-${timestamp}${rand}`;
+  };
+
+  // Open Modal in CREATE Mode (Brand New Custom Certificate)
+  const handleOpenCreateModal = () => {
+    setCustomModalMode('create');
+    setCustomForm({
+      enrollmentId: null,
+      studentName: '',
+      studentEmail: '',
+      courseTitle: coursesList.length > 0 ? coursesList[0].title : 'Yoga for Wellness and Inner Balance',
+      completionDate: new Date().toISOString().split('T')[0],
+      certificateId: generateNewCertId(),
+      studentId: `SDWFY${Date.now().toString().slice(-6)}`,
+      duration: '30 Days (20 Hours)',
+      instructorName: 'RISHI KRISHNA',
+      instructorTitle: 'Yoga Instructor',
+      instructorSubtitle: 'Certified Yoga Professional',
+      sendEmail: true,
+      updateEnrollment: false
+    });
+    setCustomModalOpen(true);
+  };
+
+  // Open Modal in EDIT Mode (Modifying existing student enrollment certificate)
+  const handleOpenEditModal = (record) => {
+    setCustomModalMode('edit');
+    
+    // Parse date safely
+    let parsedDate = new Date().toISOString().split('T')[0];
+    if (record.completionDate) {
+      try {
+        parsedDate = new Date(record.completionDate).toISOString().split('T')[0];
+      } catch (e) {}
+    }
+
+    setCustomForm({
+      enrollmentId: record._id,
+      studentName: record.studentName || '',
+      studentEmail: record.studentEmail || '',
+      courseTitle: record.course?.title || 'Yoga for Wellness and Inner Balance',
+      completionDate: parsedDate,
+      certificateId: record.certificateId || generateNewCertId(),
+      studentId: record.studentEmail ? `SDWFY${record.studentEmail.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase()}` : 'SDWFY250501',
+      duration: record.course?.duration || '30 Days (20 Hours)',
+      instructorName: 'RISHI KRISHNA',
+      instructorTitle: 'Yoga Instructor',
+      instructorSubtitle: 'Certified Yoga Professional',
+      sendEmail: true,
+      updateEnrollment: true
+    });
+    setCustomModalOpen(true);
+  };
+
+  // Handle Real-time Form Field Change
+  const handleFormChange = (field, value) => {
+    setCustomForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Handle PDF Preview in new browser tab / window
+  const handleDownloadPreviewPDF = async () => {
+    if (!customForm.studentName.trim()) {
+      alert('Please enter a student name before previewing.');
+      return;
+    }
+    setCustomPreviewing(true);
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/admin/certificate/preview-pdf`,
+        {
+          studentName: customForm.studentName,
+          courseTitle: customForm.courseTitle,
+          completionDate: customForm.completionDate,
+          certificateId: customForm.certificateId,
+          studentId: customForm.studentId,
+          duration: customForm.duration,
+          instructorName: customForm.instructorName,
+          instructorTitle: customForm.instructorTitle,
+          instructorSubtitle: customForm.instructorSubtitle
+        },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+          responseType: 'blob'
+        }
+      );
+
+      const file = new Blob([response.data], { type: 'application/pdf' });
+      const fileURL = URL.createObjectURL(file);
+      window.open(fileURL, '_blank');
+    } catch (err) {
+      console.error('Error previewing certificate PDF:', err);
+      alert('Could not render certificate PDF. Please check server logs.');
+    } finally {
+      setCustomPreviewing(false);
+    }
+  };
+
+  // Save / Generate and Send Certificate via API
+  const handleSaveAndSendCertificate = async (e) => {
+    e.preventDefault();
+    if (!customForm.studentName.trim()) {
+      alert('Please enter a valid student name');
+      return;
+    }
+    if (!customForm.courseTitle.trim()) {
+      alert('Please enter a course title');
+      return;
+    }
+    if (customForm.sendEmail && !customForm.studentEmail.trim()) {
+      alert('Please enter a student email to send the certificate email.');
+      return;
+    }
+
+    setCustomSubmitting(true);
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/courses/admin/issue-certificate/${enrollmentId}`,
-        {},
+        `${import.meta.env.VITE_API_BASE_URL}/admin/certificate/custom-generate-and-send`,
+        customForm,
         { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }
       );
+
       if (res.data.success) {
-        showToast('Certificate generated, stored in Cloudinary, and emailed to student!');
+        showToast(res.data.message || 'Certificate created and processed successfully!');
+        setCustomModalOpen(false);
         fetchRecords();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Error issuing certificate');
+      console.error('Error creating custom certificate:', err);
+      alert(err.response?.data?.message || 'Failed to process certificate. Please try again.');
     } finally {
-      setActionLoading(prev => ({ ...prev, [enrollmentId]: null }));
+      setCustomSubmitting(false);
     }
   };
 
@@ -187,38 +341,50 @@ const AdminRecords = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-24 right-8 z-50 bg-brand-green text-white px-6 py-3.5 rounded-2xl shadow-xl font-bold text-sm flex items-center gap-2"
+            className="fixed top-24 right-8 z-50 bg-brand-green text-white px-6 py-3.5 rounded-2xl shadow-2xl font-bold text-sm flex items-center gap-2 border border-brand-green-dark"
           >
-            <FaCheckCircle /> {toastMessage}
+            <FaCheckCircle className="text-yellow-300" /> {toastMessage}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Top Banner Header */}
-      <div className="bg-white/60 backdrop-blur-2xl rounded-[2.5rem] p-6 lg:p-8 border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.03)] flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] p-6 lg:p-8 border border-white/90 shadow-[0_8px_32px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-green/10 text-brand-green-dark text-xs font-bold uppercase tracking-wider mb-2">
             <FaShieldAlt /> Accreditation & Financial Records
           </div>
           <h1 className="text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">Certificates & Invoices Hub</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Search, issue, verify, and inspect all official certificates, Tax Invoices, and Cloudinary archives.
+            Search, modify, create custom certificates, download official PDFs, and email credentials to learners.
           </p>
         </div>
 
-        {/* Quick Action Buttons */}
+        {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-3">
+          
+          {/* New Custom Certificate Button */}
           <button
-            onClick={() => { setVerifyModalOpen(true); setVerifyResult(null); setVerifyError(''); }}
-            className="px-5 py-3 bg-brand-green hover:bg-brand-green-dark text-white font-extrabold rounded-2xl text-xs lg:text-sm shadow-md shadow-brand-green/20 transition-all flex items-center gap-2"
+            onClick={handleOpenCreateModal}
+            className="px-5 py-3 bg-brand-green hover:bg-brand-green-dark text-white font-extrabold rounded-2xl text-xs lg:text-sm shadow-md shadow-brand-green/25 transition-all flex items-center gap-2 transform active:scale-95"
           >
-            <FaSearch size={13} />
-            <span>Verify Certificate by ID</span>
+            <FaPlus size={12} className="text-yellow-300" />
+            <span>Create / Issue Certificate</span>
           </button>
 
+          {/* Verify by ID */}
+          <button
+            onClick={() => { setVerifyModalOpen(true); setVerifyResult(null); setVerifyError(''); }}
+            className="px-4 py-3 bg-white hover:bg-gray-50 border border-gray-200 text-gray-800 font-bold rounded-2xl text-xs lg:text-sm shadow-xs transition-all flex items-center gap-2"
+          >
+            <FaSearch size={13} className="text-gray-500" />
+            <span>Verify ID</span>
+          </button>
+
+          {/* Export CSV */}
           <button
             onClick={handleExportCSV}
-            className="px-5 py-3 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold rounded-2xl text-xs lg:text-sm shadow-xs transition-all flex items-center gap-2"
+            className="px-4 py-3 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold rounded-2xl text-xs lg:text-sm shadow-xs transition-all flex items-center gap-2"
           >
             <FaFileCsv size={15} className="text-green-700" />
             <span>Export CSV</span>
@@ -287,7 +453,7 @@ const AdminRecords = () => {
           <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
           <input
             type="text"
-            placeholder="Search by Certificate ID (e.g. SDF-CERT-XXXX), Invoice No, Student, Course..."
+            placeholder="Search by Certificate ID, Invoice No, Student Name, Email, Course..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-11 pr-4 py-3 bg-white/90 border border-gray-200/80 rounded-2xl text-xs lg:text-sm font-medium text-gray-800 placeholder-gray-400 shadow-xs focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all"
@@ -332,11 +498,11 @@ const AdminRecords = () => {
       ) : (
         <div className="bg-white/75 backdrop-blur-2xl rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-white/80 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[1000px]">
+            <table className="w-full text-left border-collapse min-w-[1050px]">
               <thead>
                 <tr className="bg-gray-50/80 border-b border-gray-100 text-gray-500 text-xs font-bold uppercase tracking-wider">
                   <th className="p-5 pl-8">Learner</th>
-                  <th className="p-5">Course / Category</th>
+                  <th className="p-5">Course / Program</th>
                   <th className="p-5">Tax Invoice</th>
                   <th className="p-5">Certificate Status</th>
                   <th className="p-5">Amount (₹)</th>
@@ -447,6 +613,16 @@ const AdminRecords = () => {
                     <td className="p-5 pr-8 text-right">
                       <div className="inline-flex items-center gap-2">
                         
+                        {/* ✏️ Edit & Send Certificate Action */}
+                        <button
+                          onClick={() => handleOpenEditModal(r)}
+                          className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-800 text-xs font-bold rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 border border-amber-300"
+                          title="Modify details and send certificate to learner"
+                        >
+                          <FaEdit size={12} />
+                          <span>{r.completed ? 'Modify & Send' : 'Issue / Send'}</span>
+                        </button>
+
                         {/* Direct Open / View Invoice Button */}
                         <a
                           href={r.invoiceUrl || `${import.meta.env.VITE_API_BASE_URL}/payments/invoice/${r._id}/download`}
@@ -456,7 +632,7 @@ const AdminRecords = () => {
                           title="Open Tax Invoice PDF in new tab"
                         >
                           <FaEye size={12} className="text-gray-500" />
-                          <span>View Invoice</span>
+                          <span>Invoice</span>
                         </a>
 
                         {/* Direct Open / View Certificate if completed */}
@@ -469,7 +645,7 @@ const AdminRecords = () => {
                             title="Open Certificate PDF in new tab"
                           >
                             <FaAward size={12} />
-                            <span>View Cert</span>
+                            <span>PDF</span>
                           </a>
                         )}
 
@@ -502,6 +678,296 @@ const AdminRecords = () => {
           </div>
         </div>
       )}
+
+      {/* 🌟 CERTIFICATE EDITOR & CREATOR MODAL (NEW FEATURE) */}
+      <AnimatePresence>
+        {customModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-[2rem] max-w-5xl w-full p-6 md:p-8 shadow-2xl border border-white/80 my-8 space-y-6 max-h-[90vh] overflow-y-auto"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-green/10 text-brand-green flex items-center justify-center text-xl">
+                    <FaAward />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                      {customModalMode === 'edit' ? 'Modify & Re-Issue Certificate' : 'Create Custom Certificate'}
+                      <span className="text-xs bg-amber-100 text-amber-800 font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        Official SDF Studio
+                      </span>
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Customize recipient name, course details, date, instructor, and send PDF directly to the student.
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setCustomModalOpen(false)}
+                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-all"
+                >
+                  <FaTimes size={14} />
+                </button>
+              </div>
+
+              {/* Form & Live Digital Preview 2-Column Layout */}
+              <form onSubmit={handleSaveAndSendCertificate} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                {/* Left Form Controls (7 cols) */}
+                <div className="lg:col-span-7 space-y-4">
+                  
+                  {/* Recipient Full Name */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                      <FaUser className="text-brand-green" /> Learner / Student Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Ananya Sharma"
+                      value={customForm.studentName}
+                      onChange={(e) => handleFormChange('studentName', e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
+                    />
+                  </div>
+
+                  {/* Recipient Email */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                      <FaEnvelope className="text-brand-green" /> Learner Email Address
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="e.g. learner@example.com"
+                      value={customForm.studentEmail}
+                      onChange={(e) => handleFormChange('studentEmail', e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
+                    />
+                  </div>
+
+                  {/* Course Title (Pick from dropdown or custom type) */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5"><FaBook className="text-brand-green" /> Course / Program Title *</span>
+                      {coursesList.length > 0 && (
+                        <span className="text-[11px] text-brand-green font-normal">Or select existing course</span>
+                      )}
+                    </label>
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Master Yoga Pranayama & Vedic Wellness"
+                        value={customForm.courseTitle}
+                        onChange={(e) => handleFormChange('courseTitle', e.target.value)}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
+                      />
+                      {coursesList.length > 0 && (
+                        <select
+                          onChange={(e) => e.target.value && handleFormChange('courseTitle', e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-100/70 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
+                        >
+                          <option value="">-- Quick Select from Database Courses --</option>
+                          {coursesList.map(c => (
+                            <option key={c._id} value={c.title}>{c.title} ({c.category})</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Certificate ID & Auto Generate */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5"><FaIdCard className="text-brand-green" /> Certificate ID</span>
+                        <button
+                          type="button"
+                          onClick={() => handleFormChange('certificateId', generateNewCertId())}
+                          className="text-[11px] text-brand-green hover:underline flex items-center gap-1 font-bold"
+                        >
+                          <FaMagic size={10} /> Auto-Generate
+                        </button>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. SDF-CERT-260823"
+                        value={customForm.certificateId}
+                        onChange={(e) => handleFormChange('certificateId', e.target.value)}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
+                      />
+                    </div>
+
+                    {/* Completion / Issue Date */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                        <FaCalendarAlt className="text-brand-green" /> Issue / Completion Date
+                      </label>
+                      <input
+                        type="date"
+                        value={customForm.completionDate}
+                        onChange={(e) => handleFormChange('completionDate', e.target.value)}
+                        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Course Duration & Instructor Details */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-700">Course Duration</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 30 Days (20 Hours)"
+                        value={customForm.duration}
+                        onChange={(e) => handleFormChange('duration', e.target.value)}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                        <FaChalkboardTeacher className="text-brand-green" /> Instructor Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. RISHI KRISHNA"
+                        value={customForm.instructorName}
+                        onChange={(e) => handleFormChange('instructorName', e.target.value)}
+                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none uppercase"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email & DB Update Checkboxes */}
+                  <div className="pt-2 border-t border-gray-100 space-y-2">
+                    <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
+                      <input
+                        type="checkbox"
+                        checked={customForm.sendEmail}
+                        onChange={(e) => handleFormChange('sendEmail', e.target.checked)}
+                        className="w-4 h-4 text-brand-green rounded border-gray-300 focus:ring-brand-green"
+                      />
+                      <span>Email the official certificate PDF directly to the learner</span>
+                    </label>
+
+                    {customModalMode === 'edit' && (
+                      <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
+                        <input
+                          type="checkbox"
+                          checked={customForm.updateEnrollment}
+                          onChange={(e) => handleFormChange('updateEnrollment', e.target.checked)}
+                          className="w-4 h-4 text-brand-green rounded border-gray-300 focus:ring-brand-green"
+                        />
+                        <span>Update student database enrollment status to 100% Completed</span>
+                      </label>
+                    )}
+                  </div>
+
+                </div>
+
+                {/* Right Interactive Certificate Live Mockup (5 cols) */}
+                <div className="lg:col-span-5 flex flex-col justify-between space-y-4">
+                  <div className="bg-[#FAF7F2] p-5 rounded-3xl border-2 border-[#D4AF37] relative shadow-inner overflow-hidden flex flex-col items-center text-center">
+                    
+                    {/* Inner gold filigree */}
+                    <div className="absolute inset-1.5 border border-[#0A4F2A]/30 rounded-2xl pointer-events-none" />
+                    
+                    {/* Header Logo */}
+                    <img src="/logo.png" alt="Logo" className="h-8 w-auto mb-1 opacity-90" />
+                    <span className="text-[10px] font-black tracking-widest text-[#0A4F2A] uppercase">SWAMY DWIJA FOUNDATION</span>
+                    <span className="text-[7px] text-[#854D0E] font-bold tracking-widest uppercase mb-2">ACADEMY OF YOGA & VEDIC SCIENCES</span>
+
+                    <span className="text-xs font-serif italic text-[#1E3A24] font-bold">Certificate of Completion</span>
+                    <span className="text-[7px] text-gray-500 uppercase tracking-widest my-1">THIS IS PROUDLY PRESENTED TO</span>
+
+                    {/* Live Recipient Name */}
+                    <div className="text-xl font-serif font-black text-[#0A4F2A] my-1 min-h-[30px] flex items-center justify-center">
+                      {customForm.studentName || 'Learner Name'}
+                    </div>
+                    <div className="w-24 h-0.5 bg-[#D4AF37] mb-2" />
+
+                    <p className="text-[8px] text-gray-600 max-w-xs mb-1 leading-tight">
+                      has successfully completed the comprehensive curriculum in
+                    </p>
+
+                    {/* Live Course Title */}
+                    <div className="text-xs font-bold text-gray-900 bg-white/70 px-3 py-1 rounded-lg border border-amber-200/50 mb-3 max-w-[90%]">
+                      {customForm.courseTitle || 'Course Title'}
+                    </div>
+
+                    {/* Bottom Metadata */}
+                    <div className="w-full flex justify-between items-end text-[7.5px] text-gray-600 pt-2 border-t border-gray-200 px-2">
+                      <div className="text-left">
+                        <p className="font-bold text-gray-800">Date: {customForm.completionDate || '2026-08-23'}</p>
+                        <p className="font-mono text-[7px] text-amber-800">{customForm.certificateId || 'SDF-CERT-SAMPLE'}</p>
+                      </div>
+                      <div className="text-center">
+                        <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 font-extrabold rounded text-[7px]">
+                          ★ VERIFIED ★
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900">{customForm.instructorName || 'RISHI KRISHNA'}</p>
+                        <p className="text-[6.5px] text-gray-500">Instructor</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions inside Modal */}
+                  <div className="space-y-2 pt-2">
+                    
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      disabled={customSubmitting}
+                      className="w-full py-3.5 bg-brand-green hover:bg-brand-green-dark text-white font-extrabold rounded-2xl text-sm shadow-md shadow-brand-green/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {customSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Generating & Sending Certificate...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FaPaperPlane size={13} className="text-yellow-300" />
+                          <span>{customForm.sendEmail ? 'Generate, Save & Send Email' : 'Generate & Save Certificate'}</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Download / Open PDF Preview Button */}
+                    <button
+                      type="button"
+                      onClick={handleDownloadPreviewPDF}
+                      disabled={customPreviewing}
+                      className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5"
+                    >
+                      {customPreviewing ? (
+                        <span>Rendering High-Res PDF...</span>
+                      ) : (
+                        <>
+                          <FaDownload size={11} />
+                          <span>Download / Preview High-Res PDF</span>
+                        </>
+                      )}
+                    </button>
+
+                  </div>
+
+                </div>
+
+              </form>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* 🔍 Certificate ID Public Verification Modal */}
       <AnimatePresence>
