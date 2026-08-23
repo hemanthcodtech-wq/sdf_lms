@@ -796,16 +796,21 @@ const AdminRecords = () => {
                         onChange={(e) => handleFormChange('courseTitle', e.target.value)}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
                       />
-                      {coursesList.length > 0 && (
+                      {coursesList.length > 0 ? (
                         <select
+                          value={coursesList.some(c => c.title === customForm.courseTitle) ? customForm.courseTitle : ''}
                           onChange={(e) => e.target.value && handleSelectCourse(e.target.value)}
-                          className="w-full px-3 py-2 bg-gray-100/70 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
+                          className="w-full px-3 py-2.5 bg-brand-green/5 border border-brand-green/30 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20"
                         >
-                          <option value="">-- Quick Select from Database Courses --</option>
+                          <option value="">-- Select from {coursesList.length} Database Courses --</option>
                           {coursesList.map(c => (
-                            <option key={c._id} value={c.title}>{c.title} ({c.category}) - Guru: {c.instructorId?.name || c.instructor || 'Assigned Guru'}</option>
+                            <option key={c._id} value={c.title}>
+                              {c.title} ({c.category}) — Guru: {c.instructorId?.name || c.instructor || 'Lead Guru'}
+                            </option>
                           ))}
                         </select>
+                      ) : (
+                        <p className="text-xs text-gray-400 italic">No courses found in database.</p>
                       )}
                     </div>
                   </div>

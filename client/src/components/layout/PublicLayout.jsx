@@ -98,7 +98,7 @@ const PublicLayout = () => {
                 <a href="https://wa.me/919640275275?text=Hello%20Swamy%20Dwija%20Foundation,%20I%20would%20like%20more%20information%20about%20your%20courses." target="_blank" rel="noreferrer" title="WhatsApp" className="w-9 h-9 rounded-xl bg-gray-800/90 hover:bg-[#25D366] text-gray-300 hover:text-white flex items-center justify-center transition-all duration-300 shadow-xs">
                   <FaWhatsapp size={15} />
                 </a>
-                <a href="https://youtube.com" target="_blank" rel="noreferrer" title="YouTube" className="w-9 h-9 rounded-xl bg-gray-800/90 hover:bg-[#FF0000] text-gray-300 hover:text-white flex items-center justify-center transition-all duration-300 shadow-xs">
+                <a href="https://www.youtube.com/@SwamiDwijaFoundation" target="_blank" rel="noreferrer" title="YouTube" className="w-9 h-9 rounded-xl bg-gray-800/90 hover:bg-[#FF0000] text-gray-300 hover:text-white flex items-center justify-center transition-all duration-300 shadow-xs">
                   <FaYoutube size={14} />
                 </a>
               </div>
