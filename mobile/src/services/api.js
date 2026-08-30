@@ -6,12 +6,12 @@ import { Platform } from 'react-native';
 // On Android emulator: 10.0.2.2 points to host localhost
 // On iOS simulator: localhost points to host
 // On Physical device: replace with your machine's LAN IP (e.g. 192.168.1.x)
-const DEFAULT_HOST = Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
+const DEFAULT_HOST = 'https://swamidwijafoundation.com';
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || `${DEFAULT_HOST}/api`;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 20000,
   headers: {
     'Content-Type': 'application/json',
   },

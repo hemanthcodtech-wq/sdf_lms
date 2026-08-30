@@ -12,10 +12,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { colors, shadows } from '../../theme/colors';
 import { CustomInput } from '../../components/CustomInput';
 import { CustomButton } from '../../components/CustomButton';
 import { useAuth } from '../../context/AuthContext';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export const LoginScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -83,7 +86,7 @@ export const LoginScreen = ({ navigation }) => {
       setGoogleLoading(true);
 
       if (Platform.OS === 'web' && typeof window !== 'undefined' && window.google?.accounts?.oauth2) {
-        // Use Google OAuth2 Token Client (opens Google account picker popup immediately)
+        // Web: Use Google OAuth2 Token Client popup
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
           client_id: clientId,
           scope: 'email profile openid',
@@ -95,7 +98,6 @@ export const LoginScreen = ({ navigation }) => {
                 return;
               }
               if (tokenResponse?.access_token) {
-                // Fetch profile directly from Google UserInfo endpoint
                 const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                   headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
                 });
@@ -126,7 +128,7 @@ export const LoginScreen = ({ navigation }) => {
         });
         tokenClient.requestAccessToken({ prompt: 'select_account' });
       } else if (Platform.OS === 'web' && typeof window !== 'undefined' && window.google?.accounts?.id) {
-        // Fallback to GIS ID token
+        // Web GIS fallback
         window.google.accounts.id.initialize({
           client_id: clientId,
           callback: async (response) => {
@@ -147,17 +149,35 @@ export const LoginScreen = ({ navigation }) => {
         });
         window.google.accounts.id.prompt();
       } else {
-        // Fallback for native/mock environment
-        const mockGoogleUser = {
-          name: 'Learner (Google)',
-          email: 'learner.google@gmail.com',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
-        };
-        await loginWithGoogle(mockGoogleUser);
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
+        // Native Android APK / iOS: Open in-app Google Auth Session
+        const redirectUri = 'https://swamidwijafoundation.com';
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20email%20profile&prompt=select_account`;
+        
+        const authResult = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+        
+        if (authResult.type === 'success' && authResult.url) {
+          const tokenMatch = authResult.url.match(/access_token=([^&]+)/);
+          if (tokenMatch && tokenMatch[1]) {
+            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${tokenMatch[1]}` },
+            });
+            const profile = await res.json();
+            if (profile?.email) {
+              await loginWithGoogle({
+                email: profile.email,
+                name: profile.name || profile.given_name || 'Google User',
+                avatar: profile.picture,
+                googleId: profile.sub,
+              });
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Main' }],
+              });
+              return;
+            }
+          }
+        }
+        
         setGoogleLoading(false);
       }
     } catch (err) {
