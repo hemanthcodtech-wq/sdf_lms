@@ -42,7 +42,7 @@ export const CourseCard = ({
       {/* Thumbnail Container */}
       <View style={horizontal ? styles.horizontalImageWrap : styles.verticalImageWrap}>
         <Image
-          source={{ uri: imageUrl }}
+          source={{ uri: imageUrl, cache: 'force-cache' }}
           style={styles.image}
           resizeMode="cover"
         />

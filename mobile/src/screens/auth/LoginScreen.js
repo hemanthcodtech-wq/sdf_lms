@@ -127,28 +127,8 @@ export const LoginScreen = ({ navigation }) => {
           },
         });
         tokenClient.requestAccessToken({ prompt: 'select_account' });
-      } else if (Platform.OS === 'web' && typeof window !== 'undefined' && window.google?.accounts?.id) {
-        // Web GIS fallback
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: async (response) => {
-            try {
-              if (response.credential) {
-                await loginWithGoogle(response.credential);
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Main' }],
-                });
-              }
-            } catch (gErr) {
-              setError(gErr?.response?.data?.message || gErr.message || 'Google Sign-In failed');
-            } finally {
-              setGoogleLoading(false);
-            }
-          },
-        });
-        window.google.accounts.id.prompt();
-        // Native Android APK / iOS: Use verified production domain redirect
+      } else {
+        // Native Android APK & iOS: Open In-App Secure OAuth Session
         const redirectUri = 'https://swamidwijafoundation.com';
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20email%20profile&prompt=select_account`;
         
@@ -182,6 +162,7 @@ export const LoginScreen = ({ navigation }) => {
     } catch (err) {
       console.error('Google Sign-In Error:', err);
       setError(err?.response?.data?.message || err.message || 'Google Sign-In error');
+    } finally {
       setGoogleLoading(false);
     }
   };

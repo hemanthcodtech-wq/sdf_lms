@@ -46,6 +46,13 @@ export const HomeScreen = ({ navigation }) => {
       const courseRes = await courseService.getPublicCourses();
       if (courseRes?.data) {
         setCourses(courseRes.data);
+        // Prefetch images into local disk cache for instant display
+        courseRes.data.forEach((c) => {
+          const img = getCourseImageUrl(c.thumbnailUrl || c.image);
+          if (img && Platform.OS !== 'web') {
+            Image.prefetch(img).catch(() => {});
+          }
+        });
       }
 
       // Fetch student's upcoming classes if logged in
@@ -124,7 +131,7 @@ export const HomeScreen = ({ navigation }) => {
           >
             <View style={styles.avatarCircle}>
               {userAvatarUri ? (
-                <Image source={{ uri: userAvatarUri }} style={styles.avatarImg} />
+                <Image source={{ uri: userAvatarUri, cache: 'force-cache' }} style={styles.avatarImg} />
               ) : (
                 <Text style={styles.avatarText}>
                   {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
@@ -153,9 +160,13 @@ export const HomeScreen = ({ navigation }) => {
 
             <TouchableOpacity
               style={styles.notificationBtn}
-              onPress={() => navigation.navigate('WishlistTab')}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.7}
             >
-              <Ionicons name="heart-outline" size={22} color={colors.textPrimary} />
+              <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
+              {liveClasses.length > 0 && (
+                <View style={styles.badgeDot} />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -432,6 +443,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  badgeDot: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: '#ef4444',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
   },
   searchBar: {
     flexDirection: 'row',

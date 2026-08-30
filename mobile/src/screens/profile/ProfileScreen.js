@@ -260,7 +260,7 @@ export const ProfileScreen = ({ navigation }) => {
                 style={styles.avatarContainer}
               >
                 {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+                  <Image source={{ uri: avatarUri, cache: 'force-cache' }} style={styles.avatarImg} />
                 ) : (
                   <View style={styles.avatarLarge}>
                     <Text style={styles.avatarLargeText}>

@@ -12,6 +12,7 @@ import { CertificatesScreen } from '../screens/certificates/CertificatesScreen';
 import { SettingsScreen } from '../screens/profile/SettingsScreen';
 import { PaymentHistoryScreen } from '../screens/profile/PaymentHistoryScreen';
 import { HelpSupportScreen } from '../screens/profile/HelpSupportScreen';
+import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
 
 const RootStack = createNativeStackNavigator();
 
@@ -36,6 +37,9 @@ export const RootNavigator = () => {
       <RootStack.Screen name="CourseDetails" component={CourseDetailsScreen} />
       <RootStack.Screen name="Checkout" component={CheckoutScreen} />
       <RootStack.Screen name="StudentClasses" component={StudentClassesScreen} />
+
+      {/* Notifications */}
+      <RootStack.Screen name="Notifications" component={NotificationsScreen} />
 
       {/* Profile Flow */}
       <RootStack.Screen name="Certificates" component={CertificatesScreen} />
