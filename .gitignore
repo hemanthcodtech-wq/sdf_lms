@@ -41,3 +41,21 @@ server/uploads/
 
 # Vite caching
 node_modules/.vite
+
+# Secrets & Keys
+*.pem
+*.key
+*.p8
+*.p12
+
+# Archives
+*.zip
+*.tar.gz
+
+# Mobile
+mobile/node_modules/
+mobile/.expo/
+mobile/.env
+mobile/dist/
+mobile/web-build/
+

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { FaSearch, FaUserTie, FaClock, FaSignal, FaImage, FaHeart, FaRegHeart } from 'react-icons/fa';
 import { useLanguage, useAutoTranslate } from '../../context/LanguageContext';
 import SEO from '../../components/common/SEO';
+import { getCourseImageUrl } from '../../utils/imageHelper';
 
 // Sub-component so useAutoTranslate hook can be called per card
 const CourseCard = ({ course, isEnrolled, isWishlisted, onToggleWishlist, onClick }) => {
@@ -18,7 +19,12 @@ const CourseCard = ({ course, isEnrolled, isWishlisted, onToggleWishlist, onClic
     >
       <div className="w-[100px] h-[100px] md:w-full md:h-52 shrink-0 relative overflow-hidden rounded-xl md:rounded-[16px] bg-gray-100">
         {course.thumbnailUrl ? (
-          <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+          <img
+            src={getCourseImageUrl(course.thumbnailUrl)}
+            alt={course.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+            onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300"><FaImage size={24} className="md:w-10 md:h-10" /></div>
         )}

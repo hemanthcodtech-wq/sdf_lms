@@ -3,9 +3,37 @@ const { protect, admin } = require('../middleware/authMiddleware');
 const Course = require('../models/Course');
 const Class = require('../models/Class');
 const { createZoomMeeting } = require('../services/zoomService');
+const { sendCourseCompletionEmail } = require('../utils/emailService');
+const { uploadBufferToCloudinary } = require('../utils/cloudinaryUploader');
 const upload = require('../middleware/upload');
 
 const router = express.Router();
+
+const cleanCourseUrls = (courseDoc) => {
+  if (!courseDoc) return courseDoc;
+  const course = courseDoc.toObject ? courseDoc.toObject() : { ...courseDoc };
+  if (course.thumbnailUrl) {
+    let clean = course.thumbnailUrl.replace(/\\/g, '/');
+    const idx = clean.indexOf('/uploads/');
+    if (idx !== -1) {
+      clean = clean.substring(idx);
+    } else if (clean.startsWith('uploads/')) {
+      clean = '/' + clean;
+    }
+    course.thumbnailUrl = clean;
+  }
+  if (course.contentUrl) {
+    let clean = course.contentUrl.replace(/\\/g, '/');
+    const idx = clean.indexOf('/uploads/');
+    if (idx !== -1) {
+      clean = clean.substring(idx);
+    } else if (clean.startsWith('uploads/')) {
+      clean = '/' + clean;
+    }
+    course.contentUrl = clean;
+  }
+  return course;
+};
 
 // Get all courses (admin)
 router.get('/', protect, admin, async (req, res) => {
@@ -14,7 +42,7 @@ router.get('/', protect, admin, async (req, res) => {
       .populate('instructorId', 'name emailOrPhone speciality phone')
       .populate('moderatorId', 'name emailOrPhone phone')
       .sort('-createdAt');
-    res.json({ success: true, data: courses });
+    res.json({ success: true, data: courses.map(cleanCourseUrls) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
@@ -40,7 +68,7 @@ router.get('/public', async (req, res) => {
       .populate('instructorId', 'name emailOrPhone speciality phone bio')
       .populate('moderatorId', 'name emailOrPhone phone')
       .sort('-createdAt');
-    res.json({ success: true, data: courses });
+    res.json({ success: true, data: courses.map(cleanCourseUrls) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
@@ -68,7 +96,7 @@ router.get('/public/:slugOrId', async (req, res) => {
     }
 
     if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
-    res.json({ success: true, data: course });
+    res.json({ success: true, data: cleanCourseUrls(course) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
@@ -101,8 +129,12 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
     let contentUrl = '';
 
     if (req.files) {
-      if (req.files.thumbnail) thumbnailUrl = req.files.thumbnail[0].location || req.files.thumbnail[0].path;
-      if (req.files.content) contentUrl = req.files.content[0].location || req.files.content[0].path;
+      if (req.files.thumbnail && req.files.thumbnail[0]) {
+        thumbnailUrl = `/uploads/courses/${req.files.thumbnail[0].filename}`;
+      }
+      if (req.files.content && req.files.content[0]) {
+        contentUrl = `/uploads/courses/${req.files.content[0].filename}`;
+      }
     }
     
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
@@ -284,8 +316,12 @@ router.put('/:id', protect, admin, upload.fields([{ name: 'thumbnail', maxCount:
     }
 
     if (req.files) {
-      if (req.files.thumbnail) updateData.thumbnailUrl = req.files.thumbnail[0].location || req.files.thumbnail[0].path;
-      if (req.files.content) updateData.contentUrl = req.files.content[0].location || req.files.content[0].path;
+      if (req.files.thumbnail && req.files.thumbnail[0]) {
+        updateData.thumbnailUrl = `/uploads/courses/${req.files.thumbnail[0].filename}`;
+      }
+      if (req.files.content && req.files.content[0]) {
+        updateData.contentUrl = `/uploads/courses/${req.files.content[0].filename}`;
+      }
     }
 
     if (req.body.selectedSessionDates) {
@@ -415,7 +451,6 @@ router.get('/:id/materials', protect, async (req, res) => {
 const Enrollment = require('../models/Enrollment');
 const User = require('../models/User');
 const { generateCertificatePDF } = require('../utils/pdfGenerator');
-const { uploadBufferToCloudinary } = require('../utils/cloudinaryUploader');
 
 // Complete Course & Generate Certificate (Student & Admin)
 router.post('/:id/complete', protect, async (req, res) => {

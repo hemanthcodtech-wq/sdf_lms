@@ -10,16 +10,22 @@ const { sendCourseEnrollmentEmail } = require('../utils/emailService');
 
 const router = express.Router();
 
-// GET all enrollments for a user (Payment History)
-router.get('/history', protect, async (req, res) => {
+// GET all enrollments for a user (Payment History / My Courses)
+router.get(['/history', '/my-enrollments', '/my-payments'], protect, async (req, res) => {
   try {
-    const enrollments = await Enrollment.find({ studentEmail: req.user.emailOrPhone })
-      .populate('course', 'title category thumbnailUrl accessValidity duration price')
+    const studentIdentifiers = [req.user.emailOrPhone];
+    if (req.user.email) studentIdentifiers.push(req.user.email);
+    if (req.user.phone) studentIdentifiers.push(req.user.phone);
+
+    const enrollments = await Enrollment.find({
+      studentEmail: { $in: studentIdentifiers },
+    })
+      .populate('course', 'title category thumbnailUrl accessValidity duration price instructor instructorId whatsappGroupLink')
       .sort('-createdAt');
-      
+
     res.json({ success: true, data: enrollments });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Server Error fetching payment history', error: error.message });
+    res.status(500).json({ success: false, message: 'Server Error fetching enrollments', error: error.message });
   }
 });
 

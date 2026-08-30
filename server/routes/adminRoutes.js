@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Course = require('../models/Course');
 const Class = require('../models/Class');
 const Enrollment = require('../models/Enrollment');
+const Attendance = require('../models/Attendance');
 const courseRoutes = require('./courseRoutes');
 const { generateInvoicePDF, generateCertificatePDF } = require('../utils/pdfGenerator');
 const { uploadBufferToCloudinary } = require('../utils/cloudinaryUploader');
@@ -261,6 +262,36 @@ router.get('/users/:id', protect, admin, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error fetching user details' });
+  }
+});
+
+// Delete a learner user and cascade cleanup
+router.delete('/users/:id', protect, admin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.role === 'admin' || user.role === 'superadmin') {
+      return res.status(400).json({ success: false, message: 'Cannot delete admin accounts from learner list' });
+    }
+
+    const identifiers = [user.emailOrPhone, user.email, user.phone].filter(Boolean);
+
+    // Remove enrollments & attendance records for this student
+    await Enrollment.deleteMany({ studentEmail: { $in: identifiers } });
+    await Attendance.deleteMany({ studentEmail: { $in: identifiers } });
+
+    await User.findByIdAndDelete(req.params.id);
+
+    res.json({
+      success: true,
+      message: `Learner ${user.name || user.emailOrPhone} deleted successfully`
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ success: false, message: 'Server error deleting user', error: error.message });
   }
 });
 

@@ -30,21 +30,32 @@ const Home = () => {
         }
 
         // Fetch classes
-        const classesRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/classes/student`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (classesRes.data.success) {
-          const now = new Date();
-          const futureClasses = classesRes.data.data.filter(cls => {
-            const classTime = new Date(`${cls.date.split('T')[0]}T${cls.time}:00`);
-            return classTime > now;
-          }).sort((a, b) => {
-            const aTime = new Date(`${a.date.split('T')[0]}T${a.time}:00`);
-            const bTime = new Date(`${b.date.split('T')[0]}T${b.time}:00`);
-            return aTime - bTime;
+        try {
+          const classesRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/classes/student`, {
+            headers: { Authorization: `Bearer ${token}` }
           });
-          if (futureClasses.length > 0) setUpcomingClass(futureClasses[0]);
-        }
+          if (classesRes.data && classesRes.data.success && Array.isArray(classesRes.data.data)) {
+            const now = new Date();
+            const futureClasses = classesRes.data.data.filter(cls => {
+              if (!cls || !cls.date) return false;
+              try {
+                const classTime = new Date(`${String(cls.date).split('T')[0]}T${cls.time || '00:00'}:00`);
+                return classTime > now;
+              } catch (e) {
+                return false;
+              }
+            }).sort((a, b) => {
+              try {
+                const aTime = new Date(`${String(a.date).split('T')[0]}T${a.time || '00:00'}:00`);
+                const bTime = new Date(`${String(b.date).split('T')[0]}T${b.time || '00:00'}:00`);
+                return aTime - bTime;
+              } catch (e) {
+                return 0;
+              }
+            });
+            if (futureClasses.length > 0) setUpcomingClass(futureClasses[0]);
+          }
+        } catch (e) {}
       } catch (error) {
         console.error("Error fetching stats:", error);
       }

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { FaHeart, FaTrash, FaGraduationCap, FaArrowRight, FaArrowLeft, FaCheck } from 'react-icons/fa';
 import { useNavigate, Link } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
+import { getCourseImageUrl } from '../../utils/imageHelper';
 
 const Wishlist = () => {
   const [wishlist, setWishlist] = useState([]);
@@ -92,9 +93,10 @@ const Wishlist = () => {
                 {/* Thumbnail */}
                 <div className="relative h-48 w-full bg-gray-100 overflow-hidden">
                   <img
-                    src={course.thumbnailUrl || '/assets/course_yoga.png'}
+                    src={getCourseImageUrl(course.thumbnailUrl)}
                     alt={course.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
                   />
                   <div className="absolute top-3 left-3 bg-brand-green-dark/80 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                     {course.category || 'Wellness'}

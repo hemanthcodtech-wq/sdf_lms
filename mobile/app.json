@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "SDF LMS",
+    "slug": "sdf-lms",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0d5c31"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sdflms.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0d5c31"
+      },
+      "package": "com.sdflms.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "apiUrl": "http://10.0.2.2:5000/api",
+      "eas": {
+        "projectId": "d3a4a7f8-2067-4a79-b5e8-0929f3c52f61"
+      }
+    }
+  }
+}

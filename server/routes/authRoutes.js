@@ -15,6 +15,8 @@ const {
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
+const upload = require('../middleware/upload');
+
 const router = express.Router();
 
 router.post('/register', registerUser);
@@ -30,6 +32,7 @@ router.post('/reset-password', resetPassword);
 
 router.get('/profile', protect, getUserProfile);
 router.put('/profile', protect, updateUserProfile);
+router.post('/upload-avatar', protect, upload.single('avatar'), require('../controllers/authController').uploadUserAvatar);
 
 router.get('/wishlist', protect, getWishlist);
 router.post('/wishlist/toggle/:courseId', protect, toggleWishlist);

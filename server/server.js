@@ -2,6 +2,12 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const dns = require('dns');
+
+// Fix DNS SRV query issue with MongoDB Atlas on Windows
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {}
 
 dotenv.config();
 
@@ -37,6 +43,10 @@ app.use(async (req, res, next) => {
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve Static Uploads Directory (AWS / Server File Storage)
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Dynamic SEO Sitemap XML Endpoint
 app.get('/sitemap.xml', async (req, res) => {

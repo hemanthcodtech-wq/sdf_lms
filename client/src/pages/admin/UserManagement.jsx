@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUser, FaEnvelope, FaBook, FaCalendarAlt, FaTimes, FaSearch, FaCheckCircle, FaRupeeSign } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaBook, FaCalendarAlt, FaTimes, FaSearch, FaCheckCircle, FaRupeeSign, FaTrash } from 'react-icons/fa';
 
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
@@ -12,6 +12,7 @@ const UserManagement = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -27,6 +28,30 @@ const UserManagement = () => {
       console.error("Error fetching users", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userToDelete) => {
+    const name = userToDelete.name || userToDelete.emailOrPhone;
+    if (!window.confirm(`Are you sure you want to permanently delete learner "${name}" and remove all their enrollments?`)) {
+      return;
+    }
+    setDeletingId(userToDelete._id);
+    try {
+      const res = await axios.delete(
+        `${import.meta.env.VITE_API_BASE_URL}/admin/users/${userToDelete._id}`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }
+      );
+      if (res.data.success) {
+        setUsers(prev => prev.filter(u => u._id !== userToDelete._id));
+        if (selectedUser?._id === userToDelete._id) {
+          handleCloseModal();
+        }
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error deleting learner');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -138,12 +163,22 @@ const UserManagement = () => {
                       {new Date(user.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
                     <td className="p-5 pr-8 text-right">
-                      <button 
-                        onClick={() => handleOpenUser(user)}
-                        className="px-4 py-2 bg-brand-green/10 hover:bg-brand-green hover:text-white text-brand-green-dark font-bold text-xs rounded-xl transition-all shadow-xs"
-                      >
-                        View Enrollments
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => handleOpenUser(user)}
+                          className="px-4 py-2 bg-brand-green/10 hover:bg-brand-green hover:text-white text-brand-green-dark font-bold text-xs rounded-xl transition-all shadow-xs"
+                        >
+                          View Enrollments
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user)}
+                          disabled={deletingId === user._id}
+                          className="p-2.5 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white rounded-xl transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+                          title="Delete Learner"
+                        >
+                          <FaTrash size={12} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -158,35 +193,45 @@ const UserManagement = () => {
         </div>
       )}
 
-      {/* User Details Drawer */}
+      {/* User Details & Enrollments Modal */}
       <AnimatePresence>
         {selectedUser && (
-          <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-xs"
               onClick={handleCloseModal}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
+            
             <motion.div 
-              initial={{ x: '100%' }} 
-              animate={{ x: 0 }} 
-              exit={{ x: '100%' }} 
-              transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-              className="bg-white/95 backdrop-blur-3xl border-l border-white/80 shadow-[-20px_0_50px_rgba(0,0,0,0.15)] w-full max-w-lg h-full overflow-y-auto relative z-10 flex flex-col font-inter"
+              initial={{ scale: 0.95, opacity: 0, y: 15 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col z-10 relative"
             >
-              <div className="p-6 md:p-8 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white/80 backdrop-blur-xl z-20">
+              {/* Modal Header */}
+              <div className="p-6 md:p-8 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50/50 to-white">
                 <div>
                   <h2 className="text-lg font-black text-gray-900">Student Profile & History</h2>
                   <p className="text-xs text-gray-400 mt-0.5">Learner information and payment logs</p>
                 </div>
-                <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 w-9 h-9 rounded-full flex items-center justify-center transition-all">
-                  <FaTimes size={14} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDeleteUser(selectedUser)}
+                    className="px-3 py-1.5 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                    title="Delete Learner"
+                  >
+                    <FaTrash size={11} /> Delete Student
+                  </button>
+                  <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 w-9 h-9 rounded-full flex items-center justify-center transition-all">
+                    <FaTimes size={14} />
+                  </button>
+                </div>
               </div>
               
-              <div className="p-6 md:p-8 flex-1 space-y-6">
+              <div className="p-6 md:p-8 flex-1 space-y-6 overflow-y-auto">
                 <div className="flex items-center gap-4 p-5 bg-[#FAF7F2] rounded-3xl border border-gray-200/60">
                   <div className="w-14 h-14 rounded-2xl bg-brand-green text-white flex items-center justify-center text-xl font-bold shadow-md">
                     {selectedUser.name ? selectedUser.name.charAt(0).toUpperCase() : <FaUser />}

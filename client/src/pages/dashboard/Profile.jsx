@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { FaArrowLeft, FaChevronRight } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from 'react';
+import { FaArrowLeft, FaChevronRight, FaCamera, FaSpinner, FaCheckCircle } from 'react-icons/fa';
 import { PiCertificate, PiHeart, PiBookOpen, PiCreditCard, PiGearSix, PiQuestion, PiSignOut } from 'react-icons/pi';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -7,11 +7,16 @@ import { motion } from 'framer-motion';
 
 const ProfileMenu = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
   const [profile, setProfile] = useState({
-    firstName: 'Anjali',
-    lastName: 'Sharma',
-    emailOrPhone: 'anjali@example.com'
+    name: '',
+    firstName: '',
+    lastName: '',
+    emailOrPhone: '',
+    avatar: '',
   });
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -30,6 +35,48 @@ const ProfileMenu = () => {
     }
   };
 
+  const handleImageSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+      setUploading(true);
+      setUploadSuccess(false);
+
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/upload-avatar`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (res.data.success) {
+        setProfile(prev => ({ ...prev, avatar: res.data.avatar }));
+        
+        // Update stored user
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const parsed = JSON.parse(storedUser);
+            parsed.avatar = res.data.avatar;
+            localStorage.setItem('user', JSON.stringify(parsed));
+          } catch (e) {}
+        }
+
+        setUploadSuccess(true);
+        setTimeout(() => setUploadSuccess(false), 3000);
+      }
+    } catch (err) {
+      console.error("Error uploading avatar:", err);
+      alert(err?.response?.data?.message || 'Failed to upload profile picture.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const menuItems = [
     { title: 'My Wishlist', icon: PiHeart, path: '/dashboard/wishlist' },
     { title: 'My Enrollments', icon: PiBookOpen, path: '/dashboard/learning' },
@@ -44,6 +91,15 @@ const ProfileMenu = () => {
       } 
     }
   ];
+
+  const getAvatarUrl = (avatarPath) => {
+    if (!avatarPath) return null;
+    if (avatarPath.startsWith('http')) return avatarPath;
+    const base = import.meta.env.VITE_API_BASE_URL.replace('/api', '');
+    return `${base}${avatarPath}`;
+  };
+
+  const displayName = profile.name || `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Student';
 
   return (
     <div className="min-h-screen bg-bg-cream pt-4 md:pt-16 pb-24 md:pb-12 font-inter">
@@ -65,21 +121,70 @@ const ProfileMenu = () => {
           className="bg-white/40 backdrop-blur-xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] rounded-[2rem] overflow-hidden flex flex-col md:flex-row min-h-[500px]"
         >
           {/* Left Panel - User Info */}
-          <div className="w-full md:w-2/5 bg-white/50 p-8 md:p-12 flex flex-col border-b md:border-b-0 md:border-r border-white/60 relative">
+          <div className="w-full md:w-2/5 bg-white/50 p-8 md:p-12 flex flex-col border-b md:border-b-0 md:border-r border-white/60 relative items-center md:items-start text-center md:text-left">
             
-            <div className="flex-1 flex flex-col justify-center">
+            {/* Avatar Upload Container */}
+            <div className="relative mb-6 group">
+              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-brand-green text-white flex items-center justify-center text-3xl md:text-4xl font-bold">
+                {profile.avatar ? (
+                  <img
+                    src={getAvatarUrl(profile.avatar)}
+                    alt={displayName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{displayName.charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+
+              {/* Upload Button Overlay */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                title="Update Profile Photo"
+                className="absolute bottom-0 right-0 w-9 h-9 rounded-full bg-brand-green text-white flex items-center justify-center shadow-md hover:bg-brand-green/90 transition-transform active:scale-95 border-2 border-white cursor-pointer"
+              >
+                {uploading ? (
+                  <FaSpinner className="animate-spin" size={14} />
+                ) : (
+                  <FaCamera size={14} />
+                )}
+              </button>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageSelect}
+                accept="image/*"
+                className="hidden"
+              />
+            </div>
+
+            {uploadSuccess && (
+              <div className="mb-4 inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-200">
+                <FaCheckCircle size={12} /> Profile Photo Updated!
+              </div>
+            )}
+
+            <div className="flex-1 flex flex-col justify-center w-full">
               <div className="w-16 h-1 bg-brand-green mb-6 rounded-full hidden md:block"></div>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight mb-2">
-                {profile.firstName ? `${profile.firstName} ${profile.lastName || ''}`.trim() : 'Student'}
+              <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight leading-tight mb-2">
+                {displayName}
               </h2>
               <p className="text-gray-500 font-medium text-sm md:text-base">
-                {profile.emailOrPhone}
+                {profile.email || profile.emailOrPhone}
               </p>
+              {profile.phone && (
+                <p className="text-gray-400 font-medium text-xs md:text-sm mt-1">
+                  📞 {profile.phone}
+                </p>
+              )}
             </div>
             
             {/* Desktop Only Decoration */}
-            <div className="hidden md:block mt-12 text-sm text-gray-400 font-medium">
-              Manage your learning journey, certificates, and account settings all in one place.
+            <div className="hidden md:block mt-8 text-xs text-gray-400 font-medium">
+              Click the camera icon on your avatar anytime to change your profile picture.
             </div>
           </div>
 

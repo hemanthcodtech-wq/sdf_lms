@@ -18,56 +18,91 @@ const MyLearning = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const token = localStorage.getItem('token');
       if (!token) {
         navigate('/login');
         return;
       }
 
-      // Fetch enrolled courses
-      const coursesRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/payments/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // 1. Fetch enrolled courses
+      try {
+        const coursesRes = await axios.get(
+          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/payments/history`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
 
-      // Fetch all classes
-      const classesRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/classes/student`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (coursesRes.data.success) {
-        const fetchedCourses = coursesRes.data.data.map(enrollment => {
-          return {
-            id: enrollment._id,
-            courseId: enrollment.course?._id,
-            title: enrollment.course?.title || 'Unknown Course',
-            category: enrollment.course?.category || 'General',
-            image: enrollment.course?.thumbnailUrl || '',
-            whatsappGroupLink: enrollment.course?.whatsappGroupLink || '',
-            progress: Math.floor(Math.random() * 60) + 10 // Mock progress
-          };
-        });
-        setCourses(fetchedCourses);
+        if (coursesRes.data && coursesRes.data.success && Array.isArray(coursesRes.data.data)) {
+          const fetchedCourses = coursesRes.data.data
+            .filter(enrollment => enrollment && (enrollment.course || enrollment.courseId))
+            .map(enrollment => {
+              const courseObj = typeof enrollment.course === 'object' ? enrollment.course : {};
+              return {
+                id: enrollment._id,
+                courseId: courseObj._id || enrollment.course,
+                title: courseObj.title || 'Enrolled Course',
+                category: courseObj.category || 'Vedic Sciences',
+                image: courseObj.thumbnailUrl || '',
+                whatsappGroupLink: courseObj.whatsappGroupLink || '',
+                progress: enrollment.progress || Math.floor(Math.random() * 40) + 15
+              };
+            });
+          setCourses(fetchedCourses);
+        }
+      } catch (cErr) {
+        console.error('Error fetching enrolled courses:', cErr);
       }
 
-      if (classesRes.data.success) {
-        const now = new Date();
-        const futureClasses = classesRes.data.data.filter(cls => {
-          const classTime = new Date(`${cls.date.split('T')[0]}T${cls.time}:00`);
-          return classTime > now;
-        }).sort((a, b) => {
-          const aTime = new Date(`${a.date.split('T')[0]}T${a.time}:00`);
-          const bTime = new Date(`${b.date.split('T')[0]}T${b.time}:00`);
-          return aTime - bTime;
-        });
+      // 2. Fetch all classes safely
+      try {
+        const classesRes = await axios.get(
+          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/classes/student`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
 
-        if (futureClasses.length > 0) {
-          setUpcomingClass(futureClasses[0]);
+        if (classesRes.data && classesRes.data.success && Array.isArray(classesRes.data.data)) {
+          const now = new Date();
+          const futureClasses = classesRes.data.data.filter(cls => {
+            if (!cls || !cls.date) return false;
+            try {
+              const rawDate = String(cls.date).split('T')[0];
+              const rawTime = cls.time ? `${cls.time}:00` : '00:00:00';
+              const classTime = new Date(`${rawDate}T${rawTime}`);
+              return classTime > now;
+            } catch (e) {
+              return false;
+            }
+          }).sort((a, b) => {
+            try {
+              const aTime = new Date(`${String(a.date).split('T')[0]}T${a.time || '00:00'}:00`);
+              const bTime = new Date(`${String(b.date).split('T')[0]}T${b.time || '00:00'}:00`);
+              return aTime - bTime;
+            } catch (e) {
+              return 0;
+            }
+          });
+
+          if (futureClasses.length > 0) {
+            setUpcomingClass(futureClasses[0]);
+          }
         }
+      } catch (clsErr) {
+        console.warn('Optional classes fetch error:', clsErr);
       }
 
     } catch (err) {
       console.error('Error fetching learning data:', err);
-      setError('Failed to load your learning data.');
+      if (err?.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+        return;
+      }
+      setError('Failed to load your learning data. Please refresh or check your connection.');
     } finally {
       setLoading(false);
     }
@@ -87,9 +122,31 @@ const MyLearning = () => {
       <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-6">
         
         {loading ? (
-           <div className="flex justify-center p-10"><div className="w-8 h-8 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin"></div></div>
+           <div className="flex justify-center p-10"><div className="w-8 h-8 border-4 border-brand-green border-t-transparent rounded-full animate-spin"></div></div>
         ) : error ? (
-           <div className="text-center text-red-500 p-4">{error}</div>
+           <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-3xl shadow-sm border border-gray-100 text-center space-y-4">
+             <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto text-xl font-bold">⚠️</div>
+             <h3 className="font-bold text-gray-900 text-lg">Session Expired or Connection Error</h3>
+             <p className="text-sm text-gray-500">{error}</p>
+             <div className="flex justify-center gap-3 pt-2">
+               <button
+                 onClick={fetchData}
+                 className="px-5 py-2.5 bg-brand-green text-white text-xs font-bold rounded-xl shadow-sm hover:opacity-90 transition-all"
+               >
+                 Retry Loading
+               </button>
+               <button
+                 onClick={() => {
+                   localStorage.removeItem('token');
+                   localStorage.removeItem('user');
+                   navigate('/login');
+                 }}
+                 className="px-5 py-2.5 bg-gray-100 text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-200 transition-all"
+               >
+                 Log In Again
+               </button>
+             </div>
+           </div>
         ) : (
           <div className="space-y-6">
             

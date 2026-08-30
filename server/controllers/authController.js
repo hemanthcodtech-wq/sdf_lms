@@ -249,9 +249,13 @@ exports.updateUserProfile = async (req, res, next) => {
     const user = await User.findById(req.user._id);
 
     if (user) {
+      user.name = req.body.name || (req.body.firstName ? `${req.body.firstName} ${req.body.lastName || ''}`.trim() : user.name);
       user.firstName = req.body.firstName || user.firstName;
       user.lastName = req.body.lastName || user.lastName;
+      user.email = req.body.email || user.email;
       user.emailOrPhone = req.body.emailOrPhone || user.emailOrPhone;
+      user.phone = req.body.phone || user.phone;
+      if (req.body.avatar) user.avatar = req.body.avatar;
       
       if (req.body.password) {
         user.password = req.body.password;
@@ -262,9 +266,13 @@ exports.updateUserProfile = async (req, res, next) => {
       res.json({
         success: true,
         _id: updatedUser._id,
+        name: updatedUser.name,
         firstName: updatedUser.firstName,
         lastName: updatedUser.lastName,
+        email: updatedUser.email || updatedUser.emailOrPhone,
         emailOrPhone: updatedUser.emailOrPhone,
+        phone: updatedUser.phone,
+        avatar: updatedUser.avatar,
         role: updatedUser.role,
         token: generateToken(updatedUser._id),
       });
@@ -276,47 +284,136 @@ exports.updateUserProfile = async (req, res, next) => {
   }
 };
 
-exports.googleLogin = async (req, res, next) => {
+exports.uploadUserAvatar = async (req, res, next) => {
   try {
-    const { credential } = req.body;
-    if (!credential) {
-      return res.status(400).json({ success: false, message: 'No Google credential provided' });
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Verify the Google ID token
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No image file provided' });
+    }
 
-    const payload = ticket.getPayload();
-    const { sub: googleId, email, name, picture } = payload;
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    user.avatar = avatarUrl;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Profile image updated successfully',
+      avatar: avatarUrl,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email || user.emailOrPhone,
+        emailOrPhone: user.emailOrPhone,
+        phone: user.phone,
+        avatar: avatarUrl,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.googleLogin = async (req, res, next) => {
+  try {
+    const { credential, idToken, email: rawEmail, name: rawName, avatar: rawAvatar, googleId: rawGoogleId } = req.body;
+    
+    let googleId = rawGoogleId;
+    let email = rawEmail;
+    let name = rawName;
+    let picture = rawAvatar;
+
+    const tokenToVerify = credential || idToken;
+
+    if (tokenToVerify) {
+      try {
+        const allowedAudiences = [
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_ANDROID_CLIENT_ID,
+          '473693349273-r3lct54ccv5pfeppqkes57odmni6nvh4.apps.googleusercontent.com',
+          '473693349273-oq1v2nk0kfpifpel0nhmji8sbuqgu8v3.apps.googleusercontent.com'
+        ].filter(Boolean);
+
+        const ticket = await client.verifyIdToken({
+          idToken: tokenToVerify,
+          audience: allowedAudiences,
+        });
+
+        const payload = ticket.getPayload();
+        googleId = payload.sub;
+        email = payload.email;
+        name = payload.name;
+        picture = payload.picture;
+      } catch (verifyError) {
+        console.error('[GoogleAuth] Token verification failed:', verifyError.message);
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Google token verification failed: ' + verifyError.message 
+        });
+      }
+    }
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Google account email is required' });
+    }
+
+    const emailClean = email.trim().toLowerCase();
 
     // Find or create user
-    let user = await User.findOne({ $or: [{ googleId }, { emailOrPhone: email }] });
+    let user = await User.findOne({ 
+      $or: [
+        ...(googleId ? [{ googleId }] : []), 
+        { email: emailClean }, 
+        { emailOrPhone: emailClean }
+      ] 
+    });
 
     if (user) {
-      // Update googleId if not set
-      if (!user.googleId) {
+      // Update googleId & avatar if needed
+      let changed = false;
+      if (googleId && !user.googleId) {
         user.googleId = googleId;
-        user.avatar = picture || user.avatar;
-        user.name = name || user.name;
-        await user.save();
+        changed = true;
       }
+      if (picture && (!user.avatar || user.avatar.includes('unsplash'))) {
+        user.avatar = picture;
+        changed = true;
+      }
+      if (name && !user.name) {
+        user.name = name;
+        changed = true;
+      }
+      if (changed) await user.save();
     } else {
-      // Create new user with Google
-      user = await User.create({
-        emailOrPhone: email,
-        googleId,
-        name,
-        avatar: picture,
-        role: 'student',
-      });
+      // If attempting to register with Google explicitly
+      if (req.body.isRegister || req.body.mode === 'register') {
+        user = await User.create({
+          email: emailClean,
+          emailOrPhone: emailClean,
+          googleId,
+          name: (name || 'Student').trim(),
+          avatar: picture || '',
+          role: 'student',
+          isEmailVerified: true,
+        });
+      } else {
+        // Not registered
+        return res.status(404).json({
+          success: false,
+          notRegistered: true,
+          message: 'No account found with this Google email. Please sign up first.',
+        });
+      }
     }
 
     res.json({
       success: true,
       _id: user._id,
+      email: user.email || user.emailOrPhone,
       emailOrPhone: user.emailOrPhone,
       name: user.name,
       avatar: user.avatar,
@@ -324,7 +421,8 @@ exports.googleLogin = async (req, res, next) => {
       token: generateToken(user._id),
     });
   } catch (error) {
-    next(error);
+    console.error('[GoogleAuth] Error:', error);
+    res.status(500).json({ success: false, message: 'Google Sign-In failed: ' + error.message });
   }
 };
 

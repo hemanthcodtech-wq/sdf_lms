@@ -47,13 +47,14 @@ const createZoomMeeting = async (topic, startTime, durationMinutes = 60, options
         settings: {
           host_video: true,
           participant_video: true,
-          join_before_host: false,
-          mute_upon_entry: true,
-          waiting_room: true,
-          auto_recording: options.autoRecording || 'cloud', // Automatic cloud recording for completed sessions
+          join_before_host: true,
+          jbh_time: 0,
+          mute_upon_entry: false,
+          waiting_room: false,
+          auto_recording: options.autoRecording || 'cloud',
           approval_type: 2, // Automatically approve
           audio: 'both',
-          meeting_authentication: false, // Students don't need Zoom accounts
+          meeting_authentication: false, // Students & teachers don't get blocked
         },
       },
       {

@@ -1,0 +1,155 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '../services/authService';
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [wishlist, setWishlist] = useState([]);
+
+  // Check saved session on app load
+  useEffect(() => {
+    loadStoredAuth();
+  }, []);
+
+  const loadStoredAuth = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('token');
+      const storedUser = await AsyncStorage.getItem('user');
+      const storedWishlist = await AsyncStorage.getItem('wishlist');
+
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      }
+      if (storedWishlist) {
+        setWishlist(JSON.parse(storedWishlist));
+      }
+    } catch (error) {
+      console.error('Error loading stored auth data', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async (emailOrPhone, password) => {
+    const data = await authService.login({ emailOrPhone, password });
+    if (data && data.token) {
+      const userData = {
+        _id: data._id || data.user?._id,
+        name: data.name || data.user?.name,
+        email: data.email || data.user?.email || data.emailOrPhone,
+        phone: data.phone || data.user?.phone,
+        emailOrPhone: data.emailOrPhone || data.user?.emailOrPhone || data.email,
+        avatar: data.avatar || data.user?.avatar,
+        role: data.role || data.user?.role || 'student',
+        createdAt: data.createdAt || data.user?.createdAt,
+      };
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      setToken(data.token);
+      setUser(userData);
+      return data;
+    }
+    throw new Error(data?.message || 'Login failed');
+  };
+
+  const loginWithGoogle = async (googlePayload) => {
+    const data = await authService.googleLogin(googlePayload);
+    if (data && data.token) {
+      const userData = {
+        _id: data._id,
+        name: data.name,
+        email: data.emailOrPhone,
+        emailOrPhone: data.emailOrPhone,
+        avatar: data.avatar,
+        role: data.role || 'student',
+      };
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      setToken(data.token);
+      setUser(userData);
+      return data;
+    }
+    throw new Error(data?.message || 'Google login failed');
+  };
+
+  const register = async (userData) => {
+    const data = await authService.register(userData);
+    if (data && data.token) {
+      const formattedUser = {
+        _id: data._id || data.user?._id,
+        name: data.name || data.user?.name || userData.name,
+        email: data.email || data.user?.email || userData.email || userData.emailOrPhone,
+        phone: data.phone || data.user?.phone || userData.phone,
+        emailOrPhone: data.emailOrPhone || data.user?.emailOrPhone || userData.emailOrPhone,
+        role: data.role || data.user?.role || 'student',
+        createdAt: data.createdAt || new Date().toISOString(),
+      };
+      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(formattedUser));
+      setToken(data.token);
+      setUser(formattedUser);
+      return data;
+    }
+    return data;
+  };
+
+  const logout = async () => {
+    try {
+      await AsyncStorage.multiRemove(['token', 'user']);
+      setToken(null);
+      setUser(null);
+    } catch (error) {
+      console.error('Error logging out', error);
+    }
+  };
+
+  const updateUserProfile = async (updatedData) => {
+    const newUser = { ...user, ...updatedData };
+    await AsyncStorage.setItem('user', JSON.stringify(newUser));
+    setUser(newUser);
+  };
+
+  const toggleWishlist = async (course) => {
+    let updated;
+    const exists = wishlist.some(item => (item._id === course._id || item.id === course._id));
+    if (exists) {
+      updated = wishlist.filter(item => (item._id !== course._id && item.id !== course._id));
+    } else {
+      updated = [...wishlist, course];
+    }
+    setWishlist(updated);
+    await AsyncStorage.setItem('wishlist', JSON.stringify(updated));
+  };
+
+  const isInWishlist = (courseId) => {
+    return wishlist.some(item => (item._id === courseId || item.id === courseId));
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        isAuthenticated: !!token,
+        isLoading,
+        login,
+        loginWithGoogle,
+        register,
+        logout,
+        updateUserProfile,
+        wishlist,
+        toggleWishlist,
+        isInWishlist,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);

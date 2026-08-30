@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { FaLock, FaShieldAlt, FaCreditCard, FaCheckCircle } from 'react-icons/fa';
+import { getCourseImageUrl } from '../../utils/imageHelper';
 
 const Checkout = () => {
   const { id } = useParams();
@@ -214,7 +215,16 @@ const Checkout = () => {
             
             <div className="flex gap-4 mb-8">
               <div className="w-24 h-16 bg-gray-200 rounded-lg overflow-hidden shrink-0">
-                {course?.thumbnailUrl ? <img src={course.thumbnailUrl} className="w-full h-full object-cover" /> : null}
+                {course?.thumbnailUrl ? (
+                  <img
+                    src={getCourseImageUrl(course.thumbnailUrl)}
+                    alt={course.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-brand-green/10 flex items-center justify-center text-xs font-bold text-brand-green">SDF</div>
+                )}
               </div>
               <div>
                 <h4 className="font-bold text-gray-900 line-clamp-2 leading-tight text-sm">{course?.title}</h4>

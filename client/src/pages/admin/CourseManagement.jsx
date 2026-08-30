@@ -7,6 +7,7 @@ import {
   FaCheckCircle, FaUserCheck, FaCalendarAlt, FaHistory,
   FaPlayCircle, FaExternalLinkAlt, FaSyncAlt, FaWhatsapp
 } from 'react-icons/fa';
+import { getCourseImageUrl } from '../../utils/imageHelper';
 
 const CourseManagement = () => {
   const [courses, setCourses] = useState([]);
@@ -393,7 +394,12 @@ const CourseManagement = () => {
                 <div className="relative h-48 w-full bg-gray-100/80 overflow-hidden p-3 pb-0">
                   <div className="w-full h-full rounded-2xl overflow-hidden relative">
                     {course.thumbnailUrl ? (
-                      <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+                      <img
+                        src={getCourseImageUrl(course.thumbnailUrl)}
+                        alt={course.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                        onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-300 bg-gray-100"><FaImage size={32} /></div>
                     )}
@@ -985,9 +991,12 @@ const CourseManagement = () => {
                               const h = formData.startTime ? formData.startTime.split(':')[0] : '06';
                               setFormData({...formData, startTime: `${h}:${e.target.value}`});
                             }}
-                            className="p-2 bg-transparent outline-none appearance-none cursor-pointer font-medium"
+                            className="p-2 bg-transparent outline-none appearance-none cursor-pointer font-medium max-h-48 overflow-y-auto"
                           >
-                            {['00', '15', '30', '45'].map(m => <option key={m} value={m}>{m}</option>)}
+                            {[...Array(60)].map((_, i) => {
+                              const m = i.toString().padStart(2, '0');
+                              return <option key={m} value={m}>{m}</option>;
+                            })}
                           </select>
                           <select 
                             value={formData.startTime && parseInt(formData.startTime.split(':')[0]) >= 12 ? 'PM' : 'AM'} 
@@ -1032,9 +1041,12 @@ const CourseManagement = () => {
                               const h = formData.endTime ? formData.endTime.split(':')[0] : '07';
                               setFormData({...formData, endTime: `${h}:${e.target.value}`});
                             }}
-                            className="p-2 bg-transparent outline-none appearance-none cursor-pointer font-medium"
+                            className="p-2 bg-transparent outline-none appearance-none cursor-pointer font-medium max-h-48 overflow-y-auto"
                           >
-                            {['00', '15', '30', '45'].map(m => <option key={m} value={m}>{m}</option>)}
+                            {[...Array(60)].map((_, i) => {
+                              const m = i.toString().padStart(2, '0');
+                              return <option key={m} value={m}>{m}</option>;
+                            })}
                           </select>
                           <select 
                             value={formData.endTime && parseInt(formData.endTime.split(':')[0]) >= 12 ? 'PM' : 'AM'} 

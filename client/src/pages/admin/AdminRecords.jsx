@@ -576,7 +576,7 @@ const AdminRecords = () => {
                             rel="noreferrer"
                             className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-green hover:underline"
                           >
-                            <FaExternalLinkAlt size={9} /> Cloudinary PDF
+                            <FaExternalLinkAlt size={9} /> View Invoice PDF
                           </a>
                         ) : (
                           <a
@@ -606,7 +606,7 @@ const AdminRecords = () => {
                                 rel="noreferrer"
                                 className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-green hover:underline"
                               >
-                                <FaExternalLinkAlt size={9} /> Cloudinary Cert
+                                <FaExternalLinkAlt size={9} /> View Certificate PDF
                               </a>
                             ) : (
                               <a
@@ -1127,7 +1127,7 @@ const AdminRecords = () => {
                       rel="noreferrer"
                       className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-green hover:underline pt-1"
                     >
-                      <FaExternalLinkAlt size={10} /> View Cloudinary Master Certificate PDF
+                      <FaExternalLinkAlt size={10} /> View Master Certificate PDF
                     </a>
                   )}
                 </div>
@@ -1263,7 +1263,7 @@ const AdminRecords = () => {
                     rel="noreferrer"
                     className="px-5 py-2.5 bg-brand-green text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs"
                   >
-                    <FaExternalLinkAlt size={11} /> Open Cloudinary PDF
+                    <FaExternalLinkAlt size={11} /> Open Certificate PDF
                   </a>
                 )}
                 <button

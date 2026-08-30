@@ -56,10 +56,14 @@ router.get('/:classId/sdk-token', authenticateUser, async (req, res) => {
     if (isInstructor || isAdmin) {
       role = 1; // 1 = Host / Teacher
     } else if (!isModerator) {
-      // Check student enrollment
+      // Check student enrollment across course and all student identifiers
+      const studentIdentifiers = [user.emailOrPhone];
+      if (user.email) studentIdentifiers.push(user.email);
+      if (user.phone) studentIdentifiers.push(user.phone);
+
       const enrollment = await Enrollment.findOne({
-        studentEmail: user.emailOrPhone,
-        courseId: course?._id
+        course: course?._id,
+        studentEmail: { $in: studentIdentifiers.filter(Boolean) }
       });
       if (!enrollment && user.role !== 'admin') {
         return res.status(403).json({ success: false, message: 'You are not enrolled in this course batch' });

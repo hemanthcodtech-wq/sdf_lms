@@ -9,20 +9,89 @@ const Enrollment = require('../models/Enrollment');
 
 const router = express.Router();
 
+// Helper to ensure sessions exist for an enrolled course
+const ensureCourseSessions = async (courseId) => {
+  try {
+    const course = await Course.findById(courseId);
+    if (!course) return;
+
+    const existingCount = await Class.countDocuments({ courseId: course._id });
+    if (existingCount === 0) {
+      const defaultTopics = (course.topics && course.topics.length > 0)
+        ? course.topics
+        : [
+            'Foundations & Orientation',
+            'Pranayama & Breathwork Practice',
+            'Asana Alignment & Core Flow',
+            'Deep Guided Meditation & Q&A',
+            'Practical Daily Routine Integration'
+          ];
+
+      const sTime = course.startTime || (course.timings ? course.timings.split(' to ')[0] : '06:00');
+      const now = new Date();
+
+      const createdClasses = [];
+      for (let i = 0; i < defaultTopics.length; i++) {
+        const sessionDate = new Date(now);
+        sessionDate.setDate(now.getDate() + i);
+
+        createdClasses.push({
+          title: `${course.title} - Session ${i + 1}: ${defaultTopics[i]}`,
+          courseId: course._id,
+          date: sessionDate,
+          time: sTime,
+          durationMinutes: 60,
+          zoomLink: course.zoomMeetingLink || 'https://zoom.us/join',
+          isRecurring: false
+        });
+      }
+
+      await Class.insertMany(createdClasses);
+    }
+  } catch (err) {
+    console.error('Error ensuring course sessions:', err);
+  }
+};
+
 // GET classes for a logged-in student based on their enrollments
 router.get('/student', protect, async (req, res) => {
   try {
-    const studentIdentifier = req.user.emailOrPhone;
+    const studentIdentifiers = [req.user.emailOrPhone];
+    if (req.user.email) studentIdentifiers.push(req.user.email);
+    if (req.user.phone) studentIdentifiers.push(req.user.phone);
     
     // Find all courses the student is enrolled in
-    const enrollments = await Enrollment.find({ studentEmail: studentIdentifier });
-    const enrolledCourseIds = enrollments.map(e => e.course);
+    const enrollments = await Enrollment.find({
+      studentEmail: { $in: studentIdentifiers.filter(Boolean) },
+    });
+    const enrolledCourseIds = enrollments.map((e) => e.course).filter(Boolean);
+
+    // Auto-generate session schedules for any course that doesn't have classes yet
+    for (const cid of enrolledCourseIds) {
+      await ensureCourseSessions(cid);
+    }
 
     // Find all scheduled classes for those courses
     const classes = await Class.find({ courseId: { $in: enrolledCourseIds } })
-      .populate('courseId', 'title category level thumbnailUrl whatsappGroupLink instructor timings')
+      .populate('courseId', 'title category level thumbnailUrl whatsappGroupLink instructor timings zoomMeetingLink')
       .sort('date time');
       
+    res.json({ success: true, data: classes });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+});
+
+// GET classes for a specific course
+router.get('/course/:courseId', protect, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    await ensureCourseSessions(courseId);
+
+    const classes = await Class.find({ courseId })
+      .populate('courseId', 'title category level thumbnailUrl whatsappGroupLink instructor timings zoomMeetingLink')
+      .sort('date time');
+
     res.json({ success: true, data: classes });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });

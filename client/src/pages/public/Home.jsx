@@ -128,6 +128,8 @@ const TiltedCard = ({ children, className }) => {
   );
 };
 
+import { getCourseImageUrl } from '../../utils/imageHelper';
+
 // --- Featured Course Card Component (For Translations) ---
 const FeaturedCourseCard = ({ course, navigate }) => {
   const { t } = useLanguage();
@@ -138,7 +140,12 @@ const FeaturedCourseCard = ({ course, navigate }) => {
     <TiltedCard className="bg-white rounded-[2rem] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)] border border-gray-100 flex flex-col h-full transform-gpu transition-all duration-200">
       <div className="w-full h-48 rounded-[1.5rem] overflow-hidden mb-6 relative bg-gray-100 shadow-inner" style={{ transform: "translateZ(30px)" }}>
         {course.thumbnailUrl ? (
-          <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+          <img
+            src={getCourseImageUrl(course.thumbnailUrl)}
+            alt={course.title}
+            className="w-full h-full object-cover"
+            onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-brand-green/50 bg-brand-green/10 font-bold">No Image</div>
         )}

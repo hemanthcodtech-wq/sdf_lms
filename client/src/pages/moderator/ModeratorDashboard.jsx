@@ -224,19 +224,37 @@ const ModeratorDashboard = () => {
                 ) : classes.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {classes.map((cls, idx) => {
+                      const now = new Date();
                       const classDate = new Date(cls.date);
-                      const classDateMidnight = new Date(classDate);
-                      classDateMidnight.setHours(0, 0, 0, 0);
 
-                      const isToday = classDateMidnight.getTime() === todayMidnight.getTime();
-                      const isPast = classDateMidnight.getTime() < todayMidnight.getTime();
-                      const isUpcoming = classDateMidnight.getTime() > todayMidnight.getTime();
+                      let startHour = 6, startMin = 0;
+                      if (cls.time) {
+                        const parts = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+                        if (parts) {
+                          let h = parseInt(parts[1], 10);
+                          const m = parseInt(parts[2], 10);
+                          const ampm = parts[3] ? parts[3].toUpperCase() : null;
+                          if (ampm === 'PM' && h < 12) h += 12;
+                          if (ampm === 'AM' && h === 12) h = 0;
+                          startHour = h;
+                          startMin = m;
+                        }
+                      }
+
+                      const sessionStart = new Date(classDate);
+                      sessionStart.setHours(startHour, startMin, 0, 0);
+                      const duration = cls.durationMinutes || 60;
+                      const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+
+                      const isPast = now > sessionEnd;
+                      const isLiveNow = now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd;
+                      const isUpcoming = now < new Date(sessionStart.getTime() - 15 * 60 * 1000);
 
                       return (
                         <div
                           key={cls._id || idx}
                           className={`bg-white rounded-3xl p-5 border flex flex-col justify-between shadow-xs hover:shadow-md transition-all ${
-                            isToday ? 'border-brand-green ring-2 ring-brand-green/20' : 'border-gray-200/80'
+                            isLiveNow ? 'border-brand-green ring-2 ring-brand-green/20' : isPast ? 'border-gray-200 opacity-90' : 'border-gray-200/80'
                           }`}
                         >
                           <div>
@@ -244,18 +262,18 @@ const ModeratorDashboard = () => {
                               <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
                                 Session {idx + 1}
                               </span>
-                              {isToday && (
+                              {isLiveNow && (
                                 <span className="text-[10px] font-extrabold text-green-700 bg-green-100 px-2.5 py-0.5 rounded-full animate-pulse flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span> LIVE TODAY
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span> LIVE NOW
                                 </span>
                               )}
                               {isUpcoming && (
-                                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/60 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                                   UPCOMING
                                 </span>
                               )}
                               {isPast && (
-                                <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                                <span className="text-[10px] font-bold text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                                   COMPLETED
                                 </span>
                               )}
@@ -280,19 +298,24 @@ const ModeratorDashboard = () => {
 
                           <div className="pt-3 border-t border-gray-100 mt-auto flex items-center justify-between">
                             {cls.zoomLink ? (
-                              <a
-                                href={cls.zoomLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="w-full py-2.5 bg-brand-green hover:bg-brand-green-dark text-white rounded-xl font-bold text-xs shadow-sm hover:shadow flex items-center justify-center gap-2 transition-all cursor-pointer"
+                              <button
+                                onClick={() => setActiveLiveClass(cls)}
+                                className={`w-full py-2.5 rounded-xl font-bold text-xs shadow-sm hover:shadow flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                                  isPast
+                                    ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                    : 'bg-brand-green hover:bg-brand-green-dark text-white'
+                                }`}
                               >
                                 <FaPlayCircle size={13} />
-                                <span>Join as Moderator ↗</span>
-                              </a>
+                                <span>{isPast ? 'Replay / Enter Session ↗' : 'Start Live Classroom ↗'}</span>
+                              </button>
                             ) : (
-                              <span className="w-full py-2 bg-gray-100 text-gray-400 rounded-xl font-bold text-xs text-center">
-                                Session Configured
-                              </span>
+                              <button
+                                onClick={() => setIsAddMaterialOpen(true)}
+                                className="w-full py-2 bg-emerald-50 hover:bg-brand-green hover:text-white text-emerald-800 rounded-xl font-bold text-xs transition-all cursor-pointer"
+                              >
+                                + Add Notes / Recording
+                              </button>
                             )}
                           </div>
                         </div>

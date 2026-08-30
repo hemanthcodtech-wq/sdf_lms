@@ -47,13 +47,21 @@ const StudentClasses = () => {
   const fetchMyClassesAndMaterials = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/classes/student`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      const token = localStorage.getItem('token');
+      const endpoint = courseId 
+        ? `${import.meta.env.VITE_API_BASE_URL}/classes/course/${courseId}`
+        : `${import.meta.env.VITE_API_BASE_URL}/classes/student`;
+
+      const res = await axios.get(endpoint, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       
-      let fetchedClasses = res.data.data;
+      let fetchedClasses = res.data && res.data.success && Array.isArray(res.data.data) ? res.data.data : [];
       if (courseId) {
-        fetchedClasses = fetchedClasses.filter(c => c.courseId?._id === courseId);
+        fetchedClasses = fetchedClasses.filter(c => {
+          const cId = c.courseId?._id || c.courseId;
+          return String(cId) === String(courseId);
+        });
       }
       setAllClasses(fetchedClasses);
 
@@ -253,29 +261,47 @@ const StudentClasses = () => {
                     
                     {activeTab === 'classes' && (
                       allClasses.length > 0 ? allClasses.map((cls, index) => {
+                        const now = new Date();
                         const classDate = new Date(cls.date);
-                        const classDateMidnight = new Date(classDate);
-                        classDateMidnight.setHours(0, 0, 0, 0);
 
-                        const isToday = classDateMidnight.getTime() === todayMidnight.getTime();
-                        const isPast = classDateMidnight.getTime() < todayMidnight.getTime();
-                        const isUpcoming = classDateMidnight.getTime() > todayMidnight.getTime();
+                        let startHour = 6, startMin = 0;
+                        if (cls.time) {
+                          const parts = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+                          if (parts) {
+                            let h = parseInt(parts[1], 10);
+                            const m = parseInt(parts[2], 10);
+                            const ampm = parts[3] ? parts[3].toUpperCase() : null;
+                            if (ampm === 'PM' && h < 12) h += 12;
+                            if (ampm === 'AM' && h === 12) h = 0;
+                            startHour = h;
+                            startMin = m;
+                          }
+                        }
+
+                        const sessionStart = new Date(classDate);
+                        sessionStart.setHours(startHour, startMin, 0, 0);
+                        const duration = cls.durationMinutes || 60;
+                        const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+
+                        const isPast = now > sessionEnd;
+                        const isLiveNow = now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd;
+                        const isUpcoming = now < new Date(sessionStart.getTime() - 15 * 60 * 1000);
                         
                         return (
                           <motion.div 
                             initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
                             key={cls._id} 
-                            className={`bg-white rounded-[20px] p-5 flex flex-col justify-between border shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-lg transition-all duration-300 group ${isToday ? 'border-brand-green ring-2 ring-brand-green/20' : 'border-gray-200'}`}
+                            className={`bg-white rounded-[20px] p-5 flex flex-col justify-between border shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-lg transition-all duration-300 group ${isLiveNow ? 'border-brand-green ring-2 ring-brand-green/20' : 'border-gray-200'}`}
                           >
                             <div className="flex items-start gap-4 mb-5">
-                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center border shrink-0 group-hover:scale-110 transition-transform ${isToday ? 'bg-brand-green/10 border-brand-green/30 text-brand-green' : isPast ? 'bg-gray-50 border-gray-100 text-gray-400' : 'bg-amber-50 border-amber-100 text-[#C08552]'}`}>
+                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center border shrink-0 group-hover:scale-110 transition-transform ${isLiveNow ? 'bg-brand-green/10 border-brand-green/30 text-brand-green' : isPast ? 'bg-gray-50 border-gray-100 text-gray-400' : 'bg-amber-50 border-amber-100 text-[#C08552]'}`}>
                                 <FaCalendarAlt size={18} />
                               </div>
                               <div className="flex flex-col pt-1 flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  {isToday && (
+                                  {isLiveNow && (
                                     <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-green-700 bg-green-100 px-2.5 py-0.5 rounded-full animate-pulse">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span> LIVE TODAY
+                                      <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span> LIVE NOW
                                     </span>
                                   )}
                                   {isUpcoming && (
@@ -284,7 +310,7 @@ const StudentClasses = () => {
                                     </span>
                                   )}
                                   {isPast && (
-                                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                                       COMPLETED
                                     </span>
                                   )}
@@ -299,7 +325,7 @@ const StudentClasses = () => {
                               </span>
                               
                               {/* Dynamic Action Buttons based on Status */}
-                              {isToday ? (
+                              {isLiveNow ? (
                                 cls.zoomLink ? (
                                   <button 
                                     onClick={() => setSelectedLiveClass(cls)}

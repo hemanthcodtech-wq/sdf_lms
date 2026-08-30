@@ -202,7 +202,7 @@ const AdminLogin = () => {
                   <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-[#D4AF37] shrink-0">
                     <FaCloud size={12} />
                   </div>
-                  <span>Cloudinary Verified Master Vault</span>
+                  <span>Secure Server Storage Master Vault</span>
                 </div>
               </div>
             </div>

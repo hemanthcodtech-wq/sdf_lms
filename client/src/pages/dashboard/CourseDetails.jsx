@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { FaClock, FaGlobe, FaCheck, FaUser, FaHeart, FaRegHeart } from 'react-icons/fa';
 import { useLanguage, useAutoTranslate } from '../../context/LanguageContext';
 import SEO from '../../components/common/SEO';
+import { getCourseImageUrl } from '../../utils/imageHelper';
 
 // Inner component — allows calling useAutoTranslate per course field
 const CourseContent = ({ course, handleEnroll, isEnrolled, isWishlisted, handleToggleWishlist }) => {
@@ -23,10 +24,10 @@ const CourseContent = ({ course, handleEnroll, isEnrolled, isWishlisted, handleT
   return (
     <div className="min-h-screen bg-bg-cream relative overflow-x-hidden font-sans">
       <SEO 
-        title={course.title}
-        description={course.description ? course.description.slice(0, 160) : 'Live instructional yoga masterclass from Swamy Dwija Foundation.'}
-        keywords={`${course.title}, ${course.category}, Yoga course, live yoga classes, Swamy Dwija Foundation`}
-        image={course.thumbnailUrl || 'https://swamydwija.org/logo.png'}
+        title={`${course.title} | Swamy Dwija Foundation`}
+        description={course.description?.substring(0, 160) || 'Join our transformative Vedic learning program.'}
+        keywords={`${course.category}, ${course.title}, online course, Vedic learning`}
+        image={getCourseImageUrl(course.thumbnailUrl)}
         url={window.location.href}
         type="article"
       />
@@ -39,7 +40,12 @@ const CourseContent = ({ course, handleEnroll, isEnrolled, isWishlisted, handleT
         {/* Image Section with Wishlist Button */}
         <div className="w-full h-[280px] bg-gray-200 relative">
           {course.thumbnailUrl ? (
-            <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+            <img
+              src={getCourseImageUrl(course.thumbnailUrl)}
+              alt={course.title}
+              className="w-full h-full object-cover"
+              onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-brand-green/20 text-brand-green font-bold">No Image</div>
           )}
@@ -161,7 +167,12 @@ const CourseContent = ({ course, handleEnroll, isEnrolled, isWishlisted, handleT
               <div className="absolute inset-[-10px] bg-white/40 backdrop-blur-2xl rounded-[2rem] border border-white/60 shadow-[0_20px_40px_rgba(0,0,0,0.06)] transform rotate-3"></div>
               <div className="relative h-[300px] rounded-[1.5rem] overflow-hidden shadow-lg bg-gray-100 z-10">
                 {course.thumbnailUrl ? (
-                  <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+                  <img
+                    src={getCourseImageUrl(course.thumbnailUrl)}
+                    alt={course.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-brand-green bg-brand-green/10">No Image</div>
                 )}
