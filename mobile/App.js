@@ -16,11 +16,14 @@ export default function App() {
       <SafeAreaProvider>
         <LanguageProvider>
           <AuthProvider>
+            <StatusBar
+              style={isSplashActive ? 'light' : 'dark'}
+              backgroundColor={isSplashActive ? '#0a140d' : '#ffffff'}
+            />
             {isSplashActive ? (
               <SplashScreen onFinish={() => setIsSplashActive(false)} />
             ) : (
               <NavigationContainer>
-                <StatusBar style="dark" />
                 <RootNavigator />
               </NavigationContainer>
             )}
