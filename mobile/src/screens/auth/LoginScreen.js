@@ -148,9 +148,8 @@ export const LoginScreen = ({ navigation }) => {
           },
         });
         window.google.accounts.id.prompt();
-      } else {
-        // Native Android APK / iOS: Use Expo Auth Redirect to avoid domain reputation check in browser
-        const redirectUri = 'https://auth.expo.io/@student16/sdf-lms';
+        // Native Android APK / iOS: Use verified production domain redirect
+        const redirectUri = 'https://swamidwijafoundation.com';
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20email%20profile&prompt=select_account`;
         
         const authResult = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
