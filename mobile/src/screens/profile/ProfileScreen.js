@@ -20,6 +20,7 @@ import { courseService } from '../../services/courseService';
 import { paymentService } from '../../services/paymentService';
 import { authService } from '../../services/authService';
 import { API_BASE_URL } from '../../services/api';
+import { getAvatarUrl } from '../../utils/imageHelper';
 
 export const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -174,13 +175,6 @@ export const ProfileScreen = ({ navigation }) => {
     } catch (err) {
       console.error('Logout error:', err);
     }
-  };
-
-  const getAvatarUrl = (avatarPath) => {
-    if (!avatarPath) return null;
-    if (avatarPath.startsWith('http')) return avatarPath;
-    const baseHost = API_BASE_URL.replace('/api', '');
-    return `${baseHost}${avatarPath}`;
   };
 
   const effectiveUser = detailedProfile || user;

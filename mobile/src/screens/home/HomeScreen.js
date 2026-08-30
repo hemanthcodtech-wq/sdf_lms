@@ -23,6 +23,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { courseService } from '../../services/courseService';
 
 import { API_BASE_URL } from '../../services/api';
+import { getAvatarUrl } from '../../utils/imageHelper';
 
 export const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -34,12 +35,6 @@ export const HomeScreen = ({ navigation }) => {
   const [liveClasses, setLiveClasses] = useState([]);
   const [myCourses, setMyCourses] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
-
-  const getAvatarUrl = (avatarPath) => {
-    if (!avatarPath) return null;
-    if (avatarPath.startsWith('http')) return avatarPath;
-    return `${API_BASE_URL.replace('/api', '')}${avatarPath}`;
-  };
 
   const userAvatarUri = getAvatarUrl(user?.avatar);
 
