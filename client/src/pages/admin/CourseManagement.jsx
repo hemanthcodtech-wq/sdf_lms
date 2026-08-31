@@ -1112,7 +1112,10 @@ const CourseManagement = () => {
                                   {days.map((day, idx) => {
                                     if (!day) return <div key={`empty-${idx}`} className="p-2"></div>;
                                     
-                                    const dateStr = day.toISOString().split('T')[0];
+                                    const year = day.getFullYear();
+                                    const month = String(day.getMonth() + 1).padStart(2, '0');
+                                    const dateNum = String(day.getDate()).padStart(2, '0');
+                                    const dateStr = `${year}-${month}-${dateNum}`;
                                     const isSelected = formData.selectedSessionDates.includes(dateStr);
                                     
                                     day.setHours(0,0,0,0);
@@ -1167,7 +1170,8 @@ const CourseManagement = () => {
                               <p className="text-sm text-gray-400 italic">Click dates on the calendar to select sessions.</p>
                             ) : (
                               formData.selectedSessionDates.map((date) => {
-                                const d = new Date(date);
+                                const parts = date.split('-').map(Number);
+                                const d = new Date(parts[0], parts[1] - 1, parts[2]);
                                 const dateFmt = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
                                 const dayName = d.toLocaleDateString('en-GB', { weekday: 'short' });
                                 return (
