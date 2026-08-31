@@ -327,9 +327,9 @@ const CourseManagement = () => {
       });
       if (thumbnailFile) data.append('thumbnail', thumbnailFile);
 
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
       const headers = { 
-        Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
-        'Content-Type': 'multipart/form-data'
+        Authorization: `Bearer ${token}`
       };
 
       if (editingCourse) {
@@ -342,7 +342,8 @@ const CourseManagement = () => {
       fetchCourses();
     } catch (err) {
       console.error("Error saving course", err);
-      alert(err.response?.data?.message || 'Error saving course.');
+      const errMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Error saving course.';
+      alert(errMsg);
     } finally {
       setUploading(false);
     }

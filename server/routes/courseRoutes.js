@@ -162,7 +162,13 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
     }
 
     const course = await Course.create({
-      title, slug, description, category: category || 'Other', durationMonths: durationMonths || 1, startDate, endDate, 
+      title, 
+      slug, 
+      description: description || title || 'Comprehensive course program', 
+      category: category || 'Other', 
+      durationMonths: durationMonths || 1, 
+      startDate, 
+      endDate, 
       startTime: startTime || '',
       endTime: endTime || '',
       timings, 
