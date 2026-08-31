@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
   Linking,
   Alert,
   Platform,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +19,149 @@ import { colors, shadows } from '../../theme/colors';
 import { useAuth } from '../../context/AuthContext';
 import { courseService } from '../../services/courseService';
 import { notificationService } from '../../services/notificationService';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
+const SwipeableNotificationItem = ({ item, onDismiss, onAction }) => {
+  const pan = useRef(new Animated.ValueXY()).current;
+  const isLive = item.type === 'live_class';
+  const isUrgent = item.urgent;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 12 && Math.abs(gestureState.dy) < 15;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        pan.setValue({ x: gestureState.dx, y: 0 });
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > 100 || gestureState.vx > 0.5) {
+          // Swiped Right -> Dismiss
+          Animated.timing(pan, {
+            toValue: { x: SCREEN_WIDTH + 50, y: 0 },
+            duration: 180,
+            useNativeDriver: true,
+          }).start(() => onDismiss(item.id));
+        } else if (gestureState.dx < -100 || gestureState.vx < -0.5) {
+          // Swiped Left -> Dismiss
+          Animated.timing(pan, {
+            toValue: { x: -SCREEN_WIDTH - 50, y: 0 },
+            duration: 180,
+            useNativeDriver: true,
+          }).start(() => onDismiss(item.id));
+        } else {
+          // Spring back
+          Animated.spring(pan, {
+            toValue: { x: 0, y: 0 },
+            friction: 5,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  return (
+    <View style={styles.swipeContainer}>
+      {/* Red Background Behind Card on Swipe */}
+      <View style={styles.swipeBackground}>
+        <View style={styles.swipeBgSide}>
+          <Ionicons name="trash" size={20} color="#dc2626" />
+          <Text style={styles.swipeBgText}>Dismiss</Text>
+        </View>
+        <View style={[styles.swipeBgSide, { alignItems: 'flex-end' }]}>
+          <Ionicons name="trash" size={20} color="#dc2626" />
+          <Text style={styles.swipeBgText}>Dismiss</Text>
+        </View>
+      </View>
+
+      {/* Swipeable Card Foreground */}
+      <Animated.View
+        style={[
+          styles.card,
+          item.unread && styles.unreadCard,
+          isUrgent && styles.urgentCard,
+          shadows.sm,
+          {
+            transform: [{ translateX: pan.x }],
+          },
+        ]}
+        {...panResponder.panHandlers}
+      >
+        <TouchableOpacity
+          style={styles.cardInner}
+          onPress={() => onAction(item)}
+          activeOpacity={0.9}
+        >
+          <View
+            style={[
+              styles.iconWrapper,
+              {
+                backgroundColor: isUrgent
+                  ? 'rgba(239, 68, 68, 0.12)'
+                  : isLive
+                  ? 'rgba(13, 92, 49, 0.12)'
+                  : 'rgba(234, 122, 40, 0.12)',
+              },
+            ]}
+          >
+            <Ionicons
+              name={
+                isUrgent
+                  ? 'videocam'
+                  : isLive
+                  ? 'videocam-outline'
+                  : item.type === 'course_enrolled'
+                  ? 'school-outline'
+                  : 'notifications-outline'
+              }
+              size={22}
+              color={isUrgent ? '#ef4444' : isLive ? colors.primary : colors.secondary}
+            />
+          </View>
+
+          <View style={styles.cardContent}>
+            <View style={styles.cardHeader}>
+              <Text style={[styles.cardTitle, isUrgent && { color: '#dc2626' }]}>
+                {item.title}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {item.unread && <View style={styles.unreadDot} />}
+                <TouchableOpacity
+                  onPress={() => onDismiss(item.id)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <Text style={styles.cardMessage}>{item.message}</Text>
+
+            {isLive && item.zoomLink && (
+              <TouchableOpacity
+                style={[styles.joinBtn, isUrgent && styles.joinBtnUrgent]}
+                onPress={() => onAction(item)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="videocam" size={14} color="#ffffff" style={{ marginRight: 6 }} />
+                <Text style={styles.joinBtnText}>
+                  {isUrgent ? 'Join Live Zoom (Starting Now)' : 'Open Zoom Link'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <View style={styles.cardFooter}>
+              <Text style={styles.timeText}>{item.time || 'Recent'}</Text>
+              <Text style={styles.swipeHintText}>Swipe to clear ↔</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
+  );
+};
 
 export const NotificationsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -61,6 +207,27 @@ export const NotificationsScreen = ({ navigation }) => {
     loadNotifications();
   };
 
+  const handleDismiss = async (id) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    await notificationService.removeNotification(id);
+  };
+
+  const handleClearAll = () => {
+    if (notifications.length === 0) return;
+    Alert.alert('Clear Notifications', 'Are you sure you want to clear all notifications?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Clear All',
+        style: 'destructive',
+        onPress: async () => {
+          const ids = notifications.map((n) => n.id);
+          setNotifications([]);
+          await notificationService.clearAll(ids);
+        },
+      },
+    ]);
+  };
+
   const handleAction = (item) => {
     if (item.type === 'live_class' && item.zoomLink) {
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -73,77 +240,6 @@ export const NotificationsScreen = ({ navigation }) => {
     } else if (item.type === 'course_enrolled') {
       navigation.navigate('LearningTab');
     }
-  };
-
-  const renderItem = ({ item }) => {
-    const isLive = item.type === 'live_class';
-    const isUrgent = item.urgent;
-
-    return (
-      <TouchableOpacity
-        style={[
-          styles.card,
-          item.unread && styles.unreadCard,
-          isUrgent && styles.urgentCard,
-          shadows.sm,
-        ]}
-        onPress={() => handleAction(item)}
-        activeOpacity={0.8}
-      >
-        <View
-          style={[
-            styles.iconWrapper,
-            {
-              backgroundColor: isUrgent
-                ? 'rgba(239, 68, 68, 0.12)'
-                : isLive
-                ? 'rgba(13, 92, 49, 0.12)'
-                : 'rgba(234, 122, 40, 0.12)',
-            },
-          ]}
-        >
-          <Ionicons
-            name={
-              isUrgent
-                ? 'videocam'
-                : isLive
-                ? 'videocam-outline'
-                : item.type === 'course_enrolled'
-                ? 'school-outline'
-                : 'notifications-outline'
-            }
-            size={22}
-            color={isUrgent ? '#ef4444' : isLive ? colors.primary : colors.secondary}
-          />
-        </View>
-
-        <View style={styles.cardContent}>
-          <View style={styles.cardHeader}>
-            <Text style={[styles.cardTitle, isUrgent && { color: '#dc2626' }]}>
-              {item.title}
-            </Text>
-            {item.unread && <View style={styles.unreadDot} />}
-          </View>
-
-          <Text style={styles.cardMessage}>{item.message}</Text>
-
-          {isLive && item.zoomLink && (
-            <TouchableOpacity
-              style={[styles.joinBtn, isUrgent && styles.joinBtnUrgent]}
-              onPress={() => handleAction(item)}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="videocam" size={14} color="#ffffff" style={{ marginRight: 6 }} />
-              <Text style={styles.joinBtnText}>
-                {isUrgent ? 'Join Live Zoom (Starting Now)' : 'Open Zoom Link'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          <Text style={styles.timeText}>{item.time || 'Recent'}</Text>
-        </View>
-      </TouchableOpacity>
-    );
   };
 
   return (
@@ -165,20 +261,23 @@ export const NotificationsScreen = ({ navigation }) => {
         <Text style={styles.headerTitle}>Notifications</Text>
         <TouchableOpacity
           style={styles.clearBtn}
-          onPress={() => {
-            notificationService.markAllAsRead();
-            loadNotifications();
-          }}
+          onPress={handleClearAll}
           activeOpacity={0.7}
         >
-          <Text style={styles.clearBtnText}>Mark read</Text>
+          <Text style={styles.clearBtnText}>Clear all</Text>
         </TouchableOpacity>
       </View>
 
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id}
-        renderItem={renderItem}
+        renderItem={({ item }) => (
+          <SwipeableNotificationItem
+            item={item}
+            onDismiss={handleDismiss}
+            onAction={handleAction}
+          />
+        )}
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: insets.bottom + 20 },
@@ -197,9 +296,9 @@ export const NotificationsScreen = ({ navigation }) => {
               <View style={styles.emptyIconCircle}>
                 <Ionicons name="notifications-off-outline" size={38} color={colors.textMuted} />
               </View>
-              <Text style={styles.emptyTitle}>No Notifications Yet</Text>
+              <Text style={styles.emptyTitle}>No Notifications</Text>
               <Text style={styles.emptySubtitle}>
-                Live class alerts, daily session reminders, and course updates will appear here.
+                You have caught up with all live class alerts and course updates.
               </Text>
             </View>
           )
@@ -249,14 +348,40 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
   },
-  card: {
+  swipeContainer: {
+    marginBottom: 12,
+    position: 'relative',
+  },
+  swipeBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#fee2e2',
+    borderRadius: 14,
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+  },
+  swipeBgSide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  swipeBgText: {
+    color: '#dc2626',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  card: {
     backgroundColor: colors.surface,
     borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  cardInner: {
+    flexDirection: 'row',
+    padding: 14,
   },
   unreadCard: {
     backgroundColor: '#ffffff',
@@ -318,10 +443,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
   timeText: {
     fontSize: 11,
     color: colors.textMuted,
     fontWeight: '600',
+  },
+  swipeHintText: {
+    fontSize: 10,
+    color: colors.textMuted,
+    fontStyle: 'italic',
   },
   emptyContainer: {
     alignItems: 'center',

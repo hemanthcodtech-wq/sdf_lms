@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -7,9 +7,15 @@ import { LanguageProvider } from './src/context/LanguageContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { DeviceFrame } from './src/components/DeviceFrame';
 import { SplashScreen } from './src/screens/splash/SplashScreen';
+import { notificationService } from './src/services/notificationService';
 
 export default function App() {
   const [isSplashActive, setIsSplashActive] = useState(true);
+
+  useEffect(() => {
+    notificationService.init();
+    notificationService.requestPermissions();
+  }, []);
 
   return (
     <DeviceFrame>
