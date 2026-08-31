@@ -37,9 +37,16 @@ export const HomeScreen = ({ navigation }) => {
   const [myCourses, setMyCourses] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const userAvatarUri = getAvatarUrl(user?.avatar);
+  const userAvatarUri = getAvatarUrl(user?.avatar || user?.profileImage || user?.photoURL || user?.image);
 
-  const categories = ['All', 'Spiritual', 'Personality', 'Skill Development', 'Vedic Science', 'Language'];
+  const defaultCategories = ['All', 'Yoga', 'Meditation', 'Nutrition', 'Ayurveda'];
+  const categories = Array.from(
+    new Set([
+      'All',
+      ...courses.map((c) => c.category).filter(Boolean),
+      ...defaultCategories
+    ])
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -61,7 +68,7 @@ export const HomeScreen = ({ navigation }) => {
         // Prefetch course images in parallel
         if (Platform.OS !== 'web') {
           freshCourses.forEach((c) => {
-            const img = getCourseImageUrl(c.thumbnailUrl || c.image);
+            const img = getCourseImageUrl(c.thumbnail || c.thumbnailUrl || c.image);
             if (img) {
               Image.prefetch(img).catch(() => {});
             }
@@ -72,7 +79,18 @@ export const HomeScreen = ({ navigation }) => {
       // Handle User Specific Data
       if (user) {
         if (results[1]?.status === 'fulfilled' && results[1].value?.data) {
-          setLiveClasses(results[1].value.data);
+          const rawClasses = results[1].value.data;
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const upcoming = rawClasses.filter((cl) => {
+            if (!cl.date) return true;
+            const d = new Date(cl.date);
+            d.setHours(23, 59, 59, 999);
+            return d >= today;
+          }).sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+          setLiveClasses(upcoming.length > 0 ? upcoming : rawClasses.slice(0, 3));
         }
         if (results[2]?.status === 'fulfilled' && results[2].value?.data) {
           setMyCourses(results[2].value.data);
@@ -240,21 +258,61 @@ export const HomeScreen = ({ navigation }) => {
               </View>
             </View>
 
-            {liveClasses.slice(0, 2).map((item, idx) => (
-              <View key={item._id || idx} style={[styles.liveClassCard, shadows.md]}>
-                <View style={styles.liveClassTop}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.liveCourseTitle} numberOfLines={1}>
-                      {item.courseId?.title || item.title || 'Live Class Session'}
-                    </Text>
-                    <Text style={styles.liveTimeText}>
-                      📅 {item.date || 'Today'} • ⏰ {item.time || item.courseId?.timings || 'Live Now'}
-                    </Text>
-                  </View>
-                  <Badge text="LIVE ZOOM" variant="warning" />
-                </View>
+            {liveClasses.slice(0, 3).map((item, idx) => {
+              const formatLiveDate = (dateVal) => {
+                if (!dateVal) return 'Today';
+                try {
+                  const raw = dateVal.includes('T') ? dateVal.split('T')[0] : dateVal;
+                  const parts = raw.split('-').map(Number);
+                  if (parts.length === 3) {
+                    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const comp = new Date(d);
+                    comp.setHours(0, 0, 0, 0);
+                    if (comp.getTime() === today.getTime()) return 'Today';
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(today.getDate() + 1);
+                    if (comp.getTime() === tomorrow.getTime()) return 'Tomorrow';
+                    return d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' });
+                  }
+                } catch (e) {}
+                return dateVal;
+              };
 
-                <View style={styles.liveActionsRow}>
+              const formatLiveTime = (timeVal) => {
+                if (!timeVal) return 'Live Batch';
+                if (timeVal.includes('to') || timeVal.includes('AM') || timeVal.includes('PM')) return timeVal;
+                try {
+                  const [hStr, mStr] = timeVal.split(':');
+                  let h = parseInt(hStr, 10);
+                  const m = mStr || '00';
+                  const ampm = h >= 12 ? 'PM' : 'AM';
+                  h = h % 12 || 12;
+                  return `${h.toString().padStart(2, '0')}:${m} ${ampm}`;
+                } catch (e) {
+                  return timeVal;
+                }
+              };
+
+              const displayDate = formatLiveDate(item.date);
+              const displayTime = formatLiveTime(item.time || item.courseId?.startTime || item.courseId?.timings);
+
+              return (
+                <View key={item._id || idx} style={[styles.liveClassCard, shadows.md]}>
+                  <View style={styles.liveClassTop}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.liveCourseTitle} numberOfLines={1}>
+                        {item.courseId?.title || item.title || 'Live Class Session'}
+                      </Text>
+                      <Text style={styles.liveTimeText}>
+                        📅 {displayDate} • ⏰ {displayTime}
+                      </Text>
+                    </View>
+                    <Badge text="LIVE ZOOM" variant="warning" />
+                  </View>
+
+                  <View style={styles.liveActionsRow}>
                   <CustomButton
                     title={t('joinClass')}
                     onPress={() => handleJoinClass(item)}
