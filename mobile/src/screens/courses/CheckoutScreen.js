@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Modal,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -624,6 +625,31 @@ export const CheckoutScreen = ({ route, navigation }) => {
                 javaScriptCanOpenWindowsAutomatically={true}
                 userAgent="Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
                 startInLoadingState={false}
+                onShouldStartLoadWithRequest={(request) => {
+                  const { url } = request;
+                  if (!url) return false;
+                  // Allow standard web URLs to load inside WebView
+                  if (
+                    url.startsWith('http://') ||
+                    url.startsWith('https://') ||
+                    url.startsWith('about:blank') ||
+                    url.startsWith('data:')
+                  ) {
+                    return true;
+                  }
+                  // Delegate custom app schemes (upi://, gpay://, phonepe://, paytmmp://, intent://) to device OS
+                  Linking.openURL(url).catch((err) => {
+                    console.log('Cannot launch external payment URL scheme:', url);
+                  });
+                  return false;
+                }}
+                onError={(syntheticEvent) => {
+                  const { nativeEvent } = syntheticEvent;
+                  if (nativeEvent.description?.includes('ERR_UNKNOWN_URL_SCHEME')) {
+                    return;
+                  }
+                  console.warn('WebView error:', nativeEvent);
+                }}
                 style={{ flex: 1, backgroundColor: '#ffffff' }}
               />
             )}
