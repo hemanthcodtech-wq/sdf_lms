@@ -106,9 +106,67 @@ export const StudentClassesScreen = ({ route, navigation }) => {
     });
   }
 
+  const getSessionTimingInfo = (lesson, idx) => {
+    if (completedLessons.includes(idx)) {
+      return { isCompleted: true, canJoin: false, label: 'Completed', type: 'done' };
+    }
+
+    const dateVal = lesson.date || (course?.sessionDates && course.sessionDates[idx]) || course?.startDate;
+    const timeVal = lesson.time || course?.startTime || (course?.timings ? course.timings.split(' to ')[0] : null);
+
+    if (!dateVal) {
+      return { isCompleted: false, canJoin: true, label: 'Join', type: 'live' };
+    }
+
+    try {
+      const rawDate = dateVal.includes('T') ? dateVal.split('T')[0] : dateVal;
+      const parts = rawDate.split('-').map(Number);
+      if (parts.length === 3) {
+        let [h, m] = [6, 0];
+        if (timeVal) {
+          const match = timeVal.match(/(\d+):(\d+)/);
+          if (match) {
+            h = parseInt(match[1], 10);
+            m = parseInt(match[2], 10);
+            if (timeVal.toLowerCase().includes('pm') && h < 12) h += 12;
+            if (timeVal.toLowerCase().includes('am') && h === 12) h = 0;
+          }
+        }
+
+        const start = new Date(parts[0], parts[1] - 1, parts[2], h, m, 0);
+        const durationMins = lesson.durationMinutes || 60;
+        const end = new Date(start.getTime() + durationMins * 60 * 1000);
+        const now = new Date();
+
+        // 1. If session end time is passed -> marked completed with green tick
+        if (now > end) {
+          return { isCompleted: true, canJoin: false, label: 'Completed', type: 'done' };
+        }
+
+        // 2. Available 2 minutes before start time until session ends -> show Join button
+        const joinStart = new Date(start.getTime() - 2 * 60 * 1000);
+        if (now >= joinStart && now <= end) {
+          return { isCompleted: false, canJoin: true, label: 'Join', type: 'live' };
+        }
+
+        // 3. Upcoming session in future
+        const diffMs = start.getTime() - now.getTime();
+        const diffMins = Math.round(diffMs / (60 * 1000));
+        let hint = 'Upcoming';
+        if (diffMins <= 60 && diffMins > 0) {
+          hint = `In ${diffMins}m`;
+        }
+        return { isCompleted: false, canJoin: false, label: hint, type: 'upcoming' };
+      }
+    } catch (e) {}
+
+    return { isCompleted: false, canJoin: true, label: 'Join', type: 'live' };
+  };
+
   const currentLesson = realSessions[activeLessonIndex] || realSessions[0] || null;
+  const completedCount = realSessions.filter((lesson, idx) => getSessionTimingInfo(lesson, idx).isCompleted).length;
   const progressPercent = realSessions.length > 0
-    ? Math.round((completedLessons.length / realSessions.length) * 100)
+    ? Math.round((completedCount / realSessions.length) * 100)
     : 0;
 
   const toggleComplete = (idx) => {
@@ -142,102 +200,103 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   };
 
   const handleOpenWhatsApp = () => {
-    const waLink = course?.whatsappGroupLink;
-    if (waLink) {
+    if (course?.whatsappGroupLink) {
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.open(waLink, '_blank', 'noopener,noreferrer');
+        window.open(course.whatsappGroupLink, '_blank', 'noopener,noreferrer');
       } else {
-        Linking.openURL(waLink).catch(() => {
-          Alert.alert('Error', 'Unable to open WhatsApp.');
+        Linking.openURL(course.whatsappGroupLink).catch(() => {
+          Alert.alert('WhatsApp', 'Could not launch WhatsApp.');
         });
       }
     } else {
-      Alert.alert('Community Group', 'WhatsApp community group link will be shared by your guru.');
+      Alert.alert('Batch Community', 'WhatsApp group link will be shared by the mentor.');
     }
   };
 
-  const handleDownloadMaterial = async (fileUrl, title = 'Course Material') => {
-    if (!fileUrl) {
-      Alert.alert('Notice', 'No file attachment available for download.');
+  const handleDownloadMaterial = async (contentUrl, title) => {
+    if (!contentUrl) {
+      Alert.alert('Material', 'No download link available for this document.');
       return;
     }
-    const fullUrl = getCourseImageUrl(fileUrl);
+
+    if (Platform.OS === 'web') {
+      window.open(contentUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
     try {
       setDownloadingMaterial(true);
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.open(fullUrl, '_blank');
-      } else {
-        const fileName = fileUrl.split('/').pop() || 'Course-Handbook.pdf';
-        const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-        const downloadRes = await FileSystem.downloadAsync(fullUrl, fileUri);
+      const filename = `${title.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+      const fileUri = `${FileSystem.documentDirectory}${filename}`;
 
-        if (downloadRes.status === 200) {
-          const canShare = await Sharing.isAvailableAsync();
-          if (canShare) {
-            await Sharing.shareAsync(downloadRes.uri, {
-              mimeType: 'application/pdf',
-              dialogTitle: `Download ${title}`,
-              UTI: 'com.adobe.pdf',
-            });
-          } else {
-            await WebBrowser.openBrowserAsync(fullUrl);
-          }
+      const downloadRes = await FileSystem.downloadAsync(contentUrl, fileUri);
+
+      if (downloadRes.status === 200) {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(downloadRes.uri);
         } else {
-          await WebBrowser.openBrowserAsync(fullUrl);
+          Alert.alert('Download Complete', `File saved to: ${downloadRes.uri}`);
         }
+      } else {
+        Alert.alert('Download Failed', 'Could not download course material.');
       }
-    } catch (e) {
-      console.error('Material download error:', e);
-      Linking.openURL(fullUrl).catch(() => {
-        Alert.alert('Download Notice', 'Unable to download file. Please check your network connection.');
-      });
+    } catch (err) {
+      console.error('Download error:', err);
+      Alert.alert('Download Error', 'Failed to save material to device.');
     } finally {
       setDownloadingMaterial(false);
     }
   };
 
+  const tabs = [
+    { id: 'lessons', label: `Sessions (${realSessions.length})` },
+    { id: 'materials', label: 'Materials & Notes' },
+    { id: 'community', label: 'Live & Community' },
+  ];
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      {/* Top Header */}
+      <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 14 : Math.max(insets.top, 20) }]}>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {course?.title || 'Classroom'}
+          {course?.title || 'Course Classroom'}
         </Text>
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Video / Live Player Canvas */}
+      {/* Main Focus Player / Live Banner */}
       <View style={styles.playerContainer}>
         <Image
           source={{
-            uri: getCourseImageUrl(course?.thumbnailUrl),
-            cache: 'force-cache',
+            uri: getCourseImageUrl(course?.thumbnail || course?.thumbnailUrl || course?.image),
           }}
           style={styles.playerThumbnail}
+          resizeMode="cover"
         />
         <View style={styles.playerOverlay}>
           <TouchableOpacity
             style={styles.playCenterButton}
             onPress={() => handleJoinZoom(currentLesson)}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
-            <Ionicons name="videocam" size={32} color="#fff" />
+            <Ionicons name="videocam" size={28} color="#fff" />
           </TouchableOpacity>
-          <View style={styles.playerBottomInfo}>
-            <Text style={styles.playerLessonTitle} numberOfLines={1}>
-              {currentLesson?.title || course?.title || 'Live Interactive Class'}
-            </Text>
-            <Text style={styles.playerSubInfo}>
-              ⏰ {course?.timings || 'Batch schedule in description'}
-            </Text>
-          </View>
+        </View>
+
+        <View style={styles.playerBottomInfo}>
+          <Text style={styles.playerLessonTitle} numberOfLines={1}>
+            {currentLesson?.title || course?.title}
+          </Text>
+          <Text style={{ color: '#d1fae5', fontSize: 11, fontWeight: '600', marginTop: 2 }}>
+            ⏰ {course?.timings || 'Batch schedule in description'}
+          </Text>
         </View>
       </View>
 
@@ -247,16 +306,12 @@ export const StudentClassesScreen = ({ route, navigation }) => {
           <Text style={styles.progressLabel}>Overall Completion</Text>
           <Text style={styles.progressValue}>{progressPercent}%</Text>
         </View>
-        <ProgressBar progress={progressPercent} height={6} />
+        <ProgressBar progress={progressPercent} color={colors.primary} />
       </View>
 
-      {/* Navigation Tabs */}
+      {/* Tab Navigation */}
       <View style={styles.tabNav}>
-        {[
-          { id: 'lessons', label: `Sessions (${realSessions.length})` },
-          { id: 'materials', label: 'Materials & Notes' },
-          { id: 'community', label: 'Live & Community' },
-        ].map((t) => (
+        {tabs.map((t) => (
           <TouchableOpacity
             key={t.id}
             style={[styles.tabNavItem, activeTab === t.id && styles.tabNavItemActive]}
@@ -285,7 +340,9 @@ export const StudentClassesScreen = ({ route, navigation }) => {
             ) : realSessions.length > 0 ? (
               realSessions.map((lesson, idx) => {
                 const isActive = activeLessonIndex === idx;
-                const isDone = completedLessons.includes(idx);
+                const timingInfo = getSessionTimingInfo(lesson, idx);
+                const isDone = timingInfo.isCompleted;
+
                 return (
                   <TouchableOpacity
                     key={lesson.id || idx}
@@ -297,6 +354,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                     onPress={() => setActiveLessonIndex(idx)}
                     activeOpacity={0.7}
                   >
+                    {/* Checkmark Circle (Turns solid green with white tick when completed) */}
                     <TouchableOpacity
                       style={[styles.checkCircle, isDone && styles.checkCircleDone]}
                       onPress={() => toggleComplete(idx)}
@@ -307,6 +365,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                     <View style={{ flex: 1 }}>
                       <Text
                         style={[styles.lessonTitle, isActive && styles.lessonTitleActive]}
+                        numberOfLines={2}
                       >
                         {lesson.title}
                       </Text>
@@ -315,16 +374,27 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                       </Text>
                     </View>
 
-                    <TouchableOpacity
-                      style={styles.joinIconBtn}
-                      onPress={() => handleJoinZoom(lesson)}
-                    >
-                      <Ionicons
-                        name="videocam-outline"
-                        size={22}
-                        color={isActive ? colors.primary : colors.textSecondary}
-                      />
-                    </TouchableOpacity>
+                    {/* Dynamic Action: Join Button (When live / 2m before) OR Status Badge */}
+                    {timingInfo.canJoin ? (
+                      <TouchableOpacity
+                        style={styles.joinActionBtn}
+                        onPress={() => handleJoinZoom(lesson)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="videocam" size={14} color="#fff" />
+                        <Text style={styles.joinActionBtnText}>Join</Text>
+                      </TouchableOpacity>
+                    ) : isDone ? (
+                      <View style={styles.completedBadge}>
+                        <Ionicons name="checkmark-done" size={14} color="#16a34a" />
+                        <Text style={styles.completedBadgeText}>Done</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.upcomingBadge}>
+                        <Ionicons name="time-outline" size={13} color={colors.textMuted} />
+                        <Text style={styles.upcomingBadgeText}>{timingInfo.label}</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })
@@ -641,6 +711,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  joinActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#16a34a',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  joinActionBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  completedBadgeText: {
+    color: '#15803d',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  upcomingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  upcomingBadgeText: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '600',
   },
   materialsSection: {
     gap: 12,
