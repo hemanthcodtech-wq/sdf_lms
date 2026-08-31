@@ -22,8 +22,24 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0d5c31"
       },
-      "package": "com.sdflms.app"
+      "package": "com.sdflms.app",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0d5c31"
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     },
