@@ -3,7 +3,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaCalendarAlt, FaVideo, FaFilePdf, FaTimes, FaBook, 
-  FaArrowLeft, FaChevronRight, FaAward, FaPlayCircle, FaWhatsapp 
+  FaArrowLeft, FaChevronRight, FaAward, FaPlayCircle, FaWhatsapp, FaCheckCircle 
 } from 'react-icons/fa';
 import { useParams, useNavigate } from 'react-router-dom';
 import ZoomLiveClassroom from '../../components/classroom/ZoomLiveClassroom';
@@ -284,18 +284,18 @@ const StudentClasses = () => {
                         const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
 
                         const isPast = now > sessionEnd;
-                        const isLiveNow = now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd;
-                        const isUpcoming = now < new Date(sessionStart.getTime() - 15 * 60 * 1000);
+                        const isLiveNow = now >= new Date(sessionStart.getTime() - 2 * 60 * 1000) && now <= sessionEnd;
+                        const isUpcoming = now < new Date(sessionStart.getTime() - 2 * 60 * 1000);
                         
                         return (
                           <motion.div 
                             initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
                             key={cls._id} 
-                            className={`bg-white rounded-[20px] p-5 flex flex-col justify-between border shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-lg transition-all duration-300 group ${isLiveNow ? 'border-brand-green ring-2 ring-brand-green/20' : 'border-gray-200'}`}
+                            className={`bg-white rounded-[20px] p-5 flex flex-col justify-between border shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-lg transition-all duration-300 group ${isLiveNow ? 'border-brand-green ring-2 ring-brand-green/20' : isPast ? 'border-green-200 bg-green-50/20' : 'border-gray-200'}`}
                           >
                             <div className="flex items-start gap-4 mb-5">
-                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center border shrink-0 group-hover:scale-110 transition-transform ${isLiveNow ? 'bg-brand-green/10 border-brand-green/30 text-brand-green' : isPast ? 'bg-gray-50 border-gray-100 text-gray-400' : 'bg-amber-50 border-amber-100 text-[#C08552]'}`}>
-                                <FaCalendarAlt size={18} />
+                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center border shrink-0 group-hover:scale-110 transition-transform ${isLiveNow ? 'bg-brand-green/10 border-brand-green/30 text-brand-green' : isPast ? 'bg-green-100 border-green-300 text-green-600' : 'bg-amber-50 border-amber-100 text-[#C08552]'}`}>
+                                {isPast ? <FaCheckCircle size={20} className="text-green-600" /> : <FaCalendarAlt size={18} />}
                               </div>
                               <div className="flex flex-col pt-1 flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
@@ -306,16 +306,16 @@ const StudentClasses = () => {
                                   )}
                                   {isUpcoming && (
                                     <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/60 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                                      UPCOMING
+                                      STARTS 2M BEFORE
                                     </span>
                                   )}
                                   {isPast && (
-                                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                                      COMPLETED
+                                    <span className="text-[10px] font-extrabold text-green-700 bg-green-100 border border-green-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                                      <FaCheckCircle className="text-green-600" size={10} /> COMPLETED
                                     </span>
                                   )}
                                 </div>
-                                <span className="text-base font-black text-gray-800 line-clamp-2 leading-tight">{cls.title || 'Live Class Session'}</span>
+                                <span className={`text-base font-black line-clamp-2 leading-tight ${isPast ? 'text-green-900' : 'text-gray-800'}`}>{cls.title || 'Live Class Session'}</span>
                               </div>
                             </div>
                             
