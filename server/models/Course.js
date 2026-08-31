@@ -25,7 +25,7 @@ const courseSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Yoga', 'Meditation', 'Nutrition', 'Ayurveda', 'Other']
+    default: 'Other'
   },
   instructorId: {
     type: mongoose.Schema.Types.ObjectId,

@@ -2,6 +2,8 @@ const express = require('express');
 const { protect, admin } = require('../middleware/authMiddleware');
 const Course = require('../models/Course');
 const Class = require('../models/Class');
+const User = require('../models/User');
+const Enrollment = require('../models/Enrollment');
 const { createZoomMeeting } = require('../services/zoomService');
 const { sendCourseCompletionEmail } = require('../utils/emailService');
 const { uploadBufferToCloudinary } = require('../utils/cloudinaryUploader');
@@ -138,7 +140,13 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
       }
     }
     
-    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    let baseSlug = (title || 'course').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    let slug = baseSlug;
+    const existingSlug = await Course.findOne({ slug });
+    if (existingSlug) {
+      slug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+    }
+
     const timings = (startTime && endTime) ? `${startTime} to ${endTime}` : '';
     const coursePrice = price !== undefined && price !== '' ? Number(price) : 0;
 
@@ -155,13 +163,14 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
     }
 
     const course = await Course.create({
-      title, slug, description, category, durationMonths, startDate, endDate, 
+      title, slug, description, category: category || 'Other', durationMonths: durationMonths || 1, startDate, endDate, 
       startTime: startTime || '',
       endTime: endTime || '',
       timings, 
       sessionDates: selectedSessionDates,
       topics, 
-      level, 
+      whatYouWillLearn,
+      level: level || 'Beginner', 
       language: language || 'English',
       accessValidity: accessValidity || '2 Months',
       price: coursePrice,
