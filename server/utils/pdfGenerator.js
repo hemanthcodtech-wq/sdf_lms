@@ -351,9 +351,9 @@ const generateCertificatePDF = (data) => {
         }
       }
 
-      // 1. Left Sidebar Meta Information (Left-aligned with labels at x = 102 pt)
+      // 1. Left Column Meta Information
       const metaX = 102;
-      const metaWidth = 100;
+      const metaWidth = 110;
 
       // Student ID (Under STUDENT ID label)
       doc.fillColor('#111827')
@@ -369,7 +369,7 @@ const generateCertificatePDF = (data) => {
          .text(issueDate, metaX, 305, { width: metaWidth, align: 'left' });
 
       // Course Duration (Under COURSE DURATION label, seamless parchment cover over placeholder)
-      doc.rect(98, 363, 105, 18).fill('#FAF7F2');
+      doc.rect(98, 345, 110, 32).fill('#FAF7F2');
       
       let line1 = '30 Days';
       let line2 = '(20 Hours)';
@@ -394,7 +394,7 @@ const generateCertificatePDF = (data) => {
          .text(line1, metaX, 348, { width: metaWidth, align: 'left' });
 
       if (line2) {
-        doc.text(line2, metaX, 368, { width: metaWidth, align: 'left' });
+        doc.text(line2, metaX, 362, { width: metaWidth, align: 'left' });
       }
 
       // Certificate ID (Under CERTIFICATE ID label)
@@ -404,28 +404,28 @@ const generateCertificatePDF = (data) => {
          .fontSize(7.5)
          .text(certId, metaX, 420, { width: metaWidth, align: 'left' });
 
-      // 2. Recipient Name (Professional Capital Letters, centered between 'This is to certify that' and the ribbon)
+      // 2. Recipient Name (Professional Capital Letters, centered between 'This is to certify that' and the divider line)
       const studentName = (data.studentName || 'LEARNER NAME').trim().toUpperCase();
       const nameLen = studentName.length;
 
-      // Elegant proportional scaling for clean, unclipped text
-      let fontSize = 23;
-      let nameY = 296;
+      // Proportional scaling for clean, unclipped text
+      let fontSize = 22;
+      let nameY = 295;
       if (nameLen <= 16) {
-        fontSize = 23;
-        nameY = 296;
+        fontSize = 22;
+        nameY = 295;
       } else if (nameLen <= 24) {
-        fontSize = 20;
-        nameY = 298;
+        fontSize = 19;
+        nameY = 297;
       } else if (nameLen <= 32) {
-        fontSize = 17;
-        nameY = 300;
+        fontSize = 16.5;
+        nameY = 299;
       } else if (nameLen <= 42) {
-        fontSize = 14.5;
-        nameY = 302;
+        fontSize = 14;
+        nameY = 301;
       } else {
-        fontSize = 12.5;
-        nameY = 304;
+        fontSize = 12;
+        nameY = 303;
       }
 
       doc.fillColor('#0A4F2A')
@@ -438,12 +438,12 @@ const generateCertificatePDF = (data) => {
       const courseTitle = (data.courseTitle || defaultCourse).trim();
 
       if (courseTitle && courseTitle.toLowerCase() !== defaultCourse.toLowerCase()) {
-        // Overlay dynamic course title cleanly over template background placeholder
-        doc.rect(190, 362, 460, 25).fill('#FAF7F2');
+        // Overlay dynamic course title cleanly over template background placeholder (at Y: 374 to 400)
+        doc.rect(190, 374, 460, 26).fill('#FAF7F2');
         
         const titleLen = courseTitle.length;
-        const titleFontSize = titleLen > 40 ? 11.5 : (titleLen > 28 ? 12.5 : 13.5);
-        const titleY = titleLen > 40 ? 368 : 367;
+        const titleFontSize = titleLen > 40 ? 11 : (titleLen > 28 ? 12 : 13);
+        const titleY = titleLen > 40 ? 381 : 380;
 
         doc.fillColor('#111827')
            .font('Helvetica-Bold')

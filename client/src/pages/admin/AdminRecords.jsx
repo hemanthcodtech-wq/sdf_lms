@@ -928,79 +928,79 @@ const AdminRecords = () => {
                       {/* 1. Left Sidebar Meta Information */}
                       {/* Student ID */}
                       <div 
-                        style={{ top: '39.8%', left: '12.1%' }}
-                        className="absolute text-[7px] sm:text-[9px] font-bold text-gray-900 tracking-tight"
+                        style={{ top: '39.8%', left: '10.5%', width: '13%' }}
+                        className="absolute text-[6px] sm:text-[8px] font-bold text-gray-900 tracking-tight truncate"
                       >
                         {customForm.studentId || 'SDWFY250501'}
                       </div>
 
                       {/* Issue Date */}
                       <div 
-                        style={{ top: '51.2%', left: '12.1%' }}
-                        className="absolute text-[7px] sm:text-[9px] font-bold text-gray-900 tracking-tight whitespace-nowrap"
+                        style={{ top: '50.2%', left: '10.5%', width: '13%' }}
+                        className="absolute text-[6px] sm:text-[8px] font-bold text-gray-900 tracking-tight whitespace-nowrap overflow-hidden"
                       >
-                        {customForm.completionDate ? new Date(customForm.completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '23 August 2026'}
+                        {customForm.completionDate ? new Date(customForm.completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '23 Aug 2026'}
                       </div>
 
                       {/* Course Duration */}
                       <div 
-                        style={{ top: '58.5%', left: '12.1%' }}
-                        className="absolute text-[6.5px] sm:text-[8.5px] font-bold text-gray-900 tracking-tight leading-tight max-w-[20%]"
+                        style={{ top: '58.2%', left: '10.5%', width: '13%' }}
+                        className="absolute text-[5.5px] sm:text-[7.5px] font-bold text-gray-900 tracking-tight leading-tight"
                       >
-                        {customForm.duration || '30 Days (20 Hours)'}
+                        {customForm.duration || '30 Days'}
                       </div>
 
                       {/* Certificate ID */}
                       <div 
-                        style={{ top: '70.5%', left: '12.1%' }}
-                        className="absolute text-[6.5px] sm:text-[8.5px] font-mono font-bold text-gray-900 tracking-tight"
+                        style={{ top: '70.2%', left: '10.5%', width: '13%' }}
+                        className="absolute text-[5.5px] sm:text-[7.5px] font-mono font-bold text-gray-900 tracking-tight truncate"
                       >
                         {customForm.certificateId || 'SDF-CERT-SAMPLE'}
                       </div>
 
-                      {/* 2. Recipient Name (Calligraphy Center at top ~47.5%) */}
+                      {/* 2. Recipient Name (Professional Serif Center at top ~43.2%) */}
                       <div 
-                        style={{ top: '47.5%', left: '20%', right: '20%' }}
+                        style={{ top: '43.2%', left: '20%', right: '20%' }}
                         className="absolute flex items-center justify-center text-center pointer-events-none"
                       >
-                        <span className="font-serif italic font-extrabold text-[#0A4F2A] text-[12px] sm:text-[16px] md:text-[18px] tracking-wide drop-shadow-xs line-clamp-1">
-                          {customForm.studentName || 'Learner Full Name'}
+                        <span className="font-serif font-black uppercase text-[#0A4F2A] text-[11px] sm:text-[14px] md:text-[16px] tracking-wider truncate">
+                          {customForm.studentName || 'LEARNER FULL NAME'}
                         </span>
                       </div>
 
-                      {/* 3. Dynamic Course Title (Center at top ~61.5%) */}
+                      {/* 3. Dynamic Course Title (Center at top ~56.8%) */}
                       <div 
-                        style={{ top: '61.5%', left: '24%', right: '24%' }}
+                        style={{ top: '56.8%', left: '24%', right: '24%' }}
                         className="absolute flex items-center justify-center text-center pointer-events-none"
                       >
-                        <span className="font-bold text-gray-900 text-[8px] sm:text-[10px] md:text-[11px] bg-[#FAF7F2]/90 px-2 py-0.5 rounded shadow-xs line-clamp-1">
+                        <span className="font-bold text-gray-900 text-[7.5px] sm:text-[9.5px] md:text-[10.5px] bg-[#FAF7F2] px-2 py-0.5 rounded truncate">
                           {customForm.courseTitle || 'Yoga for Wellness and Inner Balance'}
                         </span>
                       </div>
 
                       {/* 4. Bottom Signatures: Instructor Name (left) & Director (right) */}
-                      {/* Instructor Name (Center ~34.4%, Top ~86.7%) */}
+                      {/* Instructor Name (Center ~34.4%, Top ~86.5%) */}
                       <div 
-                        style={{ top: '86.7%', left: '24%', width: '21%' }}
+                        style={{ top: '86.5%', left: '23%', width: '23%' }}
                         className="absolute text-center leading-tight pointer-events-none"
                       >
-                        <p className="text-[6.5px] sm:text-[8.5px] font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
+                        <p className="text-[6px] sm:text-[8px] font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
                           {customForm.instructorName || 'Lead Yoga Guru'}
                         </p>
-                        <p className="text-[5px] sm:text-[6.5px] text-gray-600 truncate">
+                        <p className="text-[4.5px] sm:text-[6px] text-gray-600 truncate">
                           {customForm.instructorTitle || 'Yoga Instructor'}
                         </p>
                       </div>
 
-                      {/* Director Name (Center ~63.8%, Top ~86.7%) */}
+                      {/* Director Name (Center ~63.8%, Top ~86.5%) */}
                       <div 
-                        style={{ top: '86.7%', left: '53.3%', width: '21%' }}
+                        style={{ top: '86.5%', left: '53.5%', width: '23%' }}
                         className="absolute text-center leading-tight pointer-events-none"
                       >
-                        <p className="text-[6.5px] sm:text-[8.5px] font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
+                        <p className="text-[6px] sm:text-[8px] font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
                           SWAMY DWIJA
                         </p>
-                        <p className="text-[5px] sm:text-[6.5px] text-gray-600 truncate">
+                        <p className="text-[4.5px] sm:text-[6px] text-gray-600 truncate">
                           Founder & Director
                         </p>
                       </div>
