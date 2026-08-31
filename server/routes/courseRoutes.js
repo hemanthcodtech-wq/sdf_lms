@@ -6,6 +6,7 @@ const User = require('../models/User');
 const Enrollment = require('../models/Enrollment');
 const { createZoomMeeting } = require('../services/zoomService');
 const { sendCourseCompletionEmail } = require('../utils/emailService');
+const { generateCertificatePDF } = require('../utils/pdfGenerator');
 const { uploadBufferToCloudinary } = require('../utils/cloudinaryUploader');
 const upload = require('../middleware/upload');
 
@@ -53,8 +54,6 @@ router.get('/', protect, admin, async (req, res) => {
 // Get enrollments for a specific course (admin)
 router.get('/:id/enrollments', protect, admin, async (req, res) => {
   try {
-    const mongoose = require('mongoose');
-    const Enrollment = require('../models/Enrollment');
     const enrollments = await Enrollment.find({ course: req.params.id })
       .sort('-createdAt');
     res.json({ success: true, data: enrollments });
@@ -457,10 +456,6 @@ router.get('/:id/materials', protect, async (req, res) => {
     res.status(500).json({ success: false, message: 'Error fetching materials', error: error.message });
   }
 });
-
-const Enrollment = require('../models/Enrollment');
-const User = require('../models/User');
-const { generateCertificatePDF } = require('../utils/pdfGenerator');
 
 // Complete Course & Generate Certificate (Student & Admin)
 router.post('/:id/complete', protect, async (req, res) => {
