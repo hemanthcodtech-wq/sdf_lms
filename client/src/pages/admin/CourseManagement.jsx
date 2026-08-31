@@ -913,9 +913,39 @@ const CourseManagement = () => {
                   {/* Category */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category *</label>
-                    <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full p-3.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl outline-none focus:bg-white/70 focus:border-brand-green transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] font-medium">
-                      <option>Yoga</option><option>Meditation</option><option>Nutrition</option><option>Ayurveda</option><option>Other</option>
+                    <select 
+                      value={['Yoga', 'Meditation', 'Nutrition', 'Ayurveda'].includes(formData.category) ? formData.category : 'Other'} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === 'Other') {
+                          setFormData({...formData, category: 'Other', customCategory: formData.customCategory || ''});
+                        } else {
+                          setFormData({...formData, category: val, customCategory: ''});
+                        }
+                      }} 
+                      className="w-full p-3.5 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl outline-none focus:bg-white/70 focus:border-brand-green transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] font-medium"
+                    >
+                      <option value="Yoga">Yoga</option>
+                      <option value="Meditation">Meditation</option>
+                      <option value="Nutrition">Nutrition</option>
+                      <option value="Ayurveda">Ayurveda</option>
+                      <option value="Other">Other</option>
                     </select>
+
+                    {/* Custom Category Input if Other is selected */}
+                    {(!['Yoga', 'Meditation', 'Nutrition', 'Ayurveda'].includes(formData.category) || formData.category === 'Other') && (
+                      <div className="mt-3">
+                        <label className="block text-xs font-bold text-brand-green mb-1">Enter Category Name *</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={formData.customCategory !== undefined ? formData.customCategory : (['Yoga', 'Meditation', 'Nutrition', 'Ayurveda', 'Other'].includes(formData.category) ? '' : formData.category)} 
+                          onChange={e => setFormData({...formData, customCategory: e.target.value, category: e.target.value.trim() || 'Other'})} 
+                          className="w-full p-3 bg-brand-green/5 border border-brand-green/30 rounded-xl focus:border-brand-green focus:bg-white outline-none text-sm font-semibold text-gray-900 shadow-xs" 
+                          placeholder="Enter course category name" 
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Language */}
