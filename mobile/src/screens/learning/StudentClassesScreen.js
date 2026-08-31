@@ -34,6 +34,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
   const [completedLessons, setCompletedLessons] = useState([]);
   const [activeTab, setActiveTab] = useState('lessons'); // 'lessons', 'materials', 'community'
+  const [materials, setMaterials] = useState([]);
 
   useEffect(() => {
     fetchCourseClasses();
@@ -42,19 +43,31 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   const fetchCourseClasses = async () => {
     try {
       setLoading(true);
-      const res = await courseService.getStudentClasses();
-      if (res?.data && res.data.length > 0) {
-        const courseId = course?._id || course?.id;
-        const matchingClasses = res.data.filter(
+      const courseId = course?._id || course?.id;
+      
+      const [classesRes, materialsRes] = await Promise.all([
+        courseService.getStudentClasses().catch(() => ({ data: [] })),
+        courseId ? courseService.getCourseMaterials(courseId).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+      ]);
+
+      if (classesRes?.data && classesRes.data.length > 0) {
+        const matchingClasses = classesRes.data.filter(
           (c) => (c.courseId?._id || c.courseId?.id || c.courseId) === courseId
         );
         setClasses(matchingClasses);
       } else {
         setClasses([]);
       }
+
+      if (materialsRes?.data && Array.isArray(materialsRes.data)) {
+        setMaterials(materialsRes.data);
+      } else {
+        setMaterials([]);
+      }
     } catch (err) {
-      console.error('Error fetching classes:', err);
+      console.error('Error fetching classes and materials:', err);
       setClasses([]);
+      setMaterials([]);
     } finally {
       setLoading(false);
     }
@@ -329,7 +342,8 @@ export const StudentClassesScreen = ({ route, navigation }) => {
 
         {activeTab === 'materials' && (
           <View style={styles.materialsSection}>
-            {course?.contentUrl ? (
+            {/* 1. Official Course Syllabus / Handbook (if uploaded by Admin) */}
+            {course?.contentUrl && (
               <View style={[styles.materialCard, shadows.sm]}>
                 <Ionicons name="document-text" size={28} color={colors.primary} />
                 <View style={{ flex: 1 }}>
@@ -349,7 +363,56 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                   )}
                 </TouchableOpacity>
               </View>
-            ) : (
+            )}
+
+            {/* 2. Uploaded Course Materials from Admin / Instructor (Recordings, PDFs, Practice Sheets, Notes) */}
+            {materials.length > 0 && (
+              materials.map((mat, idx) => {
+                const isDrive = mat.driveLink || mat.fileUrl || mat.url;
+                const isRecording = mat.materialType === 'Recording' || (mat.topicsCovered && mat.topicsCovered.toLowerCase().includes('recording'));
+                const iconName = isRecording ? 'videocam-outline' : (mat.materialType === 'Notes' ? 'reader-outline' : 'document-attach-outline');
+                const matTitle = mat.topicsCovered || mat.title || `Class Material ${idx + 1}`;
+                const matDate = mat.date ? new Date(mat.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+                return (
+                  <View key={mat._id || idx} style={[styles.materialCard, shadows.sm]}>
+                    <Ionicons name={iconName} size={28} color={colors.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.materialTitle} numberOfLines={2}>{matTitle}</Text>
+                      <Text style={styles.materialSize}>
+                        {mat.materialType || 'Study Resource'} {matDate ? `• ${matDate}` : ''}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.downloadBtn, downloadingMaterial && { opacity: 0.7 }]}
+                      onPress={() => {
+                        if (isDrive) {
+                          const url = mat.driveLink || mat.fileUrl || mat.url;
+                          if (url.startsWith('http')) {
+                            Linking.openURL(url).catch(() => Alert.alert('Error', 'Unable to open material link.'));
+                          } else {
+                            handleDownloadMaterial(url, matTitle);
+                          }
+                        } else {
+                          Alert.alert('Material', 'Resource link will be available shortly.');
+                        }
+                      }}
+                      disabled={downloadingMaterial}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={isRecording || (isDrive && isDrive.startsWith('http')) ? "open-outline" : "cloud-download-outline"}
+                        size={20}
+                        color={colors.primary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })
+            )}
+
+            {/* 3. Empty State if nothing is available */}
+            {!course?.contentUrl && materials.length === 0 && (
               <EmptyState
                 icon="document-outline"
                 title="No Study Materials Uploaded"

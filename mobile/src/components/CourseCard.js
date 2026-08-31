@@ -16,7 +16,7 @@ export const CourseCard = ({
   const { isInWishlist, toggleWishlist } = useAuth();
   const wishlisted = isInWishlist(course._id || course.id);
 
-  const rawImage = course.thumbnailUrl || course.image;
+  const rawImage = course.thumbnail || course.thumbnailUrl || course.image;
   const imageUrl = getCourseImageUrl(rawImage);
 
   const handleWishlistPress = (e) => {

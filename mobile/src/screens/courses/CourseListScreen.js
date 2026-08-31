@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,51 +8,97 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  RefreshControl,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { CourseCard } from '../../components/CourseCard';
 import { EmptyState } from '../../components/EmptyState';
 import { courseService } from '../../services/courseService';
 import { useLanguage } from '../../context/LanguageContext';
+import { getCourseImageUrl } from '../../utils/imageHelper';
 
 export const CourseListScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
 
   const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const levels = ['All', 'Beginner', 'Intermediate', 'Advanced'];
-  const categories = ['All', 'Spiritual', 'Personality', 'Skill Development', 'Vedic Science'];
+  const defaultCategories = ['All', 'Yoga', 'Meditation', 'Ayurveda', 'Spiritual', 'Personality', 'Skill Development', 'Vedic Science', 'Other'];
 
-  useEffect(() => {
-    fetchCourses();
-  }, []);
+  const dynamicCategories = Array.from(
+    new Set([
+      'All',
+      ...courses.map((c) => c.category).filter(Boolean),
+      ...defaultCategories
+    ])
+  );
 
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
+      if (isInitial && courses.length === 0) setLoading(true);
       const res = await courseService.getPublicCourses();
       if (res?.data) {
         setCourses(res.data);
+        AsyncStorage.setItem('@sdf_cached_public_courses', JSON.stringify(res.data)).catch(() => {});
+        
+        if (Platform.OS !== 'web') {
+          res.data.forEach((c) => {
+            const img = getCourseImageUrl(c.thumbnail || c.thumbnailUrl || c.image);
+            if (img) Image.prefetch(img).catch(() => {});
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, [courses.length]);
+
+  // Load from cache on cold start (0ms)
+  useEffect(() => {
+    AsyncStorage.getItem('@sdf_cached_public_courses').then((raw) => {
+      if (raw) {
+        try {
+          const cached = JSON.parse(raw);
+          if (Array.isArray(cached) && cached.length > 0) {
+            setCourses(cached);
+          }
+        } catch (e) {}
+      }
+    });
+    fetchCourses(true);
+  }, [fetchCourses]);
+
+  // Refetch every time the user taps or navigates to the Explore Courses screen
+  useFocusEffect(
+    useCallback(() => {
+      fetchCourses(false);
+    }, [fetchCourses])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchCourses(false);
   };
 
   const filteredCourses = courses.filter((course) => {
     const matchesSearch =
       course.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       course.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.instructor?.toLowerCase().includes(searchQuery.toLowerCase());
+      course.instructor?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.instructorId?.name?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesLevel =
       selectedLevel === 'All' ||
@@ -90,7 +136,7 @@ export const CourseListScreen = ({ navigation }) => {
         {/* Filters */}
         <View style={styles.filterRow}>
           <FlatList
-            data={categories}
+            data={dynamicCategories}
             horizontal
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item}
@@ -127,6 +173,14 @@ export const CourseListScreen = ({ navigation }) => {
           keyExtractor={(item, index) => item._id || item.id || String(index)}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
           ListEmptyComponent={
             <EmptyState
               icon="search-outline"

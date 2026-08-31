@@ -36,6 +36,16 @@ export const courseService = {
     return response.data;
   },
 
+  // Get uploaded materials (PDFs, Notes, Recordings) for a specific course
+  getCourseMaterials: async (courseId) => {
+    try {
+      const response = await api.get(`/courses/${courseId}/materials`);
+      return response.data;
+    } catch (e) {
+      return { success: true, data: [] };
+    }
+  },
+
   // Wishlist actions (stored locally in AsyncStorage with backend sync)
   getWishlist: async () => {
     try {

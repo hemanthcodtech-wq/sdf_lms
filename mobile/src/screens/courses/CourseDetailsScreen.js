@@ -135,7 +135,7 @@ export const CourseDetailsScreen = ({ route, navigation }) => {
         {/* Banner Image */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: getCourseImageUrl(course.thumbnailUrl || course.image), cache: 'force-cache' }}
+            source={{ uri: getCourseImageUrl(course.thumbnail || course.thumbnailUrl || course.image), cache: 'force-cache' }}
             style={styles.bannerImage}
             resizeMode="cover"
           />
