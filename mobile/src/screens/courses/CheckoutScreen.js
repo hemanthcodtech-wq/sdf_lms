@@ -246,60 +246,92 @@ export const CheckoutScreen = ({ route, navigation }) => {
     }
   };
 
-  // Generate In-App Razorpay HTML for native WebView
+  // Generate In-App Razorpay HTML for native WebView with high performance & cross-origin iframe support
   const generateRazorpayHtml = (data) => {
     if (!data) return '';
     const { order, key } = data;
-    const studentName = (user?.name || user?.firstName || 'Student').replace(/"/g, '\\"');
-    const studentEmail = (user?.email || user?.emailOrPhone || '').replace(/"/g, '\\"');
-    const studentPhone = (user?.phone || '').replace(/"/g, '\\"');
-    const courseTitle = (course?.title || 'Course Enrollment').replace(/"/g, '\\"');
+    const studentName = (user?.name || user?.firstName || 'Student').replace(/["\\]/g, '');
+    const studentEmail = (user?.email || user?.emailOrPhone || '').replace(/["\\]/g, '');
+    const studentPhone = (user?.phone || '').replace(/["\\]/g, '');
+    const courseTitle = (course?.title || 'Course Enrollment').replace(/["\\]/g, '');
 
     return `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
         <head>
+          <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+          <title>Razorpay Secure Checkout</title>
           <style>
-            * { box-sizing: border-box; }
-            body, html {
-              margin: 0;
-              padding: 0;
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            html, body {
               width: 100%;
               height: 100%;
-              background: #ffffff;
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              background-color: #ffffff;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              overflow: hidden;
+            }
+            .loader-container {
+              position: fixed;
+              inset: 0;
               display: flex;
+              flex-direction: column;
               align-items: center;
               justify-content: center;
-            }
-            .loader {
-              text-align: center;
-              padding: 24px;
+              background-color: #ffffff;
+              z-index: 10;
+              transition: opacity 0.2s ease;
             }
             .spinner {
-              width: 44px;
-              height: 44px;
+              width: 48px;
+              height: 48px;
               border: 4px solid rgba(13, 92, 49, 0.15);
               border-top-color: #0d5c31;
               border-radius: 50%;
-              animation: spin 0.9s linear infinite;
-              margin: 0 auto 16px;
+              animation: spin 0.8s linear infinite;
+              margin-bottom: 16px;
             }
-            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            .title {
+              font-size: 16px;
+              font-weight: 700;
+              color: #0f172a;
+              margin-bottom: 6px;
+            }
+            .subtitle {
+              font-size: 13px;
+              color: #64748b;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
           </style>
+          <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
         </head>
         <body>
-          <div class="loader">
+          <div id="loader" class="loader-container">
             <div class="spinner"></div>
-            <div style="font-size: 16px; font-weight: 700; color: #0f172a;">Connecting to Razorpay...</div>
-            <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Swamy Dwija Foundation Secure In-App Checkout</div>
+            <div class="title">Connecting to Razorpay...</div>
+            <div class="subtitle">Swamy Dwija Foundation Secure Checkout</div>
           </div>
 
           <script>
-            function initRazorpay() {
+            window.onerror = function(msg, url, line) {
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'PAYMENT_ERROR',
+                  message: msg
+                }));
+              }
+            };
+
+            function launchRazorpay() {
               try {
+                if (!window.Razorpay) {
+                  setTimeout(launchRazorpay, 100);
+                  return;
+                }
+
                 var options = {
                   key: "${key}",
                   amount: ${order.amount},
@@ -317,42 +349,54 @@ export const CheckoutScreen = ({ route, navigation }) => {
                     color: "#0d5c31"
                   },
                   handler: function (response) {
-                    window.ReactNativeWebView.postMessage(JSON.stringify({
-                      type: 'PAYMENT_SUCCESS',
-                      response: response
-                    }));
+                    if (window.ReactNativeWebView) {
+                      window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'PAYMENT_SUCCESS',
+                        response: response
+                      }));
+                    }
                   },
                   modal: {
                     ondismiss: function () {
-                      window.ReactNativeWebView.postMessage(JSON.stringify({
-                        type: 'PAYMENT_CANCELLED'
-                      }));
+                      if (window.ReactNativeWebView) {
+                        window.ReactNativeWebView.postMessage(JSON.stringify({
+                          type: 'PAYMENT_CANCELLED'
+                        }));
+                      }
                     }
                   }
                 };
 
-                var rzp = new Razorpay(options);
+                var rzp = new window.Razorpay(options);
                 rzp.on('payment.failed', function (response) {
-                  window.ReactNativeWebView.postMessage(JSON.stringify({
-                    type: 'PAYMENT_FAILED',
-                    error: response.error
-                  }));
+                  if (window.ReactNativeWebView) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                      type: 'PAYMENT_FAILED',
+                      error: response.error
+                    }));
+                  }
                 });
+
+                // Hide our loader when Razorpay initiates
+                var loader = document.getElementById('loader');
+                if (loader) loader.style.display = 'none';
+
                 rzp.open();
               } catch (err) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'PAYMENT_ERROR',
-                  message: err.message
-                }));
+                if (window.ReactNativeWebView) {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'PAYMENT_ERROR',
+                    message: err.message || 'Razorpay initialization failed'
+                  }));
+                }
               }
             }
 
-            if (window.Razorpay) {
-              initRazorpay();
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+              launchRazorpay();
             } else {
-              window.onload = function() {
-                setTimeout(initRazorpay, 300);
-              };
+              document.addEventListener('DOMContentLoaded', launchRazorpay);
+              window.onload = launchRazorpay;
             }
           </script>
         </body>
@@ -563,17 +607,24 @@ export const CheckoutScreen = ({ route, navigation }) => {
             </View>
             {nativePaymentData && (
               <WebView
-                source={{ html: generateRazorpayHtml(nativePaymentData) }}
+                source={{
+                  html: generateRazorpayHtml(nativePaymentData),
+                  baseUrl: 'https://swamidwijafoundation.com',
+                }}
                 onMessage={handleWebViewMessage}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
-                startInLoadingState={true}
-                renderLoading={() => (
-                  <View style={styles.modalLoading}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                  </View>
-                )}
-                style={{ flex: 1 }}
+                originWhitelist={['*']}
+                mixedContentMode="always"
+                thirdPartyCookiesEnabled={true}
+                sharedCookiesEnabled={true}
+                allowFileAccess={true}
+                allowUniversalAccessFromFileURLs={true}
+                setSupportMultipleWindows={false}
+                javaScriptCanOpenWindowsAutomatically={true}
+                userAgent="Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+                startInLoadingState={false}
+                style={{ flex: 1, backgroundColor: '#ffffff' }}
               />
             )}
           </View>

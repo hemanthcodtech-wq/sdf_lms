@@ -48,47 +48,25 @@ export const ProfileScreen = ({ navigation }) => {
     try {
       setLoading(true);
 
-      // Fetch user profile
-      try {
-        const profRes = await authService.getProfile();
-        if (profRes && profRes.data) {
-          setDetailedProfile(profRes.data);
-        }
-      } catch (err) {
-        console.log('Profile fetch error', err);
+      const [profRes, enrollRes, certRes, payRes] = await Promise.allSettled([
+        authService.getProfile(),
+        courseService.getEnrolledCourses(),
+        courseService.getMyCertificates(),
+        paymentService.getPaymentHistory(),
+      ]);
+
+      if (profRes.status === 'fulfilled' && profRes.value?.data) {
+        setDetailedProfile(profRes.value.data);
       }
 
-      // Fetch enrolled courses
-      let enrolled = [];
-      try {
-        const enrollRes = await courseService.getEnrolledCourses();
-        if (enrollRes && enrollRes.data) {
-          enrolled = enrollRes.data;
-        }
-      } catch (err) {}
-
-      // Fetch certificates count
-      let certsCount = 0;
-      try {
-        const certRes = await courseService.getMyCertificates();
-        if (certRes && certRes.data) {
-          certsCount = certRes.data.length;
-        }
-      } catch (err) {}
-
-      // Fetch payment history count
-      let payCount = 0;
-      try {
-        const payRes = await paymentService.getPaymentHistory();
-        if (payRes && payRes.data) {
-          payCount = payRes.data.length;
-        }
-      } catch (err) {}
+      const enrolledCount = enrollRes.status === 'fulfilled' && enrollRes.value?.data ? enrollRes.value.data.length : 0;
+      const certificatesCount = certRes.status === 'fulfilled' && certRes.value?.data ? certRes.value.data.length : 0;
+      const paymentsCount = payRes.status === 'fulfilled' && payRes.value?.data ? payRes.value.data.length : 0;
 
       setStats({
-        enrolledCount: enrolled.length,
-        certificatesCount: certsCount,
-        paymentsCount: payCount,
+        enrolledCount,
+        certificatesCount,
+        paymentsCount,
       });
     } catch (error) {
       console.error('Error loading profile data:', error);

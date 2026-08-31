@@ -23,7 +23,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { courseService } from '../../services/courseService';
 
 import { API_BASE_URL } from '../../services/api';
-import { getAvatarUrl } from '../../utils/imageHelper';
+import { getAvatarUrl, getCourseImageUrl } from '../../utils/imageHelper';
 
 export const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -42,34 +42,36 @@ export const HomeScreen = ({ navigation }) => {
 
   const loadData = useCallback(async () => {
     try {
-      // Fetch public courses
-      const courseRes = await courseService.getPublicCourses();
-      if (courseRes?.data) {
-        setCourses(courseRes.data);
-        // Prefetch images into local disk cache for instant display
-        courseRes.data.forEach((c) => {
-          const img = getCourseImageUrl(c.thumbnailUrl || c.image);
-          if (img && Platform.OS !== 'web') {
-            Image.prefetch(img).catch(() => {});
-          }
-        });
+      const promises = [courseService.getPublicCourses()];
+      if (user) {
+        promises.push(courseService.getStudentClasses());
+        promises.push(courseService.getMyCourses());
       }
 
-      // Fetch student's upcoming classes if logged in
-      if (user) {
-        try {
-          const classRes = await courseService.getStudentClasses();
-          if (classRes?.data) {
-            setLiveClasses(classRes.data);
-          }
-        } catch (e) {}
+      const results = await Promise.allSettled(promises);
 
-        try {
-          const enrollRes = await courseService.getMyCourses();
-          if (enrollRes?.data) {
-            setMyCourses(enrollRes.data);
-          }
-        } catch (e) {}
+      // Handle Public Courses
+      if (results[0].status === 'fulfilled' && results[0].value?.data) {
+        setCourses(results[0].value.data);
+        // Prefetch course images in parallel
+        if (Platform.OS !== 'web') {
+          results[0].value.data.forEach((c) => {
+            const img = getCourseImageUrl(c.thumbnailUrl || c.image);
+            if (img) {
+              Image.prefetch(img).catch(() => {});
+            }
+          });
+        }
+      }
+
+      // Handle User Specific Data
+      if (user) {
+        if (results[1]?.status === 'fulfilled' && results[1].value?.data) {
+          setLiveClasses(results[1].value.data);
+        }
+        if (results[2]?.status === 'fulfilled' && results[2].value?.data) {
+          setMyCourses(results[2].value.data);
+        }
       }
     } catch (error) {
       console.error('Error loading home data:', error);

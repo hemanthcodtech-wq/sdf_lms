@@ -67,7 +67,8 @@ router.get('/public', async (req, res) => {
     const courses = await Course.find({ isPublished: true })
       .populate('instructorId', 'name emailOrPhone speciality phone bio')
       .populate('moderatorId', 'name emailOrPhone phone')
-      .sort('-createdAt');
+      .sort('-createdAt')
+      .lean();
     res.json({ success: true, data: courses.map(cleanCourseUrls) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });

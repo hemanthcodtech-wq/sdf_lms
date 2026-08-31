@@ -20,6 +20,9 @@ import { Badge } from '../../components/Badge';
 import { useAuth } from '../../context/AuthContext';
 import { courseService } from '../../services/courseService';
 import { API_BASE_URL } from '../../services/api';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as WebBrowser from 'expo-web-browser';
 
 export const CertificatesScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -51,10 +54,12 @@ export const CertificatesScreen = ({ navigation }) => {
 
   const handleDownloadCert = async (item) => {
     if (!item) return;
+    const certItemId = item._id || item.id || item.certificateId;
     try {
-      setDownloadingId(item._id || item.id || item.certificateId);
+      setDownloadingId(certItemId);
       const token = await AsyncStorage.getItem('token');
       const certId = item.certificateId || `SDF-CERT-${item._id?.slice(-6)?.toUpperCase() || 'OFFICIAL'}`;
+      const fileName = `Certificate-${certId}.pdf`;
       
       // Determine download URL with authentication query token
       const downloadUrl = `${API_BASE_URL}/courses/certificate/${item._id || item.id}/download?token=${token || ''}`;
@@ -63,28 +68,43 @@ export const CertificatesScreen = ({ navigation }) => {
         // Direct browser download
         const link = document.createElement('a');
         link.href = downloadUrl;
-        link.download = `Certificate-${certId}.pdf`;
+        link.download = fileName;
         link.target = '_blank';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
       } else {
-        // Native mobile download / view via system browser
-        const targetUrl = item.certificateUrl || downloadUrl;
-        const supported = await Linking.canOpenURL(targetUrl);
-        if (supported) {
-          await Linking.openURL(targetUrl);
-        } else {
-          Alert.alert('Download Certificate', 'Unable to open certificate link. Please check your network connection.');
+        // Native mobile download directly via expo-file-system
+        try {
+          const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+          const downloadRes = await FileSystem.downloadAsync(downloadUrl, fileUri);
+
+          if (downloadRes.status === 200) {
+            const canShare = await Sharing.isAvailableAsync();
+            if (canShare) {
+              await Sharing.shareAsync(downloadRes.uri, {
+                mimeType: 'application/pdf',
+                dialogTitle: `Download Certificate - ${certId}`,
+                UTI: 'com.adobe.pdf',
+              });
+            } else {
+              await WebBrowser.openBrowserAsync(downloadUrl);
+            }
+          } else {
+            // Fallback to opening authenticated URL directly in browser
+            await WebBrowser.openBrowserAsync(downloadUrl);
+          }
+        } catch (fsErr) {
+          console.warn('FileSystem download fallback:', fsErr);
+          await WebBrowser.openBrowserAsync(downloadUrl);
         }
       }
     } catch (err) {
       console.error('Download certificate error:', err);
-      if (item.certificateUrl) {
-        Linking.openURL(item.certificateUrl).catch(() => {});
-      } else {
-        Alert.alert('Download Error', 'Could not generate certificate PDF. Please try again in a moment.');
-      }
+      Alert.alert(
+        'Download Notice',
+        'Could not complete direct download. Please ensure you are connected to the internet.'
+      );
     } finally {
       setDownloadingId(null);
     }
