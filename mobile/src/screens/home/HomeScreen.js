@@ -313,25 +313,26 @@ export const HomeScreen = ({ navigation }) => {
                   </View>
 
                   <View style={styles.liveActionsRow}>
-                  <CustomButton
-                    title={t('joinClass')}
-                    onPress={() => handleJoinClass(item)}
-                    variant="primary"
-                    size="sm"
-                    icon={<Ionicons name="videocam" size={16} color="#fff" />}
-                    style={{ flex: 1 }}
-                  />
-                  {item.courseId?.whatsappGroupLink ? (
-                    <TouchableOpacity
-                      style={styles.whatsappBtn}
-                      onPress={() => handleOpenWhatsapp(item.courseId.whatsappGroupLink)}
-                    >
-                      <Ionicons name="logo-whatsapp" size={18} color="#16a34a" />
-                    </TouchableOpacity>
-                  ) : null}
+                    <CustomButton
+                      title={t('joinClass')}
+                      onPress={() => handleJoinClass(item)}
+                      variant="primary"
+                      size="sm"
+                      icon={<Ionicons name="videocam" size={16} color="#fff" />}
+                      style={{ flex: 1 }}
+                    />
+                    {item.courseId?.whatsappGroupLink ? (
+                      <TouchableOpacity
+                        style={styles.whatsappBtn}
+                        onPress={() => handleOpenWhatsapp(item.courseId.whatsappGroupLink)}
+                      >
+                        <Ionicons name="logo-whatsapp" size={18} color="#16a34a" />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
 
