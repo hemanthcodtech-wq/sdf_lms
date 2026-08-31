@@ -9,17 +9,27 @@ import {
   Image,
   Platform,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
 import { colors, shadows } from '../../theme/colors';
 import { CustomButton } from '../../components/CustomButton';
 import { useAuth } from '../../context/AuthContext';
 import { paymentService } from '../../services/paymentService';
 import { getCourseImageUrl } from '../../utils/imageHelper';
 
-// Dynamic bulletproof Razorpay Checkout SDK loader
+// Conditionally load react-native-webview on native platforms
+let WebView = null;
+if (Platform.OS !== 'web') {
+  try {
+    WebView = require('react-native-webview').WebView;
+  } catch (e) {
+    console.warn('WebView load warning:', e);
+  }
+}
+
+// Dynamic bulletproof Razorpay Checkout SDK loader for Web
 const loadRazorpaySDK = () => {
   return new Promise((resolve) => {
     if (Platform.OS !== 'web' || typeof window === 'undefined' || typeof document === 'undefined') {
@@ -54,7 +64,6 @@ const loadRazorpaySDK = () => {
       }
     };
 
-    // Polling fallback to check if object is available
     let checks = 0;
     const interval = setInterval(() => {
       checks++;
@@ -84,11 +93,15 @@ export const CheckoutScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(true);
 
+  // In-App native modal payment state
+  const [nativePaymentVisible, setNativePaymentVisible] = useState(false);
+  const [nativePaymentData, setNativePaymentData] = useState(null);
+
   const price = Number(course?.price || 0);
   const gst = Math.round(price * 0.18);
   const total = price + gst;
 
-  // Preload Razorpay Checkout SDK on mount
+  // Preload Razorpay Checkout SDK on Web mount
   useEffect(() => {
     loadRazorpaySDK().catch((err) => console.log('SDK pre-load notice:', err));
   }, []);
@@ -143,108 +156,82 @@ export const CheckoutScreen = ({ route, navigation }) => {
       const { order, key } = orderRes;
       const razorpayKey = key || 'rzp_live_TVzQGEkYQFMh9I';
 
-      // 2. Ensure Razorpay SDK is ready
-      const isSdkLoaded = await loadRazorpaySDK();
-
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && (window.Razorpay || isSdkLoaded)) {
-        const options = {
-          key: razorpayKey,
-          amount: order.amount,
-          currency: order.currency || 'INR',
-          name: 'Swamy Dwija Foundation',
-          description: `Enrollment for ${course.title}`,
-          image: '/logo.png',
-          order_id: order.id,
-          prefill: {
-            name: user?.name || user?.firstName || 'Student',
-            email: user?.email || user?.emailOrPhone || '',
-            contact: user?.phone || '',
-          },
-          theme: {
-            color: '#0d5c31',
-          },
-          handler: async function (response) {
-            try {
-              setLoading(true);
-              const verifyRes = await paymentService.verifyPayment({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                courseId: course._id,
-                amountPaid: total,
-                studentEmail: user?.email || user?.emailOrPhone,
-              });
-
-              if (verifyRes.success) {
-                if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                  window.alert(`🎉 Payment Successful!\n\nYou are now enrolled into ${course.title}.`);
-                  navigation.replace('StudentClasses', { course });
-                } else {
-                  Alert.alert(
-                    'Payment Successful! 🎉',
-                    `Congratulations! You have been enrolled into ${course.title}.`,
-                    [
-                      {
-                        text: 'Go to Class',
-                        onPress: () => navigation.replace('StudentClasses', { course }),
-                      },
-                    ]
-                  );
-                }
-              }
-            } catch (vErr) {
-              console.error('Payment verification error:', vErr);
-              Alert.alert('Verification Error', 'Payment was completed but verification failed. Please contact support.');
-            } finally {
-              setLoading(false);
-            }
-          },
-          modal: {
-            ondismiss: function () {
-              setLoading(false);
+      // 2A. On Web Platform - Open standard in-page Razorpay Checkout
+      if (Platform.OS === 'web') {
+        const isSdkLoaded = await loadRazorpaySDK();
+        if (typeof window !== 'undefined' && (window.Razorpay || isSdkLoaded)) {
+          const options = {
+            key: razorpayKey,
+            amount: order.amount,
+            currency: order.currency || 'INR',
+            name: 'Swamy Dwija Foundation',
+            description: `Enrollment for ${course.title}`,
+            image: '/logo.png',
+            order_id: order.id,
+            prefill: {
+              name: user?.name || user?.firstName || 'Student',
+              email: user?.email || user?.emailOrPhone || '',
+              contact: user?.phone || '',
             },
-          },
-        };
+            theme: {
+              color: '#0d5c31',
+            },
+            handler: async function (response) {
+              try {
+                setLoading(true);
+                const verifyRes = await paymentService.verifyPayment({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  courseId: course._id,
+                  amountPaid: total,
+                  studentEmail: user?.email || user?.emailOrPhone,
+                });
 
-        const rzp = new window.Razorpay(options);
-        rzp.on('payment.failed', function (response) {
-          console.error('Payment failed event:', response?.error);
-          Alert.alert(
-            'Payment Failed',
-            response?.error?.description || response?.error?.reason || 'Transaction was declined.'
-          );
-          setLoading(false);
-        });
-        rzp.open();
-        return;
-      }
-
-      // Fallback for native mobile platforms (Android APK / iOS)
-      if (Platform.OS !== 'web') {
-        const checkoutWebUrl = `https://swamidwijafoundation.com/checkout/${course._id}`;
-        Alert.alert(
-          'Complete Payment',
-          'We are opening the secure Razorpay payment gateway in your browser.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Open Payment Gateway',
-              onPress: async () => {
-                try {
-                  await WebBrowser.openBrowserAsync(checkoutWebUrl);
-                } catch (bErr) {
-                  console.error('Error launching browser:', bErr);
+                if (verifyRes.success) {
+                  if (typeof window !== 'undefined') {
+                    window.alert(`🎉 Payment Successful!\n\nYou are now enrolled into ${course.title}.`);
+                  }
+                  navigation.replace('StudentClasses', { course });
                 }
+              } catch (vErr) {
+                console.error('Payment verification error:', vErr);
+                Alert.alert('Verification Error', 'Payment was completed but verification failed. Please contact support.');
+              } finally {
+                setLoading(false);
+              }
+            },
+            modal: {
+              ondismiss: function () {
+                setLoading(false);
               },
             },
-          ]
-        );
+          };
+
+          const rzp = new window.Razorpay(options);
+          rzp.on('payment.failed', function (response) {
+            console.error('Payment failed event:', response?.error);
+            Alert.alert(
+              'Payment Failed',
+              response?.error?.description || response?.error?.reason || 'Transaction was declined.'
+            );
+            setLoading(false);
+          });
+          rzp.open();
+          return;
+        }
+      }
+
+      // 2B. On Native Mobile (Android APK / iOS) - Open 100% In-App Razorpay Checkout Modal
+      if (Platform.OS !== 'web') {
+        setNativePaymentData({ order, key: razorpayKey });
+        setNativePaymentVisible(true);
         return;
       }
 
       Alert.alert(
         'Payment Gateway Notice',
-        'Payment gateway could not be loaded directly. Please verify internet connection and retry.'
+        'Payment gateway could not be loaded directly. Please verify your internet connection and retry.'
       );
     } catch (error) {
       console.error('Payment launch error:', error);
@@ -253,6 +240,172 @@ export const CheckoutScreen = ({ route, navigation }) => {
         error?.response?.data?.message || error.message || 'Could not launch payment gateway. Please check your connection.'
       );
     } finally {
+      if (Platform.OS === 'web') {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Generate In-App Razorpay HTML for native WebView
+  const generateRazorpayHtml = (data) => {
+    if (!data) return '';
+    const { order, key } = data;
+    const studentName = (user?.name || user?.firstName || 'Student').replace(/"/g, '\\"');
+    const studentEmail = (user?.email || user?.emailOrPhone || '').replace(/"/g, '\\"');
+    const studentPhone = (user?.phone || '').replace(/"/g, '\\"');
+    const courseTitle = (course?.title || 'Course Enrollment').replace(/"/g, '\\"');
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+          <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+          <style>
+            * { box-sizing: border-box; }
+            body, html {
+              margin: 0;
+              padding: 0;
+              width: 100%;
+              height: 100%;
+              background: #ffffff;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .loader {
+              text-align: center;
+              padding: 24px;
+            }
+            .spinner {
+              width: 44px;
+              height: 44px;
+              border: 4px solid rgba(13, 92, 49, 0.15);
+              border-top-color: #0d5c31;
+              border-radius: 50%;
+              animation: spin 0.9s linear infinite;
+              margin: 0 auto 16px;
+            }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          </style>
+        </head>
+        <body>
+          <div class="loader">
+            <div class="spinner"></div>
+            <div style="font-size: 16px; font-weight: 700; color: #0f172a;">Connecting to Razorpay...</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Swamy Dwija Foundation Secure In-App Checkout</div>
+          </div>
+
+          <script>
+            function initRazorpay() {
+              try {
+                var options = {
+                  key: "${key}",
+                  amount: ${order.amount},
+                  currency: "${order.currency || 'INR'}",
+                  name: "Swamy Dwija Foundation",
+                  description: "${courseTitle}",
+                  image: "https://swamidwijafoundation.com/logo.png",
+                  order_id: "${order.id}",
+                  prefill: {
+                    name: "${studentName}",
+                    email: "${studentEmail}",
+                    contact: "${studentPhone}"
+                  },
+                  theme: {
+                    color: "#0d5c31"
+                  },
+                  handler: function (response) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                      type: 'PAYMENT_SUCCESS',
+                      response: response
+                    }));
+                  },
+                  modal: {
+                    ondismiss: function () {
+                      window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'PAYMENT_CANCELLED'
+                      }));
+                    }
+                  }
+                };
+
+                var rzp = new Razorpay(options);
+                rzp.on('payment.failed', function (response) {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'PAYMENT_FAILED',
+                    error: response.error
+                  }));
+                });
+                rzp.open();
+              } catch (err) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'PAYMENT_ERROR',
+                  message: err.message
+                }));
+              }
+            }
+
+            if (window.Razorpay) {
+              initRazorpay();
+            } else {
+              window.onload = function() {
+                setTimeout(initRazorpay, 300);
+              };
+            }
+          </script>
+        </body>
+      </html>
+    `;
+  };
+
+  // Handle messages from In-App native WebView checkout
+  const handleWebViewMessage = async (event) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'PAYMENT_SUCCESS') {
+        setNativePaymentVisible(false);
+        setLoading(true);
+        const verifyRes = await paymentService.verifyPayment({
+          razorpay_order_id: data.response.razorpay_order_id,
+          razorpay_payment_id: data.response.razorpay_payment_id,
+          razorpay_signature: data.response.razorpay_signature,
+          courseId: course._id,
+          amountPaid: total,
+          studentEmail: user?.email || user?.emailOrPhone,
+        });
+
+        if (verifyRes.success) {
+          Alert.alert(
+            'Payment Successful! 🎉',
+            `Congratulations! You have been enrolled into ${course.title}.`,
+            [
+              {
+                text: 'Go to Class',
+                onPress: () => navigation.replace('StudentClasses', { course }),
+              },
+            ]
+          );
+        }
+      } else if (data.type === 'PAYMENT_CANCELLED') {
+        setNativePaymentVisible(false);
+        setLoading(false);
+      } else if (data.type === 'PAYMENT_FAILED') {
+        setNativePaymentVisible(false);
+        setLoading(false);
+        Alert.alert(
+          'Payment Failed',
+          data.error?.description || data.error?.reason || 'Transaction was declined.'
+        );
+      } else if (data.type === 'PAYMENT_ERROR') {
+        setNativePaymentVisible(false);
+        setLoading(false);
+        Alert.alert('Payment Notice', data.message || 'Payment window closed.');
+      }
+    } catch (err) {
+      console.error('WebView message parsing error:', err);
+      setNativePaymentVisible(false);
       setLoading(false);
     }
   };
@@ -382,6 +535,50 @@ export const CheckoutScreen = ({ route, navigation }) => {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* 100% In-App Razorpay Checkout Native Modal */}
+      {Platform.OS !== 'web' && WebView && (
+        <Modal
+          visible={nativePaymentVisible}
+          animationType="slide"
+          onRequestClose={() => {
+            setNativePaymentVisible(false);
+            setLoading(false);
+          }}
+        >
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalHeader, { paddingTop: insets.top + 8 }]}>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => {
+                  setNativePaymentVisible(false);
+                  setLoading(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <Text style={styles.modalHeaderTitle}>Razorpay Secure Payment</Text>
+              <View style={{ width: 40 }} />
+            </View>
+            {nativePaymentData && (
+              <WebView
+                source={{ html: generateRazorpayHtml(nativePaymentData) }}
+                onMessage={handleWebViewMessage}
+                javaScriptEnabled={true}
+                domStorageEnabled={true}
+                startInLoadingState={true}
+                renderLoading={() => (
+                  <View style={styles.modalLoading}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                  </View>
+                )}
+                style={{ flex: 1 }}
+              />
+            )}
+          </View>
+        </Modal>
+      )}
     </View>
   );
 };
@@ -599,5 +796,38 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '800',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  modalCloseBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  modalLoading: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
