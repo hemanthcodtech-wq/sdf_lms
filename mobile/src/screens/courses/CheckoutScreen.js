@@ -12,11 +12,68 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { colors, shadows } from '../../theme/colors';
 import { CustomButton } from '../../components/CustomButton';
 import { useAuth } from '../../context/AuthContext';
 import { paymentService } from '../../services/paymentService';
 import { getCourseImageUrl } from '../../utils/imageHelper';
+
+// Dynamic bulletproof Razorpay Checkout SDK loader
+const loadRazorpaySDK = () => {
+  return new Promise((resolve) => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || typeof document === 'undefined') {
+      return resolve(false);
+    }
+    if (window.Razorpay) {
+      return resolve(true);
+    }
+
+    const scriptId = 'razorpay-checkout-sdk';
+    let script = document.getElementById(scriptId);
+
+    if (!script) {
+      script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+
+    let resolved = false;
+    script.onload = () => {
+      if (!resolved) {
+        resolved = true;
+        resolve(true);
+      }
+    };
+    script.onerror = () => {
+      if (!resolved) {
+        resolved = true;
+        resolve(false);
+      }
+    };
+
+    // Polling fallback to check if object is available
+    let checks = 0;
+    const interval = setInterval(() => {
+      checks++;
+      if (window.Razorpay) {
+        clearInterval(interval);
+        if (!resolved) {
+          resolved = true;
+          resolve(true);
+        }
+      } else if (checks > 30) {
+        clearInterval(interval);
+        if (!resolved) {
+          resolved = true;
+          resolve(false);
+        }
+      }
+    }, 150);
+  });
+};
 
 export const CheckoutScreen = ({ route, navigation }) => {
   const { course } = route.params;
@@ -31,21 +88,19 @@ export const CheckoutScreen = ({ route, navigation }) => {
   const gst = Math.round(price * 0.18);
   const total = price + gst;
 
-  // Load official Razorpay Checkout SDK dynamically on Web
+  // Preload Razorpay Checkout SDK on mount
   useEffect(() => {
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const scriptId = 'razorpay-checkout-sdk';
-      if (!document.getElementById(scriptId)) {
-        const script = document.createElement('script');
-        script.id = scriptId;
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.async = true;
-        document.body.appendChild(script);
-      }
-    }
+    loadRazorpaySDK().catch((err) => console.log('SDK pre-load notice:', err));
   }, []);
 
   const handlePay = async () => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please login to complete your enrollment.', [
+        { text: 'Login', onPress: () => navigation.navigate('Auth') },
+      ]);
+      return;
+    }
+
     if (!termsAgreed) {
       Alert.alert('Terms & Conditions', 'Please accept the terms to proceed with payment.');
       return;
@@ -53,6 +108,30 @@ export const CheckoutScreen = ({ route, navigation }) => {
 
     try {
       setLoading(true);
+
+      // Handle Free Courses directly without payment gateway
+      if (total <= 0) {
+        const verifyRes = await paymentService.verifyPayment({
+          courseId: course._id,
+          amountPaid: 0,
+          studentEmail: user?.email || user?.emailOrPhone,
+          isFree: true,
+        });
+
+        if (verifyRes.success) {
+          Alert.alert(
+            'Enrollment Successful! 🎉',
+            `You have been enrolled into ${course.title}.`,
+            [
+              {
+                text: 'Go to Class',
+                onPress: () => navigation.replace('StudentClasses', { course }),
+              },
+            ]
+          );
+        }
+        return;
+      }
 
       // 1. Create real order on backend
       const orderRes = await paymentService.createOrder(course._id, total);
@@ -62,11 +141,14 @@ export const CheckoutScreen = ({ route, navigation }) => {
       }
 
       const { order, key } = orderRes;
+      const razorpayKey = key || 'rzp_live_TVzQGEkYQFMh9I';
 
-      // 2. Open official Razorpay Checkout modal on Web
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.Razorpay) {
+      // 2. Ensure Razorpay SDK is ready
+      const isSdkLoaded = await loadRazorpaySDK();
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && (window.Razorpay || isSdkLoaded)) {
         const options = {
-          key: key || 'rzp_test_TRw3GVdqXu1bwb',
+          key: razorpayKey,
           amount: order.amount,
           currency: order.currency || 'INR',
           name: 'Swamy Dwija Foundation',
@@ -74,7 +156,7 @@ export const CheckoutScreen = ({ route, navigation }) => {
           image: '/logo.png',
           order_id: order.id,
           prefill: {
-            name: user?.name || '',
+            name: user?.name || user?.firstName || 'Student',
             email: user?.email || user?.emailOrPhone || '',
             contact: user?.phone || '',
           },
@@ -126,22 +208,48 @@ export const CheckoutScreen = ({ route, navigation }) => {
 
         const rzp = new window.Razorpay(options);
         rzp.on('payment.failed', function (response) {
-          Alert.alert('Payment Failed', response?.error?.description || 'Transaction was declined.');
+          console.error('Payment failed event:', response?.error);
+          Alert.alert(
+            'Payment Failed',
+            response?.error?.description || response?.error?.reason || 'Transaction was declined.'
+          );
           setLoading(false);
         });
         rzp.open();
         return;
       }
 
-      // Fallback if Razorpay object is still loading
+      // Fallback for native mobile platforms (Android APK / iOS)
+      if (Platform.OS !== 'web') {
+        const checkoutWebUrl = `https://swamidwijafoundation.com/checkout/${course._id}`;
+        Alert.alert(
+          'Complete Payment',
+          'We are opening the secure Razorpay payment gateway in your browser.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Open Payment Gateway',
+              onPress: async () => {
+                try {
+                  await WebBrowser.openBrowserAsync(checkoutWebUrl);
+                } catch (bErr) {
+                  console.error('Error launching browser:', bErr);
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+
       Alert.alert(
-        'Connecting Payment Gateway',
-        'Razorpay checkout is preparing. Please tap Pay again in a moment.'
+        'Payment Gateway Notice',
+        'Payment gateway could not be loaded directly. Please verify internet connection and retry.'
       );
     } catch (error) {
       console.error('Payment launch error:', error);
       Alert.alert(
-        'Payment Gateway Notice',
+        'Payment Gateway Error',
         error?.response?.data?.message || error.message || 'Could not launch payment gateway. Please check your connection.'
       );
     } finally {

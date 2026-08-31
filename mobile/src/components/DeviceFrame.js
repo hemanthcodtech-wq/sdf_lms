@@ -30,33 +30,12 @@ export const DeviceFrame = ({ children }) => {
             transition: background-color 5000s ease-in-out 0s;
           }
 
-          /* Constrain Razorpay Modal strictly inside Phone Frame on Desktop */
-          @media (min-width: 541px) {
-            .razorpay-container {
-              position: fixed !important;
-              top: 50% !important;
-              left: 50% !important;
-              transform: translate(-50%, -50%) !important;
-              width: 382px !important;
-              max-width: 92vw !important;
-              height: 780px !important;
-              max-height: 86vh !important;
-              border-radius: 46px !important;
-              overflow: hidden !important;
-              box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75) !important;
-              z-index: 999999 !important;
-            }
-            .razorpay-container iframe,
-            iframe.razorpay-checkout-frame {
-              width: 100% !important;
-              height: 100% !important;
-              border-radius: 46px !important;
-              border: none !important;
-            }
-            .razorpay-backdrop {
-              background-color: rgba(0, 0, 0, 0.6) !important;
-              backdrop-filter: blur(4px) !important;
-            }
+          /* Ensure Razorpay modal appears cleanly on top of all frames */
+          .razorpay-container {
+            z-index: 2147483647 !important;
+          }
+          .razorpay-backdrop {
+            z-index: 2147483646 !important;
           }
         `;
         document.head.appendChild(style);
