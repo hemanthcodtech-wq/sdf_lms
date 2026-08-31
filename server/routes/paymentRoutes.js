@@ -68,11 +68,35 @@ router.get('/invoice/:enrollmentId/download', protect, async (req, res) => {
 // Create Razorpay Order
 router.post('/create-order', protect, async (req, res) => {
   try {
-    const { courseId } = req.body;
+    const { courseId, amount } = req.body;
     
     const course = await Course.findById(courseId);
     if (!course) {
       return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+
+    // Determine final price (use amount passed if provided and valid, otherwise course.price)
+    const numericAmount = amount !== undefined && !isNaN(Number(amount)) ? Number(amount) : Number(course.price || 0);
+
+    // If free course, no Razorpay order required
+    if (numericAmount <= 0) {
+      return res.json({
+        success: true,
+        isFree: true,
+        order: {
+          id: `free_${Date.now()}`,
+          amount: 0,
+          currency: 'INR',
+        },
+        key: process.env.RAZORPAY_KEY_ID || 'rzp_live_TVzQGEkYQFMh9I',
+      });
+    }
+
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: 'Razorpay payment gateway keys are not configured on server.',
+      });
     }
 
     const instance = new Razorpay({
@@ -80,11 +104,10 @@ router.post('/create-order', protect, async (req, res) => {
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
-    const price = course.price !== undefined ? course.price : 0;
     const options = {
-      amount: Math.round(price * 100), // paise
+      amount: Math.round(numericAmount * 100), // paise
       currency: "INR",
-      receipt: `rcpt_${Date.now().toString().slice(-6)}`
+      receipt: `rcpt_${Date.now().toString().slice(-8)}`
     };
 
     const order = await instance.orders.create(options);
@@ -95,32 +118,44 @@ router.post('/create-order', protect, async (req, res) => {
       key: process.env.RAZORPAY_KEY_ID 
     });
   } catch (error) {
-    console.error("Order creation error", error);
-    res.status(500).json({ success: false, message: 'Error creating order', error: error.message });
+    console.error("Order creation error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.error?.description || error.message || 'Error creating Razorpay order', 
+      error: error.message 
+    });
   }
 });
 
 // Verify Razorpay Payment and send confirmation email with invoice PDF
 router.post('/verify-payment', protect, async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, courseId, amountPaid } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, courseId, amountPaid, isFree } = req.body;
 
     const course = await Course.findById(courseId);
     if (!course) {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
 
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
-      .digest('hex');
+    // Check if free course enrollment
+    const isFreeEnrollment = isFree === true || amountPaid === 0 || razorpay_order_id?.startsWith('free_');
 
-    const isAuthentic = expectedSignature === razorpay_signature;
+    let isAuthentic = false;
+    if (isFreeEnrollment) {
+      isAuthentic = true;
+    } else if (razorpay_order_id && razorpay_payment_id && razorpay_signature && process.env.RAZORPAY_KEY_SECRET) {
+      const body = razorpay_order_id + "|" + razorpay_payment_id;
+      const expectedSignature = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .update(body.toString())
+        .digest('hex');
+
+      isAuthentic = expectedSignature === razorpay_signature;
+    }
 
     if (isAuthentic || process.env.NODE_ENV === 'development') {
       const invoiceNumber = `SDF-INV-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
-      const finalAmount = amountPaid !== undefined ? amountPaid : course.price;
+      const finalAmount = amountPaid !== undefined ? Number(amountPaid) : (isFreeEnrollment ? 0 : Number(course.price || 0));
 
       // Create Enrollment
       const enrollment = await Enrollment.create({
@@ -142,7 +177,7 @@ router.post('/verify-payment', protect, async (req, res) => {
         studentName = req.user.emailOrPhone.split('@')[0];
       }
 
-const { uploadBufferToCloudinary } = require('../utils/cloudinaryUploader');
+      const { uploadBufferToCloudinary } = require('../utils/cloudinaryUploader');
 
       // Generate Invoice PDF, upload to Cloudinary, and send email asynchronously
       generateInvoicePDF({

@@ -37,15 +37,58 @@ const Checkout = () => {
     fetchCourse();
   }, [id]);
 
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
+  // Helper to dynamically load Razorpay SDK reliably
+  const loadRazorpaySDK = () => {
+    return new Promise((resolve) => {
+      if (typeof window === 'undefined') return resolve(false);
+      if (window.Razorpay) return resolve(true);
 
-    return () => {
-      document.body.removeChild(script);
-    };
+      const scriptId = 'razorpay-checkout-sdk';
+      let script = document.getElementById(scriptId);
+      if (!script) {
+        script = document.createElement('script');
+        script.id = scriptId;
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        document.body.appendChild(script);
+      }
+
+      let resolved = false;
+      script.onload = () => {
+        if (!resolved) {
+          resolved = true;
+          resolve(true);
+        }
+      };
+      script.onerror = () => {
+        if (!resolved) {
+          resolved = true;
+          resolve(false);
+        }
+      };
+
+      let checks = 0;
+      const interval = setInterval(() => {
+        checks++;
+        if (window.Razorpay) {
+          clearInterval(interval);
+          if (!resolved) {
+            resolved = true;
+            resolve(true);
+          }
+        } else if (checks > 30) {
+          clearInterval(interval);
+          if (!resolved) {
+            resolved = true;
+            resolve(false);
+          }
+        }
+      }, 150);
+    });
+  };
+
+  useEffect(() => {
+    loadRazorpaySDK().catch(console.error);
   }, []);
 
   const handleCheckout = async (e) => {
@@ -57,28 +100,63 @@ const Checkout = () => {
     setProcessing(true);
 
     try {
-      // 1. Create order on server
       const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Please login to continue checkout.');
+        navigate('/login');
+        return;
+      }
+
+      // Handle free courses directly
+      if (Number(course?.price || 0) <= 0) {
+        const verifyRes = await axios.post(
+          `${import.meta.env.VITE_API_BASE_URL}/payments/verify-payment`,
+          {
+            courseId: course._id,
+            amountPaid: 0,
+            studentEmail: email,
+            isFree: true
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (verifyRes.data.success) {
+          setSuccess(true);
+          setTimeout(() => {
+            navigate(`/dashboard/learning/${course._id}`);
+          }, 2000);
+        }
+        return;
+      }
+
+      // 1. Create order on server
       const orderRes = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/payments/create-order`,
-        { courseId: course._id },
+        { courseId: course._id, amount: course.price },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const { order, key } = orderRes.data;
+      const razorpayKey = key || 'rzp_live_TVzQGEkYQFMh9I';
 
-      // 2. Initialize Razorpay checkout
+      // 2. Ensure Razorpay SDK is ready
+      const sdkReady = await loadRazorpaySDK();
+      if (!window.Razorpay && !sdkReady) {
+        throw new Error('Payment gateway SDK could not be loaded. Please check your connection.');
+      }
+
+      // 3. Initialize Razorpay checkout
       const options = {
-        key: key,
+        key: razorpayKey,
         amount: order.amount,
-        currency: order.currency,
+        currency: order.currency || 'INR',
         name: 'Swamy Dwija Foundation',
         description: `Enrollment for ${course.title}`,
         image: '/logo.png',
         order_id: order.id,
         handler: async function (response) {
           try {
-            // 3. Verify payment on server
+            // 4. Verify payment on server
             const verifyRes = await axios.post(
               `${import.meta.env.VITE_API_BASE_URL}/payments/verify-payment`,
               {
@@ -120,11 +198,16 @@ const Checkout = () => {
       };
 
       const paymentObject = new window.Razorpay(options);
+      paymentObject.on('payment.failed', function (response) {
+        console.error('Payment failed event:', response?.error);
+        alert(response?.error?.description || 'Payment was declined or cancelled.');
+        setProcessing(false);
+      });
       paymentObject.open();
 
     } catch (error) {
       console.error('Checkout error:', error);
-      alert(error.response?.data?.message || 'Error initializing checkout');
+      alert(error.response?.data?.message || error.message || 'Error initializing checkout');
       setProcessing(false);
     }
   };
