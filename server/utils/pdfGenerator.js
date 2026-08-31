@@ -338,7 +338,8 @@ const generateCertificatePDF = (data) => {
       // Register Google Script Font (Alex Brush) for authentic calligraphy name
       const fontCandidates = [
         path.join(__dirname, '../assets/fonts/AlexBrush-Regular.ttf'),
-        path.join(__dirname, '../assets/fonts/GreatVibes-Regular.ttf')
+        path.join(__dirname, '../assets/fonts/GreatVibes-Regular.ttf'),
+        path.join(__dirname, '../../client/public/AlexBrush-Regular.ttf')
       ];
       const scriptFontPath = fontCandidates.find(p => fs.existsSync(p));
       let scriptFont = 'Times-BoldItalic';
@@ -404,30 +405,54 @@ const generateCertificatePDF = (data) => {
          .fontSize(7.5)
          .text(certId, metaX, 420, { width: metaWidth, align: 'left' });
 
-      // 2. Recipient Name (Center, perfectly balanced above green line)
-      const studentName = data.studentName || 'Learner Name';
+      // 2. Recipient Name (Center, perfectly balanced above green line at y ≈ 335 pt)
+      const studentName = (data.studentName || 'Learner Name').trim();
       const nameLen = studentName.length;
-      const fontSize = nameLen > 30 ? 28 : (nameLen > 22 ? 32 : (nameLen > 15 ? 36 : 40));
+
+      // Smart auto-scaling font size and vertical offset to ensure big/long names never overlap or clip
+      let fontSize = 36;
+      let nameY = 286;
+      if (nameLen <= 16) {
+        fontSize = 36;
+        nameY = 286;
+      } else if (nameLen <= 24) {
+        fontSize = 30;
+        nameY = 290;
+      } else if (nameLen <= 32) {
+        fontSize = 24;
+        nameY = 294;
+      } else if (nameLen <= 42) {
+        fontSize = 20;
+        nameY = 298;
+      } else {
+        fontSize = 17;
+        nameY = 301;
+      }
 
       doc.fillColor('#0A4F2A')
          .font(scriptFont)
          .fontSize(fontSize)
-         .text(studentName, 170, 296, { width: 500, align: 'center' });
+         .text(studentName, 160, nameY, { width: 520, align: 'center', lineBreak: false });
 
       // 3. Course Title (Center, below 'has successfully completed the')
       const defaultCourse = 'Yoga for Wellness and Inner Balance';
-      const courseTitle = data.courseTitle || defaultCourse;
+      const courseTitle = (data.courseTitle || defaultCourse).trim();
 
-      if (courseTitle && courseTitle.trim().toLowerCase() !== defaultCourse.toLowerCase()) {
-        // Overlay dynamic course title cleanly
-        doc.rect(200, 366, 440, 22).fill('#FAF7F2');
+      if (courseTitle && courseTitle.toLowerCase() !== defaultCourse.toLowerCase()) {
+        // Overlay dynamic course title cleanly over template background placeholder
+        doc.rect(190, 362, 460, 25).fill('#FAF7F2');
+        
+        const titleLen = courseTitle.length;
+        const titleFontSize = titleLen > 40 ? 11.5 : (titleLen > 28 ? 12.5 : 13.5);
+        const titleY = titleLen > 40 ? 368 : 367;
+
         doc.fillColor('#111827')
            .font('Helvetica-Bold')
-           .fontSize(13.5)
-           .text(courseTitle, 200, 369, { width: 440, align: 'center' });
+           .fontSize(titleFontSize)
+           .text(courseTitle, 190, titleY, { width: 460, align: 'center', lineBreak: false });
       }
 
-      // 4. Bottom Instructor Details & Director Details (Centered directly under the template diamond ornaments at x≈289.4pt and x≈536.9pt)
+      // 4. Bottom Instructor Details & Director Details
       // Left: Instructor Details
       const instWidth = 160;
       const instBoxX = 289.4 - (instWidth / 2); // 209.4 pt

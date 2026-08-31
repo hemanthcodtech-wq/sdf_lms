@@ -656,30 +656,53 @@ router.post('/admin/issue-certificate/:enrollmentId', protect, admin, async (req
 });
 
 // Download Certificate PDF
-router.get('/certificate/:enrollmentId/download', protect, async (req, res) => {
+router.get('/certificate/:enrollmentId/download', async (req, res) => {
   try {
+    // Authenticate via Bearer header or query token (for direct mobile downloads)
+    let token = req.headers.authorization?.startsWith('Bearer') 
+      ? req.headers.authorization.split(' ')[1] 
+      : req.query.token;
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Not authorized to download certificate' });
+    }
+
+    const jwt = require('jsonwebtoken');
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (e) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired authentication token' });
+    }
+
     const enrollment = await Enrollment.findById(req.params.enrollmentId).populate('course');
     if (!enrollment) {
       return res.status(404).json({ success: false, message: 'Certificate not found' });
     }
 
-    const user = await User.findOne({ emailOrPhone: enrollment.studentEmail });
-    let studentName = user?.name;
-    if (!studentName && user?.firstName) {
-      studentName = `${user.firstName} ${user.lastName || ''}`.trim();
-    }
+    const user = await User.findById(decoded.id);
+    let studentName = enrollment.studentName;
     if (!studentName) {
-      studentName = enrollment.studentEmail.split('@')[0];
+      if (user?.name) {
+        studentName = user.name;
+      } else if (user?.firstName) {
+        studentName = `${user.firstName} ${user.lastName || ''}`.trim();
+      } else {
+        studentName = enrollment.studentEmail.split('@')[0];
+      }
     }
 
     const certId = enrollment.certificateId || `SDF-CERT-${enrollment._id.toString().slice(-6).toUpperCase()}`;
     const compDate = enrollment.completionDate || enrollment.updatedAt || new Date();
+    const studentId = user?.studentId || (user?._id ? `SDWFY${user._id.toString().slice(-6).toUpperCase()}` : 'SDWFY250501');
 
     const certBuffer = await generateCertificatePDF({
       studentName,
+      studentId,
       courseTitle: enrollment.course?.title || 'Yoga & Vedic Sciences',
       completionDate: new Date(compDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
-      certificateId: certId
+      certificateId: certId,
+      duration: enrollment.course?.duration || '30 Days\n(20 Hours)'
     });
 
     res.setHeader('Content-Type', 'application/pdf');
@@ -687,7 +710,7 @@ router.get('/certificate/:enrollmentId/download', protect, async (req, res) => {
     res.send(certBuffer);
   } catch (error) {
     console.error('Error downloading certificate:', error);
-    res.status(500).json({ success: false, message: 'Error generating certificate PDF' });
+    res.status(500).json({ success: false, message: 'Error generating certificate PDF', error: error.message });
   }
 });
 
