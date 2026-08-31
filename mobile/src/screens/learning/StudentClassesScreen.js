@@ -8,13 +8,19 @@ import {
   Linking,
   Alert,
   Image,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as WebBrowser from 'expo-web-browser';
 import { colors, shadows } from '../../theme/colors';
 import { CustomButton } from '../../components/CustomButton';
 import { Badge } from '../../components/Badge';
 import { ProgressBar } from '../../components/Badge';
+import { EmptyState } from '../../components/EmptyState';
 import { courseService } from '../../services/courseService';
 import { getCourseImageUrl } from '../../utils/imageHelper';
 
@@ -23,45 +29,74 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
 
   const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [downloadingMaterial, setDownloadingMaterial] = useState(false);
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
-  const [completedLessons, setCompletedLessons] = useState([0]);
+  const [completedLessons, setCompletedLessons] = useState([]);
   const [activeTab, setActiveTab] = useState('lessons'); // 'lessons', 'materials', 'community'
 
-  // Default sample lessons if backend hasn't populated class sessions yet
-  const defaultLessons = [
-    {
-      id: 1,
-      title: 'Session 1: Orientation & Foundations',
-      duration: '45 mins',
-      videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
-      completed: true,
-    },
-    {
-      id: 2,
-      title: 'Session 2: Core Principles & Methodology',
-      duration: '50 mins',
-      videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4',
-      completed: false,
-    },
-    {
-      id: 3,
-      title: 'Session 3: Live Case Studies & Practice',
-      duration: '60 mins',
-      videoUrl: '',
-      completed: false,
-    },
-    {
-      id: 4,
-      title: 'Session 4: Advanced Mastery & Q&A',
-      duration: '55 mins',
-      videoUrl: '',
-      completed: false,
-    },
-  ];
+  useEffect(() => {
+    fetchCourseClasses();
+  }, [course?._id]);
 
-  const lessons = classes.length > 0 ? classes : defaultLessons;
-  const currentLesson = lessons[activeLessonIndex] || lessons[0];
-  const progressPercent = Math.round((completedLessons.length / lessons.length) * 100);
+  const fetchCourseClasses = async () => {
+    try {
+      setLoading(true);
+      const res = await courseService.getStudentClasses();
+      if (res?.data && res.data.length > 0) {
+        const courseId = course?._id || course?.id;
+        const matchingClasses = res.data.filter(
+          (c) => (c.courseId?._id || c.courseId?.id || c.courseId) === courseId
+        );
+        setClasses(matchingClasses);
+      } else {
+        setClasses([]);
+      }
+    } catch (err) {
+      console.error('Error fetching classes:', err);
+      setClasses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Derive real sessions dynamically from Admin inputs (live classes OR course topics / sessionDates)
+  const realSessions = [];
+  if (classes.length > 0) {
+    classes.forEach((cl, i) => {
+      realSessions.push({
+        id: cl._id || `class_${i}`,
+        title: cl.title || `Session ${i + 1}`,
+        duration: cl.durationMinutes ? `${cl.durationMinutes} mins` : (cl.time || 'Live Batch'),
+        zoomLink: cl.zoomLink || course?.zoomMeetingLink,
+        date: cl.date,
+        time: cl.time,
+      });
+    });
+  } else if (course?.topics && course.topics.length > 0) {
+    course.topics.forEach((top, i) => {
+      realSessions.push({
+        id: `topic_${i}`,
+        title: `Module ${i + 1}: ${top}`,
+        duration: course?.timings || 'Scheduled Live',
+        zoomLink: course?.zoomMeetingLink,
+      });
+    });
+  } else if (course?.sessionDates && course.sessionDates.length > 0) {
+    course.sessionDates.forEach((sd, i) => {
+      realSessions.push({
+        id: `session_${i}`,
+        title: `Live Session ${i + 1} (${sd})`,
+        duration: course?.timings || '1 Hour',
+        zoomLink: course?.zoomMeetingLink,
+      });
+    });
+  }
+
+  const currentLesson = realSessions[activeLessonIndex] || realSessions[0] || null;
+  const progressPercent = realSessions.length > 0
+    ? Math.round((completedLessons.length / realSessions.length) * 100)
+    : 0;
 
   const toggleComplete = (idx) => {
     if (completedLessons.includes(idx)) {
@@ -75,22 +110,26 @@ export const StudentClassesScreen = ({ route, navigation }) => {
     const target = lessonItem || currentLesson;
     const link =
       target?.zoomLink ||
-      target?.zoomJoinUrl ||
       course?.zoomMeetingLink ||
       target?.courseId?.zoomMeetingLink ||
       (target?.zoomMeetingId ? `https://zoom.us/j/${target.zoomMeetingId}` : 'https://zoom.us/join');
+
+    if (!link) {
+      Alert.alert('Live Session', 'Live Zoom link has not been published yet for this session.');
+      return;
+    }
 
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       window.open(link, '_blank', 'noopener,noreferrer');
     } else {
       Linking.openURL(link).catch(() => {
-        Alert.alert('Error', 'Unable to open Zoom link. Please verify your Zoom app.');
+        Alert.alert('Error', 'Unable to open Zoom. Please ensure the Zoom app is installed on your device.');
       });
     }
   };
 
   const handleOpenWhatsApp = () => {
-    const waLink = course?.whatsappGroupLink || currentLesson?.courseId?.whatsappGroupLink;
+    const waLink = course?.whatsappGroupLink;
     if (waLink) {
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.open(waLink, '_blank', 'noopener,noreferrer');
@@ -101,6 +140,46 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       }
     } else {
       Alert.alert('Community Group', 'WhatsApp community group link will be shared by your guru.');
+    }
+  };
+
+  const handleDownloadMaterial = async (fileUrl, title = 'Course Material') => {
+    if (!fileUrl) {
+      Alert.alert('Notice', 'No file attachment available for download.');
+      return;
+    }
+    const fullUrl = getCourseImageUrl(fileUrl);
+    try {
+      setDownloadingMaterial(true);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.open(fullUrl, '_blank');
+      } else {
+        const fileName = fileUrl.split('/').pop() || 'Course-Handbook.pdf';
+        const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+        const downloadRes = await FileSystem.downloadAsync(fullUrl, fileUri);
+
+        if (downloadRes.status === 200) {
+          const canShare = await Sharing.isAvailableAsync();
+          if (canShare) {
+            await Sharing.shareAsync(downloadRes.uri, {
+              mimeType: 'application/pdf',
+              dialogTitle: `Download ${title}`,
+              UTI: 'com.adobe.pdf',
+            });
+          } else {
+            await WebBrowser.openBrowserAsync(fullUrl);
+          }
+        } else {
+          await WebBrowser.openBrowserAsync(fullUrl);
+        }
+      }
+    } catch (e) {
+      console.error('Material download error:', e);
+      Linking.openURL(fullUrl).catch(() => {
+        Alert.alert('Download Notice', 'Unable to download file. Please check your network connection.');
+      });
+    } finally {
+      setDownloadingMaterial(false);
     }
   };
 
@@ -126,20 +205,24 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         <Image
           source={{
             uri: getCourseImageUrl(course?.thumbnailUrl),
+            cache: 'force-cache',
           }}
           style={styles.playerThumbnail}
         />
         <View style={styles.playerOverlay}>
           <TouchableOpacity
             style={styles.playCenterButton}
-            onPress={handleJoinZoom}
+            onPress={() => handleJoinZoom(currentLesson)}
             activeOpacity={0.8}
           >
-            <Ionicons name="play" size={32} color="#fff" />
+            <Ionicons name="videocam" size={32} color="#fff" />
           </TouchableOpacity>
           <View style={styles.playerBottomInfo}>
             <Text style={styles.playerLessonTitle} numberOfLines={1}>
-              {currentLesson?.title || 'Lesson Overview'}
+              {currentLesson?.title || course?.title || 'Live Interactive Class'}
+            </Text>
+            <Text style={styles.playerSubInfo}>
+              ⏰ {course?.timings || 'Batch schedule in description'}
             </Text>
           </View>
         </View>
@@ -157,7 +240,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       {/* Navigation Tabs */}
       <View style={styles.tabNav}>
         {[
-          { id: 'lessons', label: 'Sessions' },
+          { id: 'lessons', label: `Sessions (${realSessions.length})` },
           { id: 'materials', label: 'Materials & Notes' },
           { id: 'community', label: 'Live & Community' },
         ].map((t) => (
@@ -184,78 +267,95 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       >
         {activeTab === 'lessons' && (
           <View style={styles.lessonsList}>
-            {lessons.map((lesson, idx) => {
-              const isActive = activeLessonIndex === idx;
-              const isDone = completedLessons.includes(idx);
-              return (
-                <TouchableOpacity
-                  key={lesson.id || idx}
-                  style={[
-                    styles.lessonCard,
-                    isActive && styles.lessonCardActive,
-                    shadows.sm,
-                  ]}
-                  onPress={() => setActiveLessonIndex(idx)}
-                  activeOpacity={0.7}
-                >
+            {loading ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 20 }} />
+            ) : realSessions.length > 0 ? (
+              realSessions.map((lesson, idx) => {
+                const isActive = activeLessonIndex === idx;
+                const isDone = completedLessons.includes(idx);
+                return (
                   <TouchableOpacity
-                    style={[styles.checkCircle, isDone && styles.checkCircleDone]}
-                    onPress={() => toggleComplete(idx)}
+                    key={lesson.id || idx}
+                    style={[
+                      styles.lessonCard,
+                      isActive && styles.lessonCardActive,
+                      shadows.sm,
+                    ]}
+                    onPress={() => setActiveLessonIndex(idx)}
+                    activeOpacity={0.7}
                   >
-                    {isDone && <Ionicons name="checkmark" size={14} color="#fff" />}
-                  </TouchableOpacity>
-
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[styles.lessonTitle, isActive && styles.lessonTitleActive]}
+                    <TouchableOpacity
+                      style={[styles.checkCircle, isDone && styles.checkCircleDone]}
+                      onPress={() => toggleComplete(idx)}
                     >
-                      {lesson.title}
-                    </Text>
-                    <Text style={styles.lessonDuration}>
-                      ⏳ {lesson.duration || '45 mins'}
-                    </Text>
-                  </View>
+                      {isDone && <Ionicons name="checkmark" size={14} color="#fff" />}
+                    </TouchableOpacity>
 
-                  <Ionicons
-                    name={isActive ? 'volume-high' : 'play-circle-outline'}
-                    size={22}
-                    color={isActive ? colors.primary : colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              );
-            })}
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[styles.lessonTitle, isActive && styles.lessonTitleActive]}
+                      >
+                        {lesson.title}
+                      </Text>
+                      <Text style={styles.lessonDuration}>
+                        ⏳ {lesson.duration}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.joinIconBtn}
+                      onPress={() => handleJoinZoom(lesson)}
+                    >
+                      <Ionicons
+                        name="videocam-outline"
+                        size={22}
+                        color={isActive ? colors.primary : colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <EmptyState
+                icon="calendar-outline"
+                title="No Live Sessions Scheduled Yet"
+                description="Your instructor has not published specific session dates yet. Join the batch live meeting link or WhatsApp group below."
+                buttonTitle="Join Batch Live Zoom"
+                onButtonPress={() => handleJoinZoom(null)}
+              />
+            )}
           </View>
         )}
 
         {activeTab === 'materials' && (
           <View style={styles.materialsSection}>
-            <View style={[styles.materialCard, shadows.sm]}>
-              <Ionicons name="document-text" size={28} color={colors.primary} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.materialTitle}>Course Syllabus & Handbook (PDF)</Text>
-                <Text style={styles.materialSize}>2.4 MB • Updated this week</Text>
+            {course?.contentUrl ? (
+              <View style={[styles.materialCard, shadows.sm]}>
+                <Ionicons name="document-text" size={28} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.materialTitle}>Course Syllabus & Handbook (PDF)</Text>
+                  <Text style={styles.materialSize}>Official Course Material • PDF Document</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.downloadBtn, downloadingMaterial && { opacity: 0.7 }]}
+                  onPress={() => handleDownloadMaterial(course.contentUrl, 'Course Syllabus & Handbook')}
+                  disabled={downloadingMaterial}
+                  activeOpacity={0.8}
+                >
+                  {downloadingMaterial ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Ionicons name="cloud-download-outline" size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={styles.downloadBtn}
-                onPress={() => Alert.alert('Download', 'Downloading PDF to device storage...')}
-              >
-                <Ionicons name="cloud-download-outline" size={20} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.materialCard, shadows.sm]}>
-              <Ionicons name="folder-outline" size={28} color={colors.secondary} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.materialTitle}>Session Practice Sheets & Formulas</Text>
-                <Text style={styles.materialSize}>1.1 MB • Exercise Files</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.downloadBtn}
-                onPress={() => Alert.alert('Download', 'Downloading exercise files...')}
-              >
-                <Ionicons name="cloud-download-outline" size={20} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
+            ) : (
+              <EmptyState
+                icon="document-outline"
+                title="No Study Materials Uploaded"
+                description="Your instructor has not attached additional downloadable study files for this course yet."
+              />
+            )}
           </View>
         )}
 
@@ -268,11 +368,11 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                 <Text style={styles.actionCardTitle}>Live Class Room</Text>
               </View>
               <Text style={styles.actionCardDesc}>
-                Timings: {course?.timings || 'Check scheduled batch hours'}
+                Timings: {course?.timings || 'Live interactive batch sessions'}
               </Text>
               <CustomButton
                 title="Launch Zoom Session"
-                onPress={handleJoinZoom}
+                onPress={() => handleJoinZoom(null)}
                 variant="primary"
                 size="md"
                 style={{ marginTop: 10 }}
@@ -297,7 +397,17 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                   style={{ marginTop: 10 }}
                 />
               </View>
-            ) : null}
+            ) : (
+              <View style={[styles.actionCard, shadows.sm]}>
+                <View style={styles.actionCardHeader}>
+                  <Ionicons name="people-outline" size={24} color={colors.secondary} />
+                  <Text style={styles.actionCardTitle}>Community Batch</Text>
+                </View>
+                <Text style={styles.actionCardDesc}>
+                  Interact with instructor and learners during live class sessions.
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -525,5 +635,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     lineHeight: 18,
+  },
+  playerSubInfo: {
+    color: '#cbd5e1',
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  joinIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

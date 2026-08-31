@@ -295,17 +295,17 @@ const Certificates = () => {
                         {activeCert.certificateId || `SDWFY${activeCert._id.slice(-8).toUpperCase()}`}
                       </div>
 
-                      {/* Recipient Student Name (Center, above green line) */}
-                      <div className="absolute left-[18%] right-[18%] top-[47.5%] text-center flex items-center justify-center pointer-events-none">
+                      {/* Recipient Student Name (Center, above green line, Professional Capital Typography) */}
+                      <div className="absolute left-[18%] right-[18%] top-[48.5%] text-center flex items-center justify-center pointer-events-none">
                         <h1 
-                          className={`font-serif italic font-black text-[#0A4F2A] tracking-wide px-1 select-none leading-tight whitespace-nowrap overflow-hidden text-ellipsis ${
+                          className={`font-serif font-black text-[#0A4F2A] tracking-wider px-1 select-none leading-tight uppercase whitespace-nowrap overflow-hidden text-ellipsis ${
                             (currentPrintedName || '').length > 34 
-                              ? 'text-[11px] sm:text-xs md:text-sm lg:text-base' 
+                              ? 'text-[10px] sm:text-xs md:text-sm' 
                               : (currentPrintedName || '').length > 24 
-                                ? 'text-xs sm:text-sm md:text-base lg:text-xl xl:text-2xl'
+                                ? 'text-xs sm:text-sm md:text-base lg:text-lg'
                                 : (currentPrintedName || '').length > 16
-                                  ? 'text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-3xl'
-                                  : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl'
+                                  ? 'text-sm sm:text-base md:text-lg lg:text-xl'
+                                  : 'text-base sm:text-lg md:text-xl lg:text-2xl'
                           }`}
                         >
                           {currentPrintedName}

@@ -22,6 +22,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { courseService } from '../../services/courseService';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../services/api';
 import { getAvatarUrl, getCourseImageUrl } from '../../utils/imageHelper';
 
@@ -52,10 +53,14 @@ export const HomeScreen = ({ navigation }) => {
 
       // Handle Public Courses
       if (results[0].status === 'fulfilled' && results[0].value?.data) {
-        setCourses(results[0].value.data);
+        const freshCourses = results[0].value.data;
+        setCourses(freshCourses);
+        // Save to cache for instant 0ms cold start
+        AsyncStorage.setItem('@sdf_cached_public_courses', JSON.stringify(freshCourses)).catch(() => {});
+
         // Prefetch course images in parallel
         if (Platform.OS !== 'web') {
-          results[0].value.data.forEach((c) => {
+          freshCourses.forEach((c) => {
             const img = getCourseImageUrl(c.thumbnailUrl || c.image);
             if (img) {
               Image.prefetch(img).catch(() => {});
@@ -78,7 +83,18 @@ export const HomeScreen = ({ navigation }) => {
     }
   }, [user]);
 
+  // Load from local storage cache immediately on cold-start (0ms)
   useEffect(() => {
+    AsyncStorage.getItem('@sdf_cached_public_courses').then((raw) => {
+      if (raw) {
+        try {
+          const cached = JSON.parse(raw);
+          if (Array.isArray(cached) && cached.length > 0) {
+            setCourses(cached);
+          }
+        } catch (e) {}
+      }
+    });
     loadData();
   }, [loadData]);
 

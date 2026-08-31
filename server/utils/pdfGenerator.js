@@ -335,18 +335,17 @@ const generateCertificatePDF = (data) => {
         doc.rect(18, 18, width - 36, height - 36).strokeColor('#0A4F2A').lineWidth(2).stroke();
       }
 
-      // Register Google Script Font (Alex Brush) for authentic calligraphy name
+      // Register Prestigious Professional Serif Font (Cinzel Bold / Classical Degree Font)
       const fontCandidates = [
-        path.join(__dirname, '../assets/fonts/AlexBrush-Regular.ttf'),
-        path.join(__dirname, '../assets/fonts/GreatVibes-Regular.ttf'),
-        path.join(__dirname, '../../client/public/AlexBrush-Regular.ttf')
+        path.join(__dirname, '../assets/fonts/Cinzel-Bold.ttf'),
+        path.join(__dirname, '../../client/public/Cinzel-Bold.ttf')
       ];
-      const scriptFontPath = fontCandidates.find(p => fs.existsSync(p));
-      let scriptFont = 'Times-BoldItalic';
-      if (scriptFontPath) {
+      const profFontPath = fontCandidates.find(p => fs.existsSync(p));
+      let certFont = 'Helvetica-Bold';
+      if (profFontPath) {
         try {
-          doc.registerFont('AlexBrushFont', scriptFontPath);
-          scriptFont = 'AlexBrushFont';
+          doc.registerFont('ProfessionalCertFont', profFontPath);
+          certFont = 'ProfessionalCertFont';
         } catch (e) {
           console.error("Font registration error:", e);
         }
@@ -405,34 +404,34 @@ const generateCertificatePDF = (data) => {
          .fontSize(7.5)
          .text(certId, metaX, 420, { width: metaWidth, align: 'left' });
 
-      // 2. Recipient Name (Center, perfectly balanced above green line at y ≈ 335 pt)
-      const studentName = (data.studentName || 'Learner Name').trim();
+      // 2. Recipient Name (Professional Capital Letters, centered between 'This is to certify that' and the ribbon)
+      const studentName = (data.studentName || 'LEARNER NAME').trim().toUpperCase();
       const nameLen = studentName.length;
 
-      // Smart auto-scaling font size and vertical offset to ensure big/long names never overlap or clip
-      let fontSize = 36;
-      let nameY = 286;
+      // Elegant proportional scaling for clean, unclipped text
+      let fontSize = 23;
+      let nameY = 296;
       if (nameLen <= 16) {
-        fontSize = 36;
-        nameY = 286;
+        fontSize = 23;
+        nameY = 296;
       } else if (nameLen <= 24) {
-        fontSize = 30;
-        nameY = 290;
-      } else if (nameLen <= 32) {
-        fontSize = 24;
-        nameY = 294;
-      } else if (nameLen <= 42) {
         fontSize = 20;
         nameY = 298;
-      } else {
+      } else if (nameLen <= 32) {
         fontSize = 17;
-        nameY = 301;
+        nameY = 300;
+      } else if (nameLen <= 42) {
+        fontSize = 14.5;
+        nameY = 302;
+      } else {
+        fontSize = 12.5;
+        nameY = 304;
       }
 
       doc.fillColor('#0A4F2A')
-         .font(scriptFont)
+         .font(certFont)
          .fontSize(fontSize)
-         .text(studentName, 160, nameY, { width: 520, align: 'center', lineBreak: false });
+         .text(studentName, 160, nameY, { width: 520, align: 'center', characterSpacing: 1.2, lineBreak: false });
 
       // 3. Course Title (Center, below 'has successfully completed the')
       const defaultCourse = 'Yoga for Wellness and Inner Balance';
