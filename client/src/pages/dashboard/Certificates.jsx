@@ -296,16 +296,28 @@ const Certificates = () => {
                       </div>
 
                       {/* Recipient Student Name (Center, above green line) */}
-                      <div className="absolute left-[20%] right-[20%] top-[48.5%] text-center">
-                        <h1 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-serif italic font-black text-[#0A4F2A] truncate tracking-wide px-2">
+                      <div className="absolute left-[18%] right-[18%] top-[47.5%] text-center flex items-center justify-center pointer-events-none">
+                        <h1 
+                          className={`font-serif italic font-black text-[#0A4F2A] tracking-wide px-1 select-none leading-tight whitespace-nowrap overflow-hidden text-ellipsis ${
+                            (currentPrintedName || '').length > 34 
+                              ? 'text-[11px] sm:text-xs md:text-sm lg:text-base' 
+                              : (currentPrintedName || '').length > 24 
+                                ? 'text-xs sm:text-sm md:text-base lg:text-xl xl:text-2xl'
+                                : (currentPrintedName || '').length > 16
+                                  ? 'text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-3xl'
+                                  : 'text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl'
+                          }`}
+                        >
                           {currentPrintedName}
                         </h1>
                       </div>
 
                       {/* Dynamic Course Title (Center, below 'has successfully completed the') */}
                       {(certCourse.title && certCourse.title !== 'Yoga for Wellness and Inner Balance') && (
-                        <div className="absolute left-[24%] right-[20%] top-[61.5%] text-center bg-[#FAF7F2] py-0.5 rounded px-2">
-                          <h4 className="text-xs sm:text-sm md:text-base font-extrabold text-gray-900 truncate">
+                        <div className="absolute left-[20%] right-[18%] top-[61%] text-center bg-[#FAF7F2] py-0.5 rounded px-2 pointer-events-none">
+                          <h4 className={`font-extrabold text-gray-900 truncate ${
+                            (certCourse.title || '').length > 35 ? 'text-[10px] sm:text-xs md:text-sm' : 'text-xs sm:text-sm md:text-base'
+                          }`}>
                             {certCourse.title}
                           </h4>
                         </div>

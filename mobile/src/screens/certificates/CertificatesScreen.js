@@ -7,31 +7,26 @@ import {
   TouchableOpacity,
   Share,
   Alert,
+  Linking,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../../theme/colors';
 import { EmptyState } from '../../components/EmptyState';
 import { Badge } from '../../components/Badge';
 import { useAuth } from '../../context/AuthContext';
 import { courseService } from '../../services/courseService';
+import { API_BASE_URL } from '../../services/api';
 
 export const CertificatesScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Sample certificate for demonstration
-  const sampleCerts = [
-    {
-      id: 'cert_101',
-      courseTitle: 'Vedic Mathematics & Speed Calculation',
-      issueDate: 'August 2026',
-      certificateId: 'SDF-VM-2026-8941',
-      grade: 'A+ Distinction',
-    },
-  ];
+  const [downloadingId, setDownloadingId] = useState(null);
 
   useEffect(() => {
     fetchCertificates();
@@ -39,24 +34,71 @@ export const CertificatesScreen = ({ navigation }) => {
 
   const fetchCertificates = async () => {
     try {
-      const res = await courseService.getCertificates();
+      setLoading(true);
+      const res = await courseService.getMyCertificates();
       if (res?.data && res.data.length > 0) {
         setCertificates(res.data);
       } else {
-        setCertificates(sampleCerts);
+        setCertificates([]);
       }
     } catch (e) {
-      setCertificates(sampleCerts);
+      console.error('Error fetching certificates:', e);
+      setCertificates([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleShareCert = (cert) => {
-    Share.share({
-      message: `I just earned my official verified certificate in "${cert.courseTitle}" from SDF LMS! Certificate ID: ${cert.certificateId}`,
-    });
+  const handleDownloadCert = async (item) => {
+    if (!item) return;
+    try {
+      setDownloadingId(item._id || item.id || item.certificateId);
+      const token = await AsyncStorage.getItem('token');
+      const certId = item.certificateId || `SDF-CERT-${item._id?.slice(-6)?.toUpperCase() || 'OFFICIAL'}`;
+      
+      // Determine download URL with authentication query token
+      const downloadUrl = `${API_BASE_URL}/courses/certificate/${item._id || item.id}/download?token=${token || ''}`;
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        // Direct browser download
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `Certificate-${certId}.pdf`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // Native mobile download / view via system browser
+        const targetUrl = item.certificateUrl || downloadUrl;
+        const supported = await Linking.canOpenURL(targetUrl);
+        if (supported) {
+          await Linking.openURL(targetUrl);
+        } else {
+          Alert.alert('Download Certificate', 'Unable to open certificate link. Please check your network connection.');
+        }
+      }
+    } catch (err) {
+      console.error('Download certificate error:', err);
+      if (item.certificateUrl) {
+        Linking.openURL(item.certificateUrl).catch(() => {});
+      } else {
+        Alert.alert('Download Error', 'Could not generate certificate PDF. Please try again in a moment.');
+      }
+    } finally {
+      setDownloadingId(null);
+    }
   };
+
+  const handleShareCert = (cert) => {
+    const title = cert.course?.title || cert.courseTitle || 'Yoga Course';
+    const certId = cert.certificateId || 'SDF-CERT';
+    Share.share({
+      message: `🏆 I have successfully earned my verified Certificate of Completion in "${title}" from Swamy Dwija Foundation! Certificate ID: ${certId}`,
+    }).catch(() => {});
+  };
+
+  const studentDisplayName = user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Student');
 
   return (
     <View style={styles.container}>
@@ -73,67 +115,93 @@ export const CertificatesScreen = ({ navigation }) => {
         <View style={{ width: 40 }} />
       </View>
 
-      <FlatList
-        data={certificates}
-        keyExtractor={(item) => item.id || item.certificateId}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <EmptyState
-            icon="ribbon-outline"
-            title="No Certificates Issued Yet"
-            description="Complete 100% of your course lessons and quizzes to earn official verified certificates."
-            buttonTitle="View My Courses"
-            onButtonPress={() => navigation.navigate('LearningTab')}
-          />
-        }
-        renderItem={({ item }) => (
-          <View style={[styles.certCard, shadows.md]}>
-            <View style={styles.certHeader}>
-              <View style={styles.ribbonCircle}>
-                <Ionicons name="ribbon" size={26} color="#d97706" />
-              </View>
-              <Badge text="VERIFIED" variant="success" />
-            </View>
+      {loading ? (
+        <View style={styles.centerLoading}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading certificates...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={certificates}
+          keyExtractor={(item) => item._id || item.id || item.certificateId}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <EmptyState
+              icon="ribbon-outline"
+              title="No Certificates Issued Yet"
+              description="Complete 100% of your course sessions to earn official verified certificates."
+              buttonTitle="View My Courses"
+              onButtonPress={() => navigation.navigate('LearningTab')}
+            />
+          }
+          renderItem={({ item }) => {
+            const courseTitle = item.course?.title || item.courseTitle || 'Vedic Yoga & Wellness';
+            const certId = item.certificateId || `SDF-CERT-${item._id?.slice(-6)?.toUpperCase() || '2026'}`;
+            const issueDate = item.completionDate 
+              ? new Date(item.completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+              : (item.issueDate || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }));
+            const recipient = item.studentName || studentDisplayName;
+            const isDownloading = downloadingId === (item._id || item.id || item.certificateId);
 
-            <Text style={styles.certCourseTitle}>{item.courseTitle}</Text>
-            <Text style={styles.certRecipient}>Awarded to {user?.name || 'Student'}</Text>
+            return (
+              <View style={[styles.certCard, shadows.md]}>
+                <View style={styles.certHeader}>
+                  <View style={styles.ribbonCircle}>
+                    <Ionicons name="ribbon" size={26} color="#d97706" />
+                  </View>
+                  <Badge text="VERIFIED" variant="success" />
+                </View>
 
-            <View style={styles.certMetaRow}>
-              <View>
-                <Text style={styles.certMetaLabel}>Issued</Text>
-                <Text style={styles.certMetaValue}>{item.issueDate}</Text>
-              </View>
-              <View>
-                <Text style={styles.certMetaLabel}>Grade</Text>
-                <Text style={styles.certMetaValue}>{item.grade || 'Passed'}</Text>
-              </View>
-              <View>
-                <Text style={styles.certMetaLabel}>Certificate ID</Text>
-                <Text style={styles.certMetaValue}>{item.certificateId}</Text>
-              </View>
-            </View>
+                <Text style={styles.certCourseTitle} numberOfLines={2}>{courseTitle}</Text>
+                <Text style={styles.certRecipient} numberOfLines={1}>Awarded to {recipient}</Text>
 
-            <View style={styles.certActionRow}>
-              <TouchableOpacity
-                style={styles.actionBtn}
-                onPress={() => Alert.alert('Download Certificate', 'Downloading high-resolution certificate PDF...')}
-              >
-                <Ionicons name="download-outline" size={18} color={colors.primary} />
-                <Text style={styles.actionBtnText}>Download PDF</Text>
-              </TouchableOpacity>
+                <View style={styles.certMetaRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.certMetaLabel}>Issued On</Text>
+                    <Text style={styles.certMetaValue} numberOfLines={1}>{issueDate}</Text>
+                  </View>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={styles.certMetaLabel}>Status</Text>
+                    <Text style={[styles.certMetaValue, { color: colors.primary }]}>Completed</Text>
+                  </View>
+                  <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                    <Text style={styles.certMetaLabel}>Certificate ID</Text>
+                    <Text style={styles.certMetaValue} numberOfLines={1}>{certId}</Text>
+                  </View>
+                </View>
 
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.shareBtn]}
-                onPress={() => handleShareCert(item)}
-              >
-                <Ionicons name="share-social-outline" size={18} color="#fff" />
-                <Text style={[styles.actionBtnText, { color: '#fff' }]}>Share</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      />
+                <View style={styles.certActionRow}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, isDownloading && { opacity: 0.7 }]}
+                    onPress={() => handleDownloadCert(item)}
+                    disabled={isDownloading}
+                    activeOpacity={0.8}
+                  >
+                    {isDownloading ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Ionicons name="download-outline" size={18} color={colors.primary} />
+                    )}
+                    <Text style={styles.actionBtnText}>
+                      {isDownloading ? 'Downloading...' : 'Download PDF'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.shareBtn]}
+                    onPress={() => handleShareCert(item)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="share-social-outline" size={18} color="#fff" />
+                    <Text style={[styles.actionBtnText, { color: '#fff' }]}>Share</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          }}
+        />
+      )}
     </View>
   );
 };
@@ -244,5 +312,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: colors.primary,
+  },
+  centerLoading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '600',
   },
 });
