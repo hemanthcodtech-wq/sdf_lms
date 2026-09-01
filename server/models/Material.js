@@ -8,19 +8,21 @@ const materialSchema = new mongoose.Schema({
   },
   date: {
     type: Date,
-    required: true
+    required: true,
+    default: Date.now
   },
   topicsCovered: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   driveLink: {
     type: String,
-    required: true
+    required: true,
+    trim: true
   },
   materialType: {
     type: String,
-    enum: ['PDF', 'Recording', 'Other'],
     default: 'Recording'
   }
 }, { timestamps: true });

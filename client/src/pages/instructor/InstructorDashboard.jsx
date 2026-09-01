@@ -10,6 +10,7 @@ import {
   FaGraduationCap, FaLink, FaCheck
 } from 'react-icons/fa';
 import ZoomLiveClassroom from '../../components/classroom/ZoomLiveClassroom';
+import { getCourseImageUrl } from '../../utils/imageHelper';
 
 const InstructorDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -64,13 +65,24 @@ const InstructorDashboard = () => {
       if (res.data.success) {
         setDashboardData(res.data.data);
         if (res.data.data.profile) {
+          const prof = res.data.data.profile;
           setProfileForm({
-            name: res.data.data.profile.name || '',
-            phone: res.data.data.profile.phone || '',
-            bio: res.data.data.profile.bio || '',
-            speciality: res.data.data.profile.speciality || '',
-            experience: res.data.data.profile.experience || ''
+            name: prof.name || '',
+            phone: prof.phone || '',
+            bio: prof.bio || '',
+            speciality: prof.speciality || '',
+            experience: prof.experience || ''
           });
+          const rawStored = localStorage.getItem('instructorUser');
+          const parsedStored = rawStored ? JSON.parse(rawStored) : {};
+          localStorage.setItem('instructorUser', JSON.stringify({
+            ...parsedStored,
+            name: prof.name,
+            phone: prof.phone,
+            bio: prof.bio,
+            speciality: prof.speciality,
+            experience: prof.experience
+          }));
         }
       }
     } catch (err) {
@@ -872,7 +884,15 @@ const InstructorDashboard = () => {
                 <div className="relative h-44 w-full bg-gray-100 p-3 pb-0 overflow-hidden">
                   <div className="w-full h-full rounded-2xl overflow-hidden relative">
                     {course.thumbnailUrl ? (
-                      <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img 
+                        src={getCourseImageUrl(course.thumbnailUrl)} 
+                        alt={course.title} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = '/images/morning_yoga.png';
+                        }}
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-300">
                         <FaSpa size={36} />

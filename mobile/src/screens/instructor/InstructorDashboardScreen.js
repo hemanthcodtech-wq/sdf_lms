@@ -24,7 +24,7 @@ import { CustomButton } from '../../components/CustomButton';
 
 export const InstructorDashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserProfile } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,6 +66,15 @@ export const InstructorDashboardScreen = ({ navigation }) => {
             speciality: res.data.profile.speciality || '',
             experience: res.data.profile.experience || '',
           });
+          if (updateUserProfile && res.data.profile.name) {
+            updateUserProfile({
+              name: res.data.profile.name,
+              phone: res.data.profile.phone,
+              bio: res.data.profile.bio,
+              speciality: res.data.profile.speciality,
+              experience: res.data.profile.experience,
+            });
+          }
         }
       }
     } catch (err) {
@@ -74,7 +83,7 @@ export const InstructorDashboardScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [updateUserProfile]);
 
   useEffect(() => {
     fetchDashboard();
@@ -175,9 +184,22 @@ export const InstructorDashboardScreen = ({ navigation }) => {
   };
 
   const handleUpdateProfile = async () => {
+    if (!profileForm.name.trim()) {
+      Alert.alert('Missing Field', 'Please enter your full name.');
+      return;
+    }
     try {
       setUpdatingProfile(true);
-      await instructorService.updateProfile(profileForm);
+      const res = await instructorService.updateProfile(profileForm);
+      if (res?.data && updateUserProfile) {
+        await updateUserProfile({
+          name: res.data.name,
+          phone: res.data.phone,
+          bio: res.data.bio,
+          speciality: res.data.speciality,
+          experience: res.data.experience,
+        });
+      }
       Alert.alert('Success', 'Faculty profile updated successfully!');
       await fetchDashboard();
     } catch (err) {
@@ -211,7 +233,7 @@ export const InstructorDashboardScreen = ({ navigation }) => {
                 <Text style={styles.badgeText}>FACULTY & INSTRUCTOR</Text>
               </View>
               <Text style={styles.instructorName} numberOfLines={1}>
-                {user?.name || dashboardData?.profile?.name || 'Faculty Member'}
+                {dashboardData?.profile?.name || user?.name || profileForm.name || 'Faculty Member'}
               </Text>
             </View>
           </View>

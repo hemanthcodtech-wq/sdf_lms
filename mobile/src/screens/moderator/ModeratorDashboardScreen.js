@@ -23,7 +23,7 @@ import { CustomButton } from '../../components/CustomButton';
 
 export const ModeratorDashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserProfile } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -51,6 +51,13 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
             phone: res.data.profile.phone || '',
             bio: res.data.profile.bio || '',
           });
+          if (updateUserProfile && res.data.profile.name) {
+            updateUserProfile({
+              name: res.data.profile.name,
+              phone: res.data.profile.phone,
+              bio: res.data.profile.bio,
+            });
+          }
         }
       }
     } catch (err) {
@@ -59,7 +66,7 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [updateUserProfile]);
 
   useEffect(() => {
     fetchDashboard();
@@ -103,9 +110,20 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
   };
 
   const handleUpdateProfile = async () => {
+    if (!profileForm.name.trim()) {
+      Alert.alert('Missing Field', 'Please enter your full name.');
+      return;
+    }
     try {
       setUpdatingProfile(true);
-      await moderatorService.updateProfile(profileForm);
+      const res = await moderatorService.updateProfile(profileForm);
+      if (res?.data && updateUserProfile) {
+        await updateUserProfile({
+          name: res.data.name,
+          phone: res.data.phone,
+          bio: res.data.bio,
+        });
+      }
       Alert.alert('Success', 'Moderator profile updated successfully!');
       await fetchDashboard();
     } catch (err) {
@@ -139,7 +157,7 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
                 <Text style={styles.badgeText}>BATCH MODERATOR</Text>
               </View>
               <Text style={styles.moderatorName} numberOfLines={1}>
-                {user?.name || dashboardData?.profile?.name || 'Moderator Admin'}
+                {dashboardData?.profile?.name || user?.name || profileForm.name || 'Moderator Admin'}
               </Text>
             </View>
           </View>

@@ -138,6 +138,7 @@ router.put('/profile', protect, moderator, async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    const oldName = user.name;
     if (name) user.name = name.trim();
     if (phone !== undefined) user.phone = phone.trim();
     if (bio !== undefined) user.bio = bio.trim();
@@ -146,6 +147,14 @@ router.put('/profile', protect, moderator, async (req, res) => {
     }
 
     await user.save();
+
+    // Sync updated name to assigned courses
+    if (name && name.trim() !== oldName) {
+      await Course.updateMany(
+        { $or: [{ moderatorId: user._id }, { moderator: oldName }] },
+        { moderator: user.name, moderatorId: user._id }
+      );
+    }
 
     const responseData = user.toObject();
     delete responseData.password;

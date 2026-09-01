@@ -2,7 +2,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api
 const BACKEND_HOST = API_BASE.replace(/\/api\/?$/, '');
 
 export const getCourseImageUrl = (url) => {
-  if (!url || typeof url !== 'string') return '/assets/course_yoga.png';
+  if (!url || typeof url !== 'string') return '/images/morning_yoga.png';
 
   const clean = url.trim().replace(/\\/g, '/');
 

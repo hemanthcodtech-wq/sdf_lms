@@ -132,7 +132,7 @@ router.get('/courses/:id/materials', protect, instructor, async (req, res) => {
 router.post('/courses/:id/materials', protect, instructor, async (req, res) => {
   try {
     const courseId = req.params.id;
-    const { date, topicsCovered, driveLink, materialType } = req.body;
+    let { date, topicsCovered, driveLink, materialType } = req.body;
 
     if (!topicsCovered || !driveLink) {
       return res.status(400).json({ success: false, message: 'Topic covered and link are required' });
@@ -143,18 +143,30 @@ router.post('/courses/:id/materials', protect, instructor, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
 
+    let normType = 'Recording';
+    if (materialType) {
+      const lower = materialType.toLowerCase();
+      if (lower.includes('pdf') || lower.includes('note') || lower.includes('doc')) {
+        normType = 'PDF';
+      } else if (lower.includes('record') || lower.includes('video')) {
+        normType = 'Recording';
+      } else {
+        normType = 'Other';
+      }
+    }
+
     const material = await Material.create({
       courseId,
-      date: date || new Date(),
+      date: date ? new Date(date) : new Date(),
       topicsCovered: topicsCovered.trim(),
       driveLink: driveLink.trim(),
-      materialType: materialType || 'Recording'
+      materialType: normType
     });
 
     res.status(201).json({ success: true, message: 'Material added successfully', data: material });
   } catch (error) {
     console.error('Error adding material as instructor:', error);
-    res.status(500).json({ success: false, message: 'Error adding material', error: error.message });
+    res.status(500).json({ success: false, message: error.message || 'Error adding material', error: error.message });
   }
 });
 
@@ -179,6 +191,7 @@ router.put('/profile', protect, instructor, async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    const oldName = user.name;
     if (name) user.name = name.trim();
     if (phone !== undefined) user.phone = phone.trim();
     if (bio !== undefined) user.bio = bio.trim();
@@ -189,6 +202,18 @@ router.put('/profile', protect, instructor, async (req, res) => {
     }
 
     await user.save();
+
+    // Sync updated name to all assigned courses and classes
+    if (name && name.trim() !== oldName) {
+      await Course.updateMany(
+        { $or: [{ instructorId: user._id }, { instructor: oldName }] },
+        { instructor: user.name, instructorId: user._id }
+      );
+      await Class.updateMany(
+        { instructor: oldName },
+        { instructor: user.name }
+      );
+    }
 
     const responseData = user.toObject();
     delete responseData.password;

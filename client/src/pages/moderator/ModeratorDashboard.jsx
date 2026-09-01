@@ -7,6 +7,7 @@ import {
   FaVideo, FaPlayCircle, FaTimes, FaSpa, FaArrowLeft, FaFilePdf,
   FaExternalLinkAlt, FaChevronRight, FaGraduationCap
 } from 'react-icons/fa';
+import { getCourseImageUrl } from '../../utils/imageHelper';
 
 const ModeratorDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -565,7 +566,15 @@ const ModeratorDashboard = () => {
                   <div className="relative h-44 w-full bg-gray-100 p-3 pb-0 overflow-hidden">
                     <div className="w-full h-full rounded-2xl overflow-hidden relative">
                       {course.thumbnailUrl ? (
-                        <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img 
+                          src={getCourseImageUrl(course.thumbnailUrl)} 
+                          alt={course.title} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/images/morning_yoga.png';
+                          }}
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-300">
                           <FaSpa size={36} />
