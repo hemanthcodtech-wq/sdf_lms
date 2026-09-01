@@ -48,6 +48,182 @@ const AdminRecords = () => {
   });
   const [customSubmitting, setCustomSubmitting] = useState(false);
   const [customPreviewing, setCustomPreviewing] = useState(false);
+  const [fullScreenPreviewOpen, setFullScreenPreviewOpen] = useState(false);
+
+  const handleOpenPreviewNewTab = () => {
+    const previewWindow = window.open('', '_blank');
+    if (!previewWindow) return;
+
+    const studentName = customForm.studentName || 'LEARNER FULL NAME';
+    const courseTitle = customForm.courseTitle || 'Yoga for Wellness and Inner Balance';
+    const certId = customForm.certificateId || 'SDF-CERT-SAMPLE';
+    const studentId = customForm.studentId || 'SDWFY250501';
+    const completionDate = customForm.completionDate
+      ? new Date(customForm.completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      : '23 Aug 2026';
+    const duration = customForm.duration || '30 Days (20 Hours)';
+    const instructorName = customForm.instructorName || 'LEAD YOGA GURU';
+
+    previewWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Official Certificate Preview - ${studentName}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            background-color: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+            font-family: 'Cinzel', 'Georgia', serif;
+          }
+          .toolbar {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+          }
+          .btn {
+            background: #C08552;
+            color: #fff;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+          }
+          .btn:hover { background: #a06b3e; transform: translateY(-1px); }
+          .btn-secondary { background: #374151; }
+          .btn-secondary:hover { background: #4b5563; }
+          .cert-container {
+            position: relative;
+            width: 100%;
+            max-width: 1100px;
+            aspect-ratio: 842 / 595;
+            background: #FAF7F2;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
+            border: 4px solid #D4AF37;
+          }
+          .bg-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            pointer-events: none;
+          }
+          .meta-item {
+            position: absolute;
+            left: 12.1%;
+            width: 13%;
+            font-family: 'Arial', sans-serif;
+            font-weight: bold;
+            color: #111;
+            font-size: 1.1vw;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .student-id { top: 39.8%; }
+          .issue-date { top: 51.2%; }
+          .duration { top: 58.5%; font-size: 1.0vw; white-space: normal; line-height: 1.1; }
+          .cert-id { top: 70.5%; font-family: monospace; font-size: 1.0vw; }
+          .student-name {
+            position: absolute;
+            top: 49.0%;
+            left: 18%;
+            right: 18%;
+            text-align: center;
+            color: #0A4F2A;
+            font-size: 2.2vw;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .course-title {
+            position: absolute;
+            top: 63.5%;
+            left: 20%;
+            right: 20%;
+            text-align: center;
+            font-family: 'Arial', sans-serif;
+            font-size: 1.2vw;
+            font-weight: bold;
+            color: #222;
+            background: #FAF7F2;
+            padding: 4px 14px;
+            border-radius: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .instructor {
+            position: absolute;
+            top: 85.5%;
+            left: 34%;
+            width: 18%;
+            text-align: center;
+            font-size: 1.0vw;
+            font-weight: bold;
+            color: #0A4F2A;
+            text-transform: uppercase;
+            line-height: 1.1;
+          }
+          .director {
+            position: absolute;
+            top: 85.5%;
+            left: 57%;
+            width: 18%;
+            text-align: center;
+            font-size: 1.0vw;
+            font-weight: bold;
+            color: #0A4F2A;
+            text-transform: uppercase;
+            line-height: 1.1;
+          }
+          @media (max-width: 768px) {
+            .meta-item { font-size: 1.6vw; }
+            .student-name { font-size: 2.8vw; }
+            .course-title { font-size: 1.8vw; }
+            .instructor, .director { font-size: 1.4vw; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="toolbar">
+          <button class="btn" onclick="window.print()">🖨️ Print / Save PDF</button>
+          <button class="btn btn-secondary" onclick="window.close()">✕ Close Window</button>
+        </div>
+        <div class="cert-container">
+          <img src="/certificate_template.jpg" class="bg-img" />
+          <div class="meta-item student-id">${studentId}</div>
+          <div class="meta-item issue-date">${completionDate}</div>
+          <div class="meta-item duration">${duration}</div>
+          <div class="meta-item cert-id">${certId}</div>
+          <div class="student-name">${studentName}</div>
+          <div class="course-title">${courseTitle}</div>
+          <div class="instructor">${instructorName}<br><span style="font-size: 0.7em; color: #555; font-weight: normal;">Instructor</span></div>
+          <div class="director">SWAMY DWIJA<br><span style="font-size: 0.7em; color: #555; font-weight: normal;">Founder & Director</span></div>
+        </div>
+      </body>
+      </html>
+    `);
+    previewWindow.document.close();
+  };
 
   useEffect(() => {
     fetchRecords();
@@ -910,26 +1086,41 @@ const AdminRecords = () => {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                        <FaAward className="text-yellow-600" /> Official Certificate Template Preview
+                        <FaAward className="text-yellow-600" /> Certificate Template Preview
                       </span>
-                      <span className="text-[10px] bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded-full">
-                        Live Canvas
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFullScreenPreviewOpen(true)}
+                        className="text-[10px] bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all"
+                      >
+                        <FaExpand size={9} /> Full Screen
+                      </button>
                     </div>
 
-                    {/* Official Template Canvas Image with Positioned Overlays */}
-                    <div className="relative w-full aspect-[842/595] rounded-2xl overflow-hidden shadow-xl border-2 border-[#D4AF37] select-none bg-[#FCFAF6]">
+                    {/* Official Template Canvas Image with Positioned Overlays (Clickable to Expand) */}
+                    <div 
+                      onClick={() => setFullScreenPreviewOpen(true)}
+                      className="relative w-full aspect-[842/595] rounded-2xl overflow-hidden shadow-xl border-2 border-[#D4AF37] select-none bg-[#FCFAF6] cursor-pointer group hover:ring-4 hover:ring-amber-400/30 transition-all"
+                      title="Click to view full screen preview"
+                    >
                       <img
                         src="/certificate_template.jpg"
                         alt="Official Certificate Template"
-                        className="w-full h-full object-cover pointer-events-none"
+                        className="w-full h-full object-cover pointer-events-none group-hover:scale-[1.01] transition-transform duration-300"
                       />
+
+                      {/* Hover Overlay Hint */}
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="bg-black/75 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5">
+                          <FaExpand size={11} /> Click for Full View
+                        </span>
+                      </div>
 
                       {/* 1. Left Sidebar Meta Information */}
                       {/* Student ID */}
                       <div 
                         style={{ top: '39.8%', left: '12.1%', width: '13%' }}
-                        className="absolute text-[6px] sm:text-[8px] font-bold text-gray-900 tracking-tight truncate"
+                        className="absolute text-[6px] sm:text-[8px] font-bold text-gray-900 tracking-tight truncate pointer-events-none"
                       >
                         {customForm.studentId || 'SDWFY250501'}
                       </div>
@@ -937,7 +1128,7 @@ const AdminRecords = () => {
                       {/* Issue Date */}
                       <div 
                         style={{ top: '51.2%', left: '12.1%', width: '13%' }}
-                        className="absolute text-[6px] sm:text-[8px] font-bold text-gray-900 tracking-tight whitespace-nowrap overflow-hidden"
+                        className="absolute text-[6px] sm:text-[8px] font-bold text-gray-900 tracking-tight whitespace-nowrap overflow-hidden pointer-events-none"
                       >
                         {customForm.completionDate ? new Date(customForm.completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '23 Aug 2026'}
                       </div>
@@ -945,7 +1136,7 @@ const AdminRecords = () => {
                       {/* Course Duration */}
                       <div 
                         style={{ top: '58.5%', left: '12.1%', width: '13%' }}
-                        className="absolute text-[5.5px] sm:text-[7.5px] font-bold text-gray-900 tracking-tight leading-tight"
+                        className="absolute text-[5.5px] sm:text-[7.5px] font-bold text-gray-900 tracking-tight leading-tight pointer-events-none"
                       >
                         {customForm.duration || '30 Days'}
                       </div>
@@ -953,12 +1144,12 @@ const AdminRecords = () => {
                       {/* Certificate ID */}
                       <div 
                         style={{ top: '70.5%', left: '12.1%', width: '13%' }}
-                        className="absolute text-[5.5px] sm:text-[7.5px] font-mono font-bold text-gray-900 tracking-tight truncate"
+                        className="absolute text-[5.5px] sm:text-[7.5px] font-mono font-bold text-gray-900 tracking-tight truncate pointer-events-none"
                       >
                         {customForm.certificateId || 'SDF-CERT-SAMPLE'}
                       </div>
 
-                      {/* 2. Recipient Name (Professional Serif Center between 'This is to certify that' and the gold line at ~49.0%) */}
+                      {/* 2. Recipient Name */}
                       <div 
                         style={{ top: '49.0%', left: '19%', right: '19%' }}
                         className="absolute flex items-center justify-center text-center pointer-events-none"
@@ -968,7 +1159,7 @@ const AdminRecords = () => {
                         </span>
                       </div>
 
-                      {/* 3. Dynamic Course Title (Center below 'has successfully completed the' at ~63.5%) */}
+                      {/* 3. Dynamic Course Title */}
                       <div 
                         style={{ top: '63.5%', left: '22%', right: '22%' }}
                         className="absolute flex items-center justify-center text-center pointer-events-none"
@@ -978,7 +1169,7 @@ const AdminRecords = () => {
                         </span>
                       </div>
 
-                      {/* 4. Bottom Signatures: Instructor Name (left ~36.8%) & Director (right ~59.5%) */}
+                      {/* 4. Bottom Signatures */}
                       {/* Instructor Name */}
                       <div 
                         style={{ top: '85.5%', left: '34%', width: '18%' }}
@@ -1030,22 +1221,33 @@ const AdminRecords = () => {
                       )}
                     </button>
 
-                    {/* Download / Open PDF Preview Button */}
-                    <button
-                      type="button"
-                      onClick={handleDownloadPreviewPDF}
-                      disabled={customPreviewing}
-                      className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5"
-                    >
-                      {customPreviewing ? (
-                        <span>Rendering High-Res PDF...</span>
-                      ) : (
-                        <>
-                          <FaDownload size={11} />
-                          <span>Download / Preview High-Res PDF</span>
-                        </>
-                      )}
-                    </button>
+                    {/* Preview Buttons Grid */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={handleOpenPreviewNewTab}
+                        className="py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <FaExternalLinkAlt size={10} />
+                        <span>Separate Tab</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleDownloadPreviewPDF}
+                        disabled={customPreviewing}
+                        className="py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5"
+                      >
+                        {customPreviewing ? (
+                          <span>Rendering...</span>
+                        ) : (
+                          <>
+                            <FaDownload size={11} />
+                            <span>PDF Preview</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
 
                   </div>
 
@@ -1053,6 +1255,143 @@ const AdminRecords = () => {
 
               </form>
 
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 🔍 FULL SCREEN HIGH-RES CERTIFICATE PREVIEW MODAL */}
+      <AnimatePresence>
+        {fullScreenPreviewOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/85 backdrop-blur-md overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              className="bg-white rounded-3xl max-w-5xl w-full p-6 md:p-8 shadow-2xl space-y-5 border border-white/50 my-auto max-h-[95vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-amber-100 text-yellow-700 flex items-center justify-center text-xl">
+                    <FaAward />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-gray-900">
+                      Full-Resolution Certificate Studio Preview
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Dedicated high-definition view with authentic proportions and layout.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleOpenPreviewNewTab}
+                    className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all"
+                  >
+                    <FaExternalLinkAlt size={11} /> Separate Tab
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadPreviewPDF}
+                    className="px-3.5 py-2 bg-brand-green hover:bg-brand-green-dark text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-xs"
+                  >
+                    <FaDownload size={11} /> Download PDF
+                  </button>
+                  <button
+                    onClick={() => setFullScreenPreviewOpen(false)}
+                    className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-all ml-1"
+                  >
+                    <FaTimes size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* High-Resolution Certificate Canvas */}
+              <div className="relative w-full aspect-[842/595] rounded-2xl overflow-hidden shadow-2xl border-4 border-[#D4AF37] select-none bg-[#FCFAF6]">
+                <img
+                  src="/certificate_template.jpg"
+                  alt="Official Certificate Template"
+                  className="w-full h-full object-cover pointer-events-none"
+                />
+
+                {/* 1. Left Sidebar Meta Information */}
+                <div 
+                  style={{ top: '39.8%', left: '12.1%', width: '13%' }}
+                  className="absolute text-[8px] sm:text-[11px] md:text-[13px] font-bold text-gray-900 tracking-tight truncate pointer-events-none"
+                >
+                  {customForm.studentId || 'SDWFY250501'}
+                </div>
+
+                <div 
+                  style={{ top: '51.2%', left: '12.1%', width: '13%' }}
+                  className="absolute text-[8px] sm:text-[11px] md:text-[13px] font-bold text-gray-900 tracking-tight whitespace-nowrap overflow-hidden pointer-events-none"
+                >
+                  {customForm.completionDate ? new Date(customForm.completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '23 Aug 2026'}
+                </div>
+
+                <div 
+                  style={{ top: '58.5%', left: '12.1%', width: '13%' }}
+                  className="absolute text-[7.5px] sm:text-[10px] md:text-[12px] font-bold text-gray-900 tracking-tight leading-tight pointer-events-none"
+                >
+                  {customForm.duration || '30 Days'}
+                </div>
+
+                <div 
+                  style={{ top: '70.5%', left: '12.1%', width: '13%' }}
+                  className="absolute text-[7.5px] sm:text-[10px] md:text-[12px] font-mono font-bold text-gray-900 tracking-tight truncate pointer-events-none"
+                >
+                  {customForm.certificateId || 'SDF-CERT-SAMPLE'}
+                </div>
+
+                {/* 2. Recipient Name */}
+                <div 
+                  style={{ top: '49.0%', left: '18%', right: '18%' }}
+                  className="absolute flex items-center justify-center text-center pointer-events-none"
+                >
+                  <span className="font-serif font-black uppercase text-[#0A4F2A] text-sm sm:text-xl md:text-3xl tracking-widest truncate drop-shadow-xs">
+                    {customForm.studentName || 'LEARNER FULL NAME'}
+                  </span>
+                </div>
+
+                {/* 3. Course Title */}
+                <div 
+                  style={{ top: '63.5%', left: '20%', right: '20%' }}
+                  className="absolute flex items-center justify-center text-center pointer-events-none"
+                >
+                  <span className="font-bold text-gray-900 text-[10px] sm:text-sm md:text-base bg-[#FAF7F2] px-4 py-1 rounded-lg truncate shadow-xs border border-amber-100/60">
+                    {customForm.courseTitle || 'Yoga for Wellness and Inner Balance'}
+                  </span>
+                </div>
+
+                {/* 4. Instructor Signature */}
+                <div 
+                  style={{ top: '85.5%', left: '34%', width: '18%' }}
+                  className="absolute text-center leading-tight pointer-events-none"
+                >
+                  <p className="text-[8px] sm:text-xs md:text-sm font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
+                    {customForm.instructorName || 'Lead Yoga Guru'}
+                  </p>
+                  <p className="text-[6px] sm:text-[9px] md:text-xs text-gray-600 truncate">
+                    {customForm.instructorTitle || 'Certified Yoga Professional'}
+                  </p>
+                </div>
+
+                {/* 5. Director Signature */}
+                <div 
+                  style={{ top: '85.5%', left: '57%', width: '18%' }}
+                  className="absolute text-center leading-tight pointer-events-none"
+                >
+                  <p className="text-[8px] sm:text-xs md:text-sm font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
+                    SWAMY DWIJA
+                  </p>
+                  <p className="text-[6px] sm:text-[9px] md:text-xs text-gray-600 truncate">
+                    Founder & Director
+                  </p>
+                </div>
+
+              </div>
             </motion.div>
           </div>
         )}
