@@ -117,12 +117,22 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
     try {
       setUpdatingProfile(true);
       const res = await moderatorService.updateProfile(profileForm);
-      if (res?.data && updateUserProfile) {
-        await updateUserProfile({
-          name: res.data.name,
-          phone: res.data.phone,
-          bio: res.data.bio,
-        });
+      if (res?.data) {
+        setDashboardData((prev) => prev ? {
+          ...prev,
+          profile: {
+            ...(prev.profile || {}),
+            ...res.data,
+          }
+        } : prev);
+
+        if (updateUserProfile) {
+          await updateUserProfile({
+            name: res.data.name,
+            phone: res.data.phone,
+            bio: res.data.bio,
+          });
+        }
       }
       Alert.alert('Success', 'Moderator profile updated successfully!');
       await fetchDashboard();

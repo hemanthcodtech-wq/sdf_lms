@@ -191,14 +191,24 @@ export const InstructorDashboardScreen = ({ navigation }) => {
     try {
       setUpdatingProfile(true);
       const res = await instructorService.updateProfile(profileForm);
-      if (res?.data && updateUserProfile) {
-        await updateUserProfile({
-          name: res.data.name,
-          phone: res.data.phone,
-          bio: res.data.bio,
-          speciality: res.data.speciality,
-          experience: res.data.experience,
-        });
+      if (res?.data) {
+        setDashboardData((prev) => prev ? {
+          ...prev,
+          profile: {
+            ...(prev.profile || {}),
+            ...res.data,
+          }
+        } : prev);
+
+        if (updateUserProfile) {
+          await updateUserProfile({
+            name: res.data.name,
+            phone: res.data.phone,
+            bio: res.data.bio,
+            speciality: res.data.speciality,
+            experience: res.data.experience,
+          });
+        }
       }
       Alert.alert('Success', 'Faculty profile updated successfully!');
       await fetchDashboard();
