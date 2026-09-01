@@ -62,10 +62,46 @@ router.get('/dashboard-stats', protect, instructor, async (req, res) => {
       };
     });
 
-    // Find upcoming sessions
+    // Enrich classes with precise time-based status
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const upcomingClasses = classes.filter(c => new Date(c.date) >= now);
+    const enrichedClasses = classes.map((cl, idx) => {
+      const clObj = cl.toObject ? cl.toObject() : cl;
+      const classDate = new Date(cl.date);
+      let startHour = 6, startMin = 0;
+      if (cl.time) {
+        const parts = cl.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+        if (parts) {
+          let h = parseInt(parts[1], 10);
+          const m = parseInt(parts[2], 10);
+          const ampm = parts[3] ? parts[3].toUpperCase() : null;
+          if (ampm === 'PM' && h < 12) h += 12;
+          if (ampm === 'AM' && h === 12) h = 0;
+          startHour = h;
+          startMin = m;
+        }
+      }
+      const sessionStart = new Date(classDate);
+      sessionStart.setHours(startHour, startMin, 0, 0);
+      const duration = cl.durationMinutes || 60;
+      const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+
+      const isPast = now > sessionEnd;
+      const isLiveNow = now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd;
+      const status = isPast ? 'COMPLETED' : (isLiveNow ? 'LIVE NOW' : 'UPCOMING');
+
+      return {
+        ...clObj,
+        sessionNumber: idx + 1,
+        status,
+        isPast,
+        isLiveNow,
+        isUpcoming: !isPast && !isLiveNow,
+        sessionStart,
+        sessionEnd
+      };
+    });
+
+    const upcomingClasses = enrichedClasses.filter(c => !c.isPast);
 
     res.json({
       success: true,
@@ -73,12 +109,12 @@ router.get('/dashboard-stats', protect, instructor, async (req, res) => {
         profile: instructorUser,
         stats: {
           totalCourses: assignedCourses.length,
-          totalClasses: classes.length,
+          totalClasses: enrichedClasses.length,
           upcomingClassesCount: upcomingClasses.length,
           totalStudents: enrollments.length
         },
         upcomingClasses: upcomingClasses.slice(0, 8),
-        allClasses: classes,
+        allClasses: enrichedClasses,
         assignedCourses: coursesWithStats
       }
     });

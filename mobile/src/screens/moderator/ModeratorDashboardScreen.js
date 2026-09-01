@@ -21,6 +21,39 @@ import { moderatorService } from '../../services/moderatorService';
 import { getCourseImageUrl } from '../../utils/imageHelper';
 import { CustomButton } from '../../components/CustomButton';
 
+const getClassStatus = (cls) => {
+  if (cls.status) return cls.status;
+  const now = new Date();
+  const classDate = new Date(cls.date);
+
+  let startHour = 6, startMin = 0;
+  if (cls.time) {
+    const parts = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+    if (parts) {
+      let h = parseInt(parts[1], 10);
+      const m = parseInt(parts[2], 10);
+      const ampm = parts[3] ? parts[3].toUpperCase() : null;
+      if (ampm === 'PM' && h < 12) h += 12;
+      if (ampm === 'AM' && h === 12) h = 0;
+      startHour = h;
+      startMin = m;
+    }
+  }
+
+  const sessionStart = new Date(classDate);
+  sessionStart.setHours(startHour, startMin, 0, 0);
+  const duration = cls.durationMinutes || 60;
+  const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+
+  if (now > sessionEnd) {
+    return 'COMPLETED';
+  }
+  if (now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd) {
+    return 'LIVE NOW';
+  }
+  return 'UPCOMING';
+};
+
 export const ModeratorDashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, logout, updateUserProfile } = useAuth();
@@ -151,7 +184,12 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
   };
   const assignedCourses = dashboardData?.assignedCourses || [];
   const upcomingSessions = dashboardData?.upcomingSessions || [];
+  const allClasses = dashboardData?.allClasses || [];
   const recentStudents = dashboardData?.recentStudents || [];
+
+  const displaySessions = (allClasses && allClasses.length > 0)
+    ? allClasses
+    : (upcomingSessions || []);
 
   return (
     <View style={styles.container}>
@@ -338,41 +376,97 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
           /* Tab 2: Live Monitoring */
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Upcoming Sessions & Class Attendance ({upcomingSessions.length})</Text>
+              <Text style={styles.sectionTitle}>
+                Scheduled Sessions & Live Monitoring ({displaySessions.length})
+              </Text>
             </View>
 
-            {upcomingSessions.length === 0 ? (
+            {displaySessions.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Ionicons name="videocam-outline" size={44} color={colors.textMuted} />
                 <Text style={styles.emptyTitle}>No Live Sessions Right Now</Text>
                 <Text style={styles.emptySubtitle}>Upcoming batches will appear here as schedules approach.</Text>
               </View>
             ) : (
-              upcomingSessions.map((s) => (
-                <View key={s._id} style={[styles.sessionCard, shadows.sm]}>
-                  <View style={styles.sessionCardHeader}>
-                    <View style={styles.sessionIconWrap}>
-                      <Ionicons name="videocam" size={20} color="#2563eb" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.sessionTitle}>{s.title}</Text>
-                      <Text style={styles.sessionCourseName}>{s.courseId?.title || 'Cohort Batch'}</Text>
-                      <Text style={styles.sessionMeta}>
-                        📅 {new Date(s.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} • ⏰ {s.time || 'Live'}
-                      </Text>
-                    </View>
-                  </View>
+              displaySessions.map((s, idx) => {
+                const status = getClassStatus(s);
+                const isCompleted = status === 'COMPLETED';
+                const isLive = status === 'LIVE NOW';
 
-                  <TouchableOpacity
-                    style={styles.monitorZoomBtn}
-                    onPress={() => handleOpenZoom(s.zoomLink || s.courseId?.zoomMeetingLink)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="eye-outline" size={16} color="#ffffff" />
-                    <Text style={styles.monitorZoomBtnText}>Enter Room to Monitor Session</Text>
-                  </TouchableOpacity>
-                </View>
-              ))
+                return (
+                  <View key={s._id || idx} style={[styles.sessionCard, shadows.sm, isCompleted && { opacity: 0.9 }]}>
+                    <View style={styles.sessionBadgeRow}>
+                      <View style={styles.sessionNumberTag}>
+                        <Text style={styles.sessionNumberTagText}>SESSION {s.sessionNumber || idx + 1}</Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.statusPill,
+                          isCompleted
+                            ? styles.statusPillCompleted
+                            : isLive
+                            ? styles.statusPillLive
+                            : styles.statusPillUpcoming,
+                        ]}
+                      >
+                        {isLive && <View style={styles.pulsingDot} />}
+                        <Text
+                          style={[
+                            styles.statusPillText,
+                            isCompleted
+                              ? styles.statusPillTextCompleted
+                              : isLive
+                              ? styles.statusPillTextLive
+                              : styles.statusPillTextUpcoming,
+                          ]}
+                        >
+                          {status}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.sessionCardHeader}>
+                      <View style={[styles.sessionIconWrap, isCompleted && { backgroundColor: '#f3f4f6' }]}>
+                        <Ionicons
+                          name={isCompleted ? 'play-circle-outline' : 'videocam'}
+                          size={20}
+                          color={isCompleted ? '#6b7280' : '#2563eb'}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.sessionTitle}>{s.title}</Text>
+                        <Text style={styles.sessionCourseName}>{s.courseId?.title || 'Cohort Batch'}</Text>
+                        <Text style={styles.sessionMeta}>
+                          📅 {new Date(s.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} • ⏰ {s.time || 'Live'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.monitorZoomBtn,
+                        isCompleted && { backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' },
+                      ]}
+                      onPress={() => handleOpenZoom(s.zoomLink || s.courseId?.zoomMeetingLink)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={isCompleted ? 'play-circle-outline' : 'eye-outline'}
+                        size={16}
+                        color={isCompleted ? '#374151' : '#ffffff'}
+                      />
+                      <Text
+                        style={[
+                          styles.monitorZoomBtnText,
+                          isCompleted && { color: '#374151' },
+                        ]}
+                      >
+                        {isCompleted ? 'Replay / View Recording ↗' : 'Enter Room to Monitor Session'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })
             )}
           </View>
         ) : activeTab === 'students' ? (
@@ -693,6 +787,69 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
     gap: 12,
+  },
+  sessionBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  sessionNumberTag: {
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  sessionNumberTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#1e40af',
+    letterSpacing: 0.5,
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  statusPillCompleted: {
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  statusPillLive: {
+    backgroundColor: '#dcfce7',
+    borderWidth: 1,
+    borderColor: '#86efac',
+  },
+  statusPillUpcoming: {
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  statusPillTextCompleted: {
+    color: '#6b7280',
+  },
+  statusPillTextLive: {
+    color: '#15803d',
+  },
+  statusPillTextUpcoming: {
+    color: '#b45309',
+  },
+  pulsingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16a34a',
   },
   sessionCardHeader: {
     flexDirection: 'row',

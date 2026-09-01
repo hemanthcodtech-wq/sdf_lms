@@ -57,8 +57,44 @@ router.get('/dashboard-stats', protect, moderator, async (req, res) => {
     });
 
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const upcomingSessions = classes.filter(c => new Date(c.date) >= now);
+    const enrichedClasses = classes.map((cl, idx) => {
+      const clObj = cl.toObject ? cl.toObject() : cl;
+      const classDate = new Date(cl.date);
+      let startHour = 6, startMin = 0;
+      if (cl.time) {
+        const parts = cl.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+        if (parts) {
+          let h = parseInt(parts[1], 10);
+          const m = parseInt(parts[2], 10);
+          const ampm = parts[3] ? parts[3].toUpperCase() : null;
+          if (ampm === 'PM' && h < 12) h += 12;
+          if (ampm === 'AM' && h === 12) h = 0;
+          startHour = h;
+          startMin = m;
+        }
+      }
+      const sessionStart = new Date(classDate);
+      sessionStart.setHours(startHour, startMin, 0, 0);
+      const duration = cl.durationMinutes || 60;
+      const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+
+      const isPast = now > sessionEnd;
+      const isLiveNow = now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd;
+      const status = isPast ? 'COMPLETED' : (isLiveNow ? 'LIVE NOW' : 'UPCOMING');
+
+      return {
+        ...clObj,
+        sessionNumber: idx + 1,
+        status,
+        isPast,
+        isLiveNow,
+        isUpcoming: !isPast && !isLiveNow,
+        sessionStart,
+        sessionEnd
+      };
+    });
+
+    const upcomingSessions = enrichedClasses.filter(c => !c.isPast);
 
     // Unique instructors in this moderator's assigned batches
     const instructorIds = new Set();
@@ -83,10 +119,12 @@ router.get('/dashboard-stats', protect, moderator, async (req, res) => {
           totalCourses: assignedCourses.length,
           totalEnrollments: enrollments.length,
           assignedCoursesCount: assignedCourses.length,
+          upcomingSessionsCount: upcomingSessions.length,
           systemStatus: 'Optimal',
           flaggedItemsCount: 0
         },
         assignedCourses: coursesWithStats,
+        allClasses: enrichedClasses,
         isSpecificallyAssigned: assignedCourses.length > 0,
         upcomingSessions: upcomingSessions.slice(0, 6),
         recentStudents
