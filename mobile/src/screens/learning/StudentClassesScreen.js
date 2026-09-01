@@ -699,27 +699,29 @@ const styles = StyleSheet.create({
   tabNav: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
   },
   tabNavItem: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 9,
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: 'transparent',
   },
   tabNavItemActive: {
-    borderBottomColor: colors.primary,
+    backgroundColor: colors.primary + '14',
   },
   tabNavText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
     color: colors.textSecondary,
   },
   tabNavTextActive: {
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   contentArea: {
     padding: 16,

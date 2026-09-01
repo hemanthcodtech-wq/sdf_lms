@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../../theme/colors';
 import { Badge } from '../../components/Badge';
@@ -38,13 +39,7 @@ export const ProfileScreen = ({ navigation }) => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      loadProfileData();
-    }
-  }, [user]);
-
-  const loadProfileData = async () => {
+  const loadProfileData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -59,9 +54,20 @@ export const ProfileScreen = ({ navigation }) => {
         setDetailedProfile(profRes.value.data);
       }
 
-      const enrolledCount = enrollRes.status === 'fulfilled' && enrollRes.value?.data ? enrollRes.value.data.length : 0;
-      const certificatesCount = certRes.status === 'fulfilled' && certRes.value?.data ? certRes.value.data.length : 0;
-      const paymentsCount = payRes.status === 'fulfilled' && payRes.value?.data ? payRes.value.data.length : 0;
+      const enrolledCount = enrollRes.status === 'fulfilled' && Array.isArray(enrollRes.value?.data)
+        ? enrollRes.value.data.length
+        : 0;
+
+      let certificatesCount = 0;
+      if (certRes.status === 'fulfilled' && Array.isArray(certRes.value?.data)) {
+        certificatesCount = certRes.value.data.length;
+      } else if (enrollRes.status === 'fulfilled' && Array.isArray(enrollRes.value?.data)) {
+        certificatesCount = enrollRes.value.data.filter((e) => e.completed || e.certificateId).length;
+      }
+
+      const paymentsCount = payRes.status === 'fulfilled' && Array.isArray(payRes.value?.data)
+        ? payRes.value.data.length
+        : 0;
 
       setStats({
         enrolledCount,
@@ -73,7 +79,15 @@ export const ProfileScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        loadProfileData();
+      }
+    }, [user, loadProfileData])
+  );
 
   const handleUploadAvatar = () => {
     if (fileInputRef.current) {
