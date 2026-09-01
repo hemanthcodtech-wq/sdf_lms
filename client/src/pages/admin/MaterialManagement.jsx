@@ -300,6 +300,9 @@ const MaterialManagement = () => {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Drive Link (URL)</label>
                   <input type="url" required placeholder="https://drive.google.com/..." value={formData.driveLink} onChange={e => setFormData({...formData, driveLink: e.target.value})} className="w-full p-3 bg-white/50 backdrop-blur-md border border-white/60 rounded-xl outline-none focus:border-brand-green transition-all" />
+                  <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200/60 p-2.5 rounded-lg mt-2 font-medium leading-relaxed">
+                    💡 <strong>Important:</strong> In Google Drive, right-click your file &gt; click <strong>Share</strong> &gt; set <strong>General Access</strong> to <strong>"Anyone with the link" (Viewer)</strong> so all students can view it instantly without requesting access.
+                  </p>
                 </div>
                 <div className="pt-6">
                   <button type="submit" disabled={submitting} className="w-full bg-brand-green hover:bg-brand-green-dark text-white font-bold py-3.5 rounded-xl transition-all disabled:opacity-70 flex justify-center items-center gap-2">

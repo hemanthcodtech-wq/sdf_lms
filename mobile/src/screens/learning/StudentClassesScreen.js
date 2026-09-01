@@ -112,16 +112,35 @@ export const StudentClassesScreen = ({ route, navigation }) => {
     const timeStr = lesson.time || course?.startTime || (course?.timings ? course.timings.split(' to ')[0] : '06:00');
     const endTimeStr = course?.endTime || (course?.timings && course.timings.includes(' to ') ? course.timings.split(' to ')[1] : null);
 
+    let displayDate = 'Scheduled';
+    let displayTime = lesson.duration || 'Live Session';
+
     if (!dateStr) {
-      return { isCompleted: isManuallyDone, isLiveNow: true, canJoin: true, label: 'Join Class' };
+      return { isCompleted: isManuallyDone, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
     }
 
     try {
       const rawDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
       const [y, m, d] = rawDate.split('-').map(Number);
       if (!y || !m || !d) {
-        return { isCompleted: isManuallyDone, isLiveNow: true, canJoin: true, label: 'Join Class' };
+        return { isCompleted: isManuallyDone, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
       }
+
+      // Format Date Cleanly (Today / Tomorrow / 25 Aug)
+      const dateObj = new Date(y, m - 1, d);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+
+      const isToday = dateObj.toDateString() === today.toDateString();
+      const isTomorrow = dateObj.toDateString() === tomorrow.toDateString();
+
+      displayDate = isToday
+        ? 'Today'
+        : isTomorrow
+        ? 'Tomorrow'
+        : dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 
       let startH = 6, startM = 0;
       if (timeStr) {
@@ -155,20 +174,31 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         sessionEnd = new Date(sessionStart.getTime() + durMins * 60 * 1000);
       }
 
+      const formatTime12 = (date) => {
+        let hours = date.getHours();
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+      };
+
+      displayTime = `${formatTime12(sessionStart)}`;
+
       const now = new Date();
 
       if (now > sessionEnd) {
-        return { isCompleted: true, isLiveNow: false, canJoin: false, label: 'Completed' };
+        return { isCompleted: true, isLiveNow: false, canJoin: false, label: 'Completed', displayDate, displayTime };
       }
 
       if (now >= joinWindowStart && now <= sessionEnd) {
-        return { isCompleted: false, isLiveNow: true, canJoin: true, label: 'Join Class' };
+        return { isCompleted: false, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
       }
 
       // Upcoming (more than 2 mins before)
-      return { isCompleted: false, isLiveNow: false, canJoin: false, label: 'Starts 2m Before' };
+      return { isCompleted: false, isLiveNow: false, canJoin: false, label: 'Join Class', displayDate, displayTime };
     } catch (e) {
-      return { isCompleted: isManuallyDone, isLiveNow: true, canJoin: true, label: 'Join Class' };
+      return { isCompleted: isManuallyDone, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
     }
   };
 
@@ -356,42 +386,48 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                 const isDone = status.isCompleted;
 
                 return (
-                  <TouchableOpacity
+                  <View
                     key={lesson.id || idx}
                     style={[
                       styles.lessonCard,
-                      isActive && styles.lessonCardActive,
                       isDone && styles.lessonCardDone,
                       shadows.sm,
                     ]}
-                    onPress={() => setActiveLessonIndex(idx)}
-                    activeOpacity={0.7}
                   >
                     {/* Checkmark Circle - Filled Green with White Tick once Completed */}
                     <TouchableOpacity
                       style={[styles.checkCircle, isDone && styles.checkCircleDone]}
                       onPress={() => toggleComplete(idx)}
+                      activeOpacity={0.8}
                     >
                       {isDone && <Ionicons name="checkmark" size={14} color="#fff" />}
                     </TouchableOpacity>
 
-                    <View style={{ flex: 1 }}>
+                    {/* Session Title & Date/Time Information */}
+                    <View style={{ flex: 1, minWidth: 0 }}>
                       <Text
                         style={[
                           styles.lessonTitle,
-                          isActive && styles.lessonTitleActive,
                           isDone && styles.lessonTitleDone,
                         ]}
+                        numberOfLines={2}
                       >
                         {lesson.title}
                       </Text>
-                      <Text style={styles.lessonDuration}>
-                        ⏳ {lesson.duration}
-                      </Text>
+                      <View style={styles.lessonMetaRow}>
+                        <Text style={styles.lessonMetaText}>
+                          📅 {status.displayDate} • ⏰ {status.displayTime}
+                        </Text>
+                      </View>
                     </View>
 
-                    {/* Join Button (Active 2 minutes before class) or Status Badge */}
-                    {status.isLiveNow ? (
+                    {/* Join Button (Active if within 2-min window, unclickable/disabled if upcoming) or Completed Badge */}
+                    {isDone ? (
+                      <View style={styles.completedBadge}>
+                        <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
+                        <Text style={styles.completedBadgeText}>Completed</Text>
+                      </View>
+                    ) : status.isLiveNow ? (
                       <TouchableOpacity
                         style={styles.activeJoinBtn}
                         onPress={() => handleJoinZoom(lesson)}
@@ -400,27 +436,22 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                         <Ionicons name="videocam" size={14} color="#fff" />
                         <Text style={styles.activeJoinBtnText}>Join Class</Text>
                       </TouchableOpacity>
-                    ) : isDone ? (
-                      <View style={styles.completedBadge}>
-                        <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
-                        <Text style={styles.completedBadgeText}>Completed</Text>
-                      </View>
                     ) : (
                       <TouchableOpacity
-                        style={styles.scheduledBadge}
+                        style={styles.disabledJoinBtn}
                         onPress={() =>
                           Alert.alert(
-                            'Live Session',
-                            'Join button will be activated 2 minutes before the live class starts.'
+                            'Live Class Scheduled',
+                            `This session is scheduled for ${status.displayDate} at ${status.displayTime}.\n\nThe "Join Class" button will be activated 2 minutes before class starts.`
                           )
                         }
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="time-outline" size={13} color={colors.textMuted} />
-                        <Text style={styles.scheduledBadgeText}>Starts 2m Before</Text>
+                        <Ionicons name="videocam-outline" size={14} color="#9ca3af" />
+                        <Text style={styles.disabledJoinBtnText}>Join Class</Text>
                       </TouchableOpacity>
                     )}
-                  </TouchableOpacity>
+                  </View>
                 );
               })
             ) : (
@@ -740,10 +771,17 @@ const styles = StyleSheet.create({
     color: '#15803d',
     fontWeight: '700',
   },
-  lessonDuration: {
-    fontSize: 12,
+  lessonMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  lessonMetaText: {
+    fontSize: 11,
     color: colors.textSecondary,
-    marginTop: 2,
+    fontWeight: '600',
   },
   activeJoinBtn: {
     flexDirection: 'row',
@@ -761,6 +799,22 @@ const styles = StyleSheet.create({
   },
   activeJoinBtnText: {
     color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  disabledJoinBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  disabledJoinBtnText: {
+    color: '#9ca3af',
     fontSize: 12,
     fontWeight: '700',
   },
