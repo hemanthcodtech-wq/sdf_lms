@@ -78,22 +78,46 @@ export const HomeScreen = ({ navigation }) => {
 
       // Handle User Specific Data
       if (user) {
+        const enrolledCourseIds = new Set();
+        const enrolledCourseTitles = new Set();
+
+        if (results[2]?.status === 'fulfilled' && results[2].value?.data) {
+          const myCourseList = results[2].value.data;
+          setMyCourses(myCourseList);
+
+          myCourseList.forEach((mc) => {
+            const cId = (mc.courseId?._id || mc.courseId || mc._id || '').toString();
+            const cTitle = (mc.courseId?.title || mc.title || '').trim().toLowerCase();
+            if (cId) enrolledCourseIds.add(cId);
+            if (cTitle) enrolledCourseTitles.add(cTitle);
+          });
+        }
+
         if (results[1]?.status === 'fulfilled' && results[1].value?.data) {
           const rawClasses = results[1].value.data;
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
-          const upcoming = rawClasses.filter((cl) => {
-            if (!cl.date) return true;
-            const d = new Date(cl.date);
-            d.setHours(23, 59, 59, 999);
-            return d >= today;
-          }).sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+          // Only show upcoming classes belonging to courses the student is actually enrolled in!
+          const enrolledUpcoming = rawClasses
+            .filter((cl) => {
+              const classCourseId = (cl.courseId?._id || cl.courseId || '').toString();
+              const classCourseTitle = (cl.courseId?.title || cl.title || '').trim().toLowerCase();
 
-          setLiveClasses(upcoming.length > 0 ? upcoming : rawClasses.slice(0, 3));
-        }
-        if (results[2]?.status === 'fulfilled' && results[2].value?.data) {
-          setMyCourses(results[2].value.data);
+              const isEnrolled =
+                (classCourseId && enrolledCourseIds.has(classCourseId)) ||
+                (classCourseTitle && enrolledCourseTitles.has(classCourseTitle));
+
+              if (!isEnrolled) return false;
+
+              if (!cl.date) return true;
+              const d = new Date(cl.date);
+              d.setHours(23, 59, 59, 999);
+              return d >= today;
+            })
+            .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+          setLiveClasses(enrolledUpcoming);
         }
       }
     } catch (error) {
