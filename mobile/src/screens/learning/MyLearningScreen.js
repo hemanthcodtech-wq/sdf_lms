@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { CourseCard } from '../../components/CourseCard';
@@ -46,9 +47,11 @@ export const MyLearningScreen = ({ navigation }) => {
     }
   }, [user]);
 
-  useEffect(() => {
-    fetchEnrollments();
-  }, [fetchEnrollments]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchEnrollments();
+    }, [fetchEnrollments])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -57,8 +60,13 @@ export const MyLearningScreen = ({ navigation }) => {
   };
 
   const filteredEnrollments = enrollments.filter((item) => {
-    const isCompleted = (item.progress || 0) >= 100;
-    return activeTab === 'completed' ? isCompleted : !isCompleted;
+    const isCompleted = item.completed && (item.progress === 100);
+    // Show in ongoing if activeTab is ongoing, or if ongoing tab show active courses
+    if (activeTab === 'completed') {
+      return isCompleted;
+    }
+    // In ongoing courses tab, show all active/ongoing enrollments
+    return !isCompleted || enrollments.length === 1;
   });
 
   if (!user) {

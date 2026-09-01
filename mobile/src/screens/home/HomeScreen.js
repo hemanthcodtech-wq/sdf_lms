@@ -86,8 +86,8 @@ export const HomeScreen = ({ navigation }) => {
           setMyCourses(myCourseList);
 
           myCourseList.forEach((mc) => {
-            const cId = (mc.courseId?._id || mc.courseId || mc._id || '').toString();
-            const cTitle = (mc.courseId?.title || mc.title || '').trim().toLowerCase();
+            const cId = (mc.course?._id || mc.courseId?._id || mc.course || mc.courseId || mc._id || '').toString();
+            const cTitle = (mc.course?.title || mc.courseId?.title || mc.title || '').trim().toLowerCase();
             if (cId) enrolledCourseIds.add(cId);
             if (cTitle) enrolledCourseTitles.add(cTitle);
           });
@@ -101,12 +101,23 @@ export const HomeScreen = ({ navigation }) => {
           // Only show upcoming classes belonging to courses the student is actually enrolled in!
           const enrolledUpcoming = rawClasses
             .filter((cl) => {
-              const classCourseId = (cl.courseId?._id || cl.courseId || '').toString();
-              const classCourseTitle = (cl.courseId?.title || cl.title || '').trim().toLowerCase();
+              const classCourseId = (cl.courseId?._id || cl.course?._id || cl.courseId || cl.course || '').toString();
+              const classCourseTitle = (cl.courseId?.title || cl.course?.title || '').trim().toLowerCase();
+              const classTitle = (cl.title || '').trim().toLowerCase();
 
-              const isEnrolled =
-                (classCourseId && enrolledCourseIds.has(classCourseId)) ||
-                (classCourseTitle && enrolledCourseTitles.has(classCourseTitle));
+              let isEnrolled = false;
+              if (classCourseId && enrolledCourseIds.has(classCourseId)) {
+                isEnrolled = true;
+              } else if (classCourseTitle && enrolledCourseTitles.has(classCourseTitle)) {
+                isEnrolled = true;
+              } else {
+                for (const enrolledTitle of enrolledCourseTitles) {
+                  if (enrolledTitle && (classCourseTitle.includes(enrolledTitle) || classTitle.includes(enrolledTitle))) {
+                    isEnrolled = true;
+                    break;
+                  }
+                }
+              }
 
               if (!isEnrolled) return false;
 
