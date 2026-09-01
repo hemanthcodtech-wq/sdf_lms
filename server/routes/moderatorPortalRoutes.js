@@ -13,11 +13,8 @@ router.get('/dashboard-stats', protect, moderator, async (req, res) => {
   try {
     const moderatorUser = await User.findById(req.user._id).select('-password');
     const totalUsers = await User.countDocuments({ role: 'student' });
-    const totalInstructors = await User.countDocuments({ role: 'instructor' });
-    const totalCourses = await Course.countDocuments();
-    const totalEnrollments = await Enrollment.countDocuments();
 
-    // Fetch assigned courses specifically assigned to this moderator, or all active courses
+    // Fetch ONLY courses specifically assigned to this moderator - NEVER fall back to all courses
     const assignedCourses = await Course.find({
       $or: [
         { moderatorId: req.user._id },
@@ -27,25 +24,25 @@ router.get('/dashboard-stats', protect, moderator, async (req, res) => {
     .populate('instructorId', 'name emailOrPhone speciality phone')
     .sort('-createdAt');
 
-    const allCourses = await Course.find({ isPublished: true })
-      .populate('instructorId', 'name emailOrPhone speciality phone')
-      .populate('moderatorId', 'name emailOrPhone phone')
-      .sort('-createdAt');
+    const courseIds = assignedCourses.map(c => c._id);
 
-    const targetCourses = assignedCourses.length > 0 ? assignedCourses : allCourses;
-    const courseIds = targetCourses.map(c => c._id);
+    // Fetch classes, enrollments, and materials ONLY for assigned courses
+    let classes = [];
+    let enrollments = [];
+    let materials = [];
 
-    // Fetch classes, enrollments, and materials
-    const classes = await Class.find({ courseId: { $in: courseIds } })
-      .populate('courseId', 'title category timings startTime endTime')
-      .sort('date time');
+    if (courseIds.length > 0) {
+      classes = await Class.find({ courseId: { $in: courseIds } })
+        .populate('courseId', 'title category timings startTime endTime')
+        .sort('date time');
 
-    const enrollments = await Enrollment.find({ course: { $in: courseIds } })
-      .select('studentEmail course amountPaid progress');
+      enrollments = await Enrollment.find({ course: { $in: courseIds } })
+        .select('studentEmail course amountPaid progress');
 
-    const materials = await Material.find({ courseId: { $in: courseIds } }).sort('-date');
+      materials = await Material.find({ courseId: { $in: courseIds } }).sort('-date');
+    }
 
-    const coursesWithStats = targetCourses.map(c => {
+    const coursesWithStats = assignedCourses.map(c => {
       const cObj = c.toObject();
       const courseEnrollments = enrollments.filter(e => e.course?.toString() === c._id.toString());
       const courseClasses = classes.filter(cl => cl.courseId?._id?.toString() === c._id.toString() || cl.courseId?.toString() === c._id.toString());
@@ -63,6 +60,13 @@ router.get('/dashboard-stats', protect, moderator, async (req, res) => {
     now.setHours(0, 0, 0, 0);
     const upcomingSessions = classes.filter(c => new Date(c.date) >= now);
 
+    // Unique instructors in this moderator's assigned batches
+    const instructorIds = new Set();
+    assignedCourses.forEach(c => {
+      if (c.instructorId?._id) instructorIds.add(c.instructorId._id.toString());
+      else if (c.instructorId) instructorIds.add(c.instructorId.toString());
+    });
+
     // Recent registered users for review
     const recentStudents = await User.find({ role: 'student' })
       .select('name emailOrPhone phone status createdAt')
@@ -74,10 +78,10 @@ router.get('/dashboard-stats', protect, moderator, async (req, res) => {
       data: {
         profile: moderatorUser,
         stats: {
-          totalUsers,
-          totalInstructors,
-          totalCourses,
-          totalEnrollments,
+          totalUsers: enrollments.length > 0 ? enrollments.length : 0,
+          totalInstructors: instructorIds.size,
+          totalCourses: assignedCourses.length,
+          totalEnrollments: enrollments.length,
           assignedCoursesCount: assignedCourses.length,
           systemStatus: 'Optimal',
           flaggedItemsCount: 0

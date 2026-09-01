@@ -26,21 +26,26 @@ router.get('/dashboard-stats', protect, instructor, async (req, res) => {
 
     const courseIds = assignedCourses.map(c => c._id);
 
-    // Fetch classes, enrollments, and materials
-    const classes = await Class.find({
-      $or: [
-        { courseId: { $in: courseIds } },
-        { instructor: req.user.name }
-      ]
-    }).populate('courseId', 'title category timings startTime endTime thumbnailUrl').sort('date time');
+    let enrollments = [];
+    let materials = [];
+    let classes = [];
 
-    const enrollments = await Enrollment.find({
-      course: { $in: courseIds }
-    }).select('studentEmail course amountPaid progress createdAt');
+    if (courseIds.length > 0) {
+      classes = await Class.find({
+        $or: [
+          { courseId: { $in: courseIds } },
+          { instructor: req.user.name }
+        ]
+      }).populate('courseId', 'title category timings startTime endTime thumbnailUrl').sort('date time');
 
-    const materials = await Material.find({
-      courseId: { $in: courseIds }
-    }).sort('-date');
+      enrollments = await Enrollment.find({
+        course: { $in: courseIds }
+      }).select('studentEmail course amountPaid progress createdAt');
+
+      materials = await Material.find({
+        courseId: { $in: courseIds }
+      }).sort('-date');
+    }
 
     // Attach student count, session metrics, and materials to each course
     const coursesWithStats = assignedCourses.map(c => {

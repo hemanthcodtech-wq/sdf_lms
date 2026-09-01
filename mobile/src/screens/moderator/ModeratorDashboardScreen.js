@@ -156,23 +156,23 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
         {/* Top Metric Stats */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#2563eb' }]}>{stats.totalUsers}</Text>
+            <Text style={[styles.statNumber, { color: '#2563eb' }]}>{stats.totalUsers || 0}</Text>
             <Text style={styles.statLabel}>Learners</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={[styles.statNumber, { color: colors.secondary }]}>
-              {stats.totalInstructors}
+              {stats.totalInstructors || 0}
             </Text>
             <Text style={styles.statLabel}>Faculty</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={[styles.statNumber, { color: colors.primaryDark }]}>
-              {stats.totalCourses}
+              {stats.assignedCoursesCount !== undefined ? stats.assignedCoursesCount : assignedCourses.length}
             </Text>
             <Text style={styles.statLabel}>Batches</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#16a34a' }]}>{stats.totalEnrollments}</Text>
+            <Text style={[styles.statNumber, { color: '#16a34a' }]}>{stats.totalEnrollments || 0}</Text>
             <Text style={styles.statLabel}>Enrollments</Text>
           </View>
         </View>

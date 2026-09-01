@@ -353,11 +353,16 @@ const Home = () => {
 
           {loading ? (
             <div className="text-center py-12"><div className="w-10 h-10 border-4 border-brand-green border-t-transparent rounded-full animate-spin mx-auto"></div></div>
-          ) : (
+          ) : featuredCourses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {featuredCourses.map((course) => (
                 <FeaturedCourseCard key={course._id} course={course} navigate={navigate} />
               ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 bg-white/70 rounded-3xl border border-dashed border-gray-300 max-w-xl mx-auto space-y-2">
+              <p className="text-gray-600 font-bold text-base">No active programs available.</p>
+              <p className="text-gray-400 text-xs">New courses and live workshops will be published here soon.</p>
             </div>
           )}
 
