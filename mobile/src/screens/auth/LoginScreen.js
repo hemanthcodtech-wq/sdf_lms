@@ -191,13 +191,13 @@ export const LoginScreen = ({ navigation }) => {
 
         {/* Brand Header */}
         <View style={styles.brandHeader}>
-          <Image
-            source={{
-              uri: 'https://swamydwijafoundation.org/wp-content/uploads/2023/11/logo.png',
-            }}
-            style={styles.brandLogo}
-            resizeMode="contain"
-          />
+          <View style={[styles.logoBadge, shadows.brandGlow]}>
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
+          </View>
           <Text style={styles.brandTitle}>Swamy Dwija Foundation</Text>
           <Text style={styles.brandSubtitle}>Empowering Your Learning Journey</Text>
         </View>
@@ -296,11 +296,22 @@ export const LoginScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Footer Link to Register */}
+        {/* Footer Link to Register & Staff */}
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.footerLink}>Sign Up</Text>
+            <Text style={styles.registerLink}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.staffLinkRow}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('InstructorLogin')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.staffLinkText}>
+              Staff / Faculty? <Text style={styles.staffLinkHighlight}>Sign into Staff Portal →</Text>
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -335,26 +346,26 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     marginTop: 4,
   },
+  logoBadge: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    padding: 6,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
   brandLogo: {
-    width: 68,
-    height: 68,
-    marginBottom: 8,
+    width: 80,
+    height: 80,
   },
   brandContainer: {
     alignItems: 'center',
     marginBottom: 24,
-  },
-  logoBadge: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.borderLight,
-    padding: 6,
-    marginBottom: 10,
   },
   officialLogo: {
     width: '100%',
@@ -471,5 +482,19 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 14,
     fontWeight: '800',
+  },
+  staffLinkRow: {
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  staffLinkText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  staffLinkHighlight: {
+    color: colors.secondaryDark || '#c25e17',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });

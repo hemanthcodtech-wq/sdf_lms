@@ -32,7 +32,6 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [downloadingMaterial, setDownloadingMaterial] = useState(false);
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
-  const [completedLessons, setCompletedLessons] = useState([]);
   const [activeTab, setActiveTab] = useState('lessons'); // 'lessons', 'materials', 'community'
   const [materials, setMaterials] = useState([]);
 
@@ -107,7 +106,6 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   }
 
   const getSessionStatus = (lesson, idx) => {
-    const isManuallyDone = completedLessons.includes(idx);
     const dateStr = lesson.date || (course?.sessionDates && course.sessionDates[idx]) || course?.startDate;
     const timeStr = lesson.time || course?.startTime || (course?.timings ? course.timings.split(' to ')[0] : '06:00');
     const endTimeStr = course?.endTime || (course?.timings && course.timings.includes(' to ') ? course.timings.split(' to ')[1] : null);
@@ -116,14 +114,14 @@ export const StudentClassesScreen = ({ route, navigation }) => {
     let displayTime = lesson.duration || 'Live Session';
 
     if (!dateStr) {
-      return { isCompleted: isManuallyDone, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
+      return { isCompleted: false, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
     }
 
     try {
       const rawDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
       const [y, m, d] = rawDate.split('-').map(Number);
       if (!y || !m || !d) {
-        return { isCompleted: isManuallyDone, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
+        return { isCompleted: false, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
       }
 
       // Format Date Cleanly (Today / Tomorrow / 25 Aug)
@@ -198,23 +196,31 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       // Upcoming (more than 2 mins before)
       return { isCompleted: false, isLiveNow: false, canJoin: false, label: 'Join Class', displayDate, displayTime };
     } catch (e) {
-      return { isCompleted: isManuallyDone, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
+      return { isCompleted: false, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
     }
   };
 
   const currentLesson = realSessions[activeLessonIndex] || realSessions[0] || null;
-  const completedCount = realSessions.filter((lesson, idx) => getSessionStatus(lesson, idx).isCompleted || completedLessons.includes(idx)).length;
-  const progressPercent = realSessions.length > 0
+  
+  const isCourseCertified = Boolean(
+    route.params?.enrollment?.completed ||
+    course?.completed ||
+    route.params?.enrollment?.certificateId
+  );
+  const backendProgress = typeof route.params?.enrollment?.progress === 'number'
+    ? route.params.enrollment.progress
+    : null;
+
+  const completedCount = realSessions.filter((lesson, idx) => getSessionStatus(lesson, idx).isCompleted).length;
+  const calculatedPercent = realSessions.length > 0
     ? Math.round((completedCount / realSessions.length) * 100)
     : 0;
 
-  const toggleComplete = (idx) => {
-    if (completedLessons.includes(idx)) {
-      setCompletedLessons(completedLessons.filter((i) => i !== idx));
-    } else {
-      setCompletedLessons([...completedLessons, idx]);
-    }
-  };
+  const progressPercent = isCourseCertified
+    ? 100
+    : (backendProgress !== null && backendProgress > 0 && backendProgress < 100
+        ? backendProgress
+        : calculatedPercent);
 
   const handleJoinZoom = (lessonItem) => {
     const target = lessonItem || currentLesson;
@@ -386,28 +392,45 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                 const isDone = status.isCompleted;
 
                 return (
-                  <View
+                  <TouchableOpacity
                     key={lesson.id || idx}
                     style={[
                       styles.lessonCard,
+                      isActive && styles.lessonCardActive,
                       isDone && styles.lessonCardDone,
                       shadows.sm,
                     ]}
+                    onPress={() => setActiveLessonIndex(idx)}
+                    activeOpacity={0.85}
                   >
-                    {/* Checkmark Circle - Filled Green with White Tick once Completed */}
-                    <TouchableOpacity
-                      style={[styles.checkCircle, isDone && styles.checkCircleDone]}
-                      onPress={() => toggleComplete(idx)}
-                      activeOpacity={0.8}
+                    {/* Session Indicator Circle - Static Status Badge */}
+                    <View
+                      style={[
+                        styles.checkCircle,
+                        isDone && styles.checkCircleDone,
+                        isActive && !isDone && styles.checkCircleActive,
+                      ]}
                     >
-                      {isDone && <Ionicons name="checkmark" size={14} color="#fff" />}
-                    </TouchableOpacity>
+                      {isDone ? (
+                        <Ionicons name="checkmark" size={13} color="#fff" />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.checkCircleNumber,
+                            isActive && styles.checkCircleNumberActive,
+                          ]}
+                        >
+                          {idx + 1}
+                        </Text>
+                      )}
+                    </View>
 
                     {/* Session Title & Date/Time Information */}
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text
                         style={[
                           styles.lessonTitle,
+                          isActive && styles.lessonTitleActive,
                           isDone && styles.lessonTitleDone,
                         ]}
                         numberOfLines={2}
@@ -451,7 +474,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                         <Text style={styles.disabledJoinBtnText}>Join Class</Text>
                       </TouchableOpacity>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 );
               })
             ) : (
@@ -752,13 +775,27 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: colors.textMuted,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
+  },
+  checkCircleActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight + '20',
   },
   checkCircleDone: {
     backgroundColor: '#16a34a',
     borderColor: '#16a34a',
+  },
+  checkCircleNumber: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  checkCircleNumberActive: {
+    color: colors.primary,
+    fontWeight: '800',
   },
   lessonTitle: {
     fontSize: 14,

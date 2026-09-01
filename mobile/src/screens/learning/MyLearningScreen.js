@@ -59,15 +59,21 @@ export const MyLearningScreen = ({ navigation }) => {
     setRefreshing(false);
   };
 
-  const filteredEnrollments = enrollments.filter((item) => {
-    const isCompleted = item.completed && (item.progress === 100);
-    // Show in ongoing if activeTab is ongoing, or if ongoing tab show active courses
-    if (activeTab === 'completed') {
-      return isCompleted;
+  const isCourseCompleted = (item) => {
+    return Boolean(item.completed === true || item.certificateId);
+  };
+
+  const getEnrollmentProgress = (item) => {
+    if (isCourseCompleted(item)) return 100;
+    if (typeof item.progress === 'number' && item.progress > 0 && item.progress < 100) {
+      return item.progress;
     }
-    // In ongoing courses tab, show all active/ongoing enrollments
-    return !isCompleted || enrollments.length === 1;
-  });
+    return 0;
+  };
+
+  const ongoingEnrollments = enrollments.filter((item) => !isCourseCompleted(item));
+  const completedEnrollments = enrollments.filter((item) => isCourseCompleted(item));
+  const filteredEnrollments = activeTab === 'completed' ? completedEnrollments : ongoingEnrollments;
 
   if (!user) {
     return (
@@ -104,7 +110,7 @@ export const MyLearningScreen = ({ navigation }) => {
                 activeTab === 'ongoing' && styles.tabBtnTextActive,
               ]}
             >
-              Ongoing Courses
+              Ongoing Courses {ongoingEnrollments.length > 0 ? `(${ongoingEnrollments.length})` : ''}
             </Text>
           </TouchableOpacity>
 
@@ -118,7 +124,7 @@ export const MyLearningScreen = ({ navigation }) => {
                 activeTab === 'completed' && styles.tabBtnTextActive,
               ]}
             >
-              Completed
+              Completed {completedEnrollments.length > 0 ? `(${completedEnrollments.length})` : ''}
             </Text>
           </TouchableOpacity>
         </View>
@@ -160,11 +166,12 @@ export const MyLearningScreen = ({ navigation }) => {
           }
           renderItem={({ item }) => {
             const courseObj = item.course || item;
+            const progressVal = getEnrollmentProgress(item);
             return (
               <CourseCard
                 course={courseObj}
                 showProgress
-                progress={item.progress || 35}
+                progress={progressVal}
                 onPress={() =>
                   navigation.navigate('StudentClasses', {
                     course: courseObj,

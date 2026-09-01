@@ -384,8 +384,19 @@ export const HomeScreen = ({ navigation }) => {
             <CourseCard
               course={myCourses[0].course || myCourses[0]}
               showProgress
-              progress={myCourses[0].progress || 35}
-              onPress={(c) => navigation.navigate('StudentClasses', { course: c })}
+              progress={
+                myCourses[0].completed || myCourses[0].certificateId
+                  ? 100
+                  : (typeof myCourses[0].progress === 'number' && myCourses[0].progress > 0 && myCourses[0].progress < 100
+                      ? myCourses[0].progress
+                      : 0)
+              }
+              onPress={(c) =>
+                navigation.navigate('StudentClasses', {
+                  course: c,
+                  enrollment: myCourses[0],
+                })
+              }
             />
           </View>
         )}

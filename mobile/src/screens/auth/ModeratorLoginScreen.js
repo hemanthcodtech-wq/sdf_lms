@@ -130,6 +130,29 @@ export const ModeratorLoginScreen = ({ navigation }) => {
             style={[styles.loginButton, { backgroundColor: '#2563eb' }]}
           />
         </View>
+
+        {/* Portal Switch Links */}
+        <View style={styles.switchSection}>
+          <TouchableOpacity
+            style={styles.switchLinkBtn}
+            onPress={() => navigation.navigate('InstructorLogin')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.switchText}>
+              Are you an Instructor / Faculty? <Text style={styles.switchHighlight}>Sign into Instructor Portal →</Text>
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.switchLinkBtn, { marginTop: 8 }]}
+            onPress={() => navigation.navigate('Login')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.switchTextSecondary}>
+              Student / Learner? <Text style={styles.switchHighlightSecondary}>Sign into Learner Portal</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -162,16 +185,16 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   logoBadge: {
-    width: 76,
-    height: 76,
-    borderRadius: 24,
+    width: 88,
+    height: 88,
+    borderRadius: 28,
     backgroundColor: '#2563eb',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   brandTitle: {
-    fontSize: 24,
+    fontSize: 25,
     fontWeight: '800',
     color: '#2563eb',
     letterSpacing: 0.5,
@@ -225,5 +248,33 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: 8,
+  },
+  switchSection: {
+    alignItems: 'center',
+    marginTop: 22,
+    marginBottom: 10,
+  },
+  switchLinkBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  switchText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  switchHighlight: {
+    color: colors.secondary,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  switchTextSecondary: {
+    fontSize: 13,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  switchHighlightSecondary: {
+    color: colors.primaryDark,
+    fontWeight: '700',
   },
 });
