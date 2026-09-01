@@ -4,6 +4,10 @@ import { MainTabNavigator } from './MainTabNavigator';
 import { AuthNavigator } from './AuthNavigator';
 import { useAuth } from '../context/AuthContext';
 
+// Staff & Faculty Portals
+import { InstructorDashboardScreen } from '../screens/instructor/InstructorDashboardScreen';
+import { ModeratorDashboardScreen } from '../screens/moderator/ModeratorDashboardScreen';
+
 // Modals & Detail screens
 import { CourseDetailsScreen } from '../screens/courses/CourseDetailsScreen';
 import { CheckoutScreen } from '../screens/courses/CheckoutScreen';
@@ -17,11 +21,18 @@ import { NotificationsScreen } from '../screens/notifications/NotificationsScree
 const RootStack = createNativeStackNavigator();
 
 export const RootNavigator = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+
+  const getInitialRoute = () => {
+    if (!isAuthenticated) return 'Auth';
+    if (user?.role === 'instructor') return 'InstructorDashboard';
+    if (user?.role === 'moderator') return 'ModeratorDashboard';
+    return 'Main';
+  };
 
   return (
     <RootStack.Navigator
-      initialRouteName={isAuthenticated ? 'Main' : 'Auth'}
+      initialRouteName={getInitialRoute()}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
@@ -30,8 +41,12 @@ export const RootNavigator = () => {
       {/* Auth Portal Gateway (Student, Instructor, Moderator) */}
       <RootStack.Screen name="Auth" component={AuthNavigator} />
 
-      {/* Main Dashboard & Tabs */}
+      {/* Main Student Dashboard & Tabs */}
       <RootStack.Screen name="Main" component={MainTabNavigator} />
+
+      {/* Dedicated Staff & Faculty Portals */}
+      <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
+      <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
 
       {/* Course Flow */}
       <RootStack.Screen name="CourseDetails" component={CourseDetailsScreen} />

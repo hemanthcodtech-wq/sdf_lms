@@ -17,7 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export const ModeratorLoginScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
 
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -33,10 +33,18 @@ export const ModeratorLoginScreen = ({ navigation }) => {
     try {
       setError('');
       setLoading(true);
-      await login(emailOrPhone.trim(), password);
+      const data = await login(emailOrPhone.trim(), password);
+
+      const userRole = data?.role || data?.user?.role;
+      if (userRole !== 'moderator' && userRole !== 'admin') {
+        await logout();
+        setError('Access Denied: You must have an active Moderator account to access this portal.');
+        return;
+      }
+
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Main' }],
+        routes: [{ name: 'ModeratorDashboard' }],
       });
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Moderator login failed. Verify your credentials.');
