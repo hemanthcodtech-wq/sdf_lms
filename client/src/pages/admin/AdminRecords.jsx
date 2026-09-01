@@ -6,7 +6,7 @@ import {
   FaDownload, FaExternalLinkAlt, FaTimes, FaShieldAlt, FaSyncAlt, 
   FaRupeeSign, FaEnvelope, FaTrashAlt, FaFileCsv, FaEye, FaUserGraduate,
   FaEdit, FaPlus, FaPaperPlane, FaMagic, FaCalendarAlt, FaUser, FaBook,
-  FaIdCard, FaChalkboardTeacher
+  FaIdCard, FaChalkboardTeacher, FaExpand
 } from 'react-icons/fa';
 
 const AdminRecords = () => {
