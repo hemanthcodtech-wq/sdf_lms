@@ -928,7 +928,7 @@ const AdminRecords = () => {
                       {/* 1. Left Sidebar Meta Information */}
                       {/* Student ID */}
                       <div 
-                        style={{ top: '39.8%', left: '10.5%', width: '13%' }}
+                        style={{ top: '39.8%', left: '12.1%', width: '13%' }}
                         className="absolute text-[6px] sm:text-[8px] font-bold text-gray-900 tracking-tight truncate"
                       >
                         {customForm.studentId || 'SDWFY250501'}
@@ -936,7 +936,7 @@ const AdminRecords = () => {
 
                       {/* Issue Date */}
                       <div 
-                        style={{ top: '50.2%', left: '10.5%', width: '13%' }}
+                        style={{ top: '51.2%', left: '12.1%', width: '13%' }}
                         className="absolute text-[6px] sm:text-[8px] font-bold text-gray-900 tracking-tight whitespace-nowrap overflow-hidden"
                       >
                         {customForm.completionDate ? new Date(customForm.completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '23 Aug 2026'}
@@ -944,7 +944,7 @@ const AdminRecords = () => {
 
                       {/* Course Duration */}
                       <div 
-                        style={{ top: '58.2%', left: '10.5%', width: '13%' }}
+                        style={{ top: '58.5%', left: '12.1%', width: '13%' }}
                         className="absolute text-[5.5px] sm:text-[7.5px] font-bold text-gray-900 tracking-tight leading-tight"
                       >
                         {customForm.duration || '30 Days'}
@@ -952,55 +952,55 @@ const AdminRecords = () => {
 
                       {/* Certificate ID */}
                       <div 
-                        style={{ top: '70.2%', left: '10.5%', width: '13%' }}
+                        style={{ top: '70.5%', left: '12.1%', width: '13%' }}
                         className="absolute text-[5.5px] sm:text-[7.5px] font-mono font-bold text-gray-900 tracking-tight truncate"
                       >
                         {customForm.certificateId || 'SDF-CERT-SAMPLE'}
                       </div>
 
-                      {/* 2. Recipient Name (Professional Serif Center at top ~43.2%) */}
+                      {/* 2. Recipient Name (Professional Serif Center between 'This is to certify that' and the gold line at ~49.0%) */}
                       <div 
-                        style={{ top: '43.2%', left: '20%', right: '20%' }}
+                        style={{ top: '49.0%', left: '19%', right: '19%' }}
                         className="absolute flex items-center justify-center text-center pointer-events-none"
                       >
-                        <span className="font-serif font-black uppercase text-[#0A4F2A] text-[11px] sm:text-[14px] md:text-[16px] tracking-wider truncate">
+                        <span className="font-serif font-black uppercase text-[#0A4F2A] text-[10px] sm:text-[13px] md:text-[15px] tracking-wider truncate">
                           {customForm.studentName || 'LEARNER FULL NAME'}
                         </span>
                       </div>
 
-                      {/* 3. Dynamic Course Title (Center at top ~56.8%) */}
+                      {/* 3. Dynamic Course Title (Center below 'has successfully completed the' at ~63.5%) */}
                       <div 
-                        style={{ top: '56.8%', left: '24%', right: '24%' }}
+                        style={{ top: '63.5%', left: '22%', right: '22%' }}
                         className="absolute flex items-center justify-center text-center pointer-events-none"
                       >
-                        <span className="font-bold text-gray-900 text-[7.5px] sm:text-[9.5px] md:text-[10.5px] bg-[#FAF7F2] px-2 py-0.5 rounded truncate">
+                        <span className="font-bold text-gray-900 text-[7px] sm:text-[9px] md:text-[10px] bg-[#FAF7F2] px-2 py-0.5 rounded truncate shadow-sm">
                           {customForm.courseTitle || 'Yoga for Wellness and Inner Balance'}
                         </span>
                       </div>
 
-                      {/* 4. Bottom Signatures: Instructor Name (left) & Director (right) */}
-                      {/* Instructor Name (Center ~34.4%, Top ~86.5%) */}
+                      {/* 4. Bottom Signatures: Instructor Name (left ~36.8%) & Director (right ~59.5%) */}
+                      {/* Instructor Name */}
                       <div 
-                        style={{ top: '86.5%', left: '23%', width: '23%' }}
+                        style={{ top: '85.5%', left: '34%', width: '18%' }}
                         className="absolute text-center leading-tight pointer-events-none"
                       >
-                        <p className="text-[6px] sm:text-[8px] font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
+                        <p className="text-[6px] sm:text-[7.5px] font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
                           {customForm.instructorName || 'Lead Yoga Guru'}
                         </p>
-                        <p className="text-[4.5px] sm:text-[6px] text-gray-600 truncate">
-                          {customForm.instructorTitle || 'Yoga Instructor'}
+                        <p className="text-[4px] sm:text-[5.5px] text-gray-600 truncate">
+                          {customForm.instructorTitle || 'Certified Yoga Professional'}
                         </p>
                       </div>
 
-                      {/* Director Name (Center ~63.8%, Top ~86.5%) */}
+                      {/* Director Name */}
                       <div 
-                        style={{ top: '86.5%', left: '53.5%', width: '23%' }}
+                        style={{ top: '85.5%', left: '57%', width: '18%' }}
                         className="absolute text-center leading-tight pointer-events-none"
                       >
-                        <p className="text-[6px] sm:text-[8px] font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
+                        <p className="text-[6px] sm:text-[7.5px] font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
                           SWAMY DWIJA
                         </p>
-                        <p className="text-[4.5px] sm:text-[6px] text-gray-600 truncate">
+                        <p className="text-[4px] sm:text-[5.5px] text-gray-600 truncate">
                           Founder & Director
                         </p>
                       </div>
