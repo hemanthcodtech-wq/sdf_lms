@@ -920,12 +920,10 @@ const AdminRecords = () => {
                 </button>
               </div>
 
-              {/* Form & Live Digital Preview 2-Column Layout */}
-              <form onSubmit={handleSaveAndSendCertificate} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Form Layout */}
+              <form onSubmit={handleSaveAndSendCertificate} className="space-y-6">
                 
-                {/* Left Form Controls (7 cols) */}
-                <div className="lg:col-span-7 space-y-4">
-                  
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* Recipient Full Name */}
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
@@ -954,302 +952,190 @@ const AdminRecords = () => {
                       className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
                     />
                   </div>
+                </div>
 
-                  {/* Course Title (Pick from dropdown or custom type) */}
+                {/* Course Title (Pick from dropdown or custom type) */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5"><FaBook className="text-brand-green" /> Course / Program Title *</span>
+                    {coursesList.length > 0 && (
+                      <span className="text-[11px] text-brand-green font-normal">Or select existing course below</span>
+                    )}
+                  </label>
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Master Yoga Pranayama & Vedic Wellness"
+                      value={customForm.courseTitle}
+                      onChange={(e) => handleFormChange('courseTitle', e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
+                    />
+                    {coursesList.length > 0 ? (
+                      <select
+                        value={coursesList.some(c => c.title === customForm.courseTitle) ? customForm.courseTitle : ''}
+                        onChange={(e) => e.target.value && handleSelectCourse(e.target.value)}
+                        className="w-full px-3 py-2.5 bg-brand-green/5 border border-brand-green/30 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                      >
+                        <option value="">-- Select from {coursesList.length} Database Courses --</option>
+                        {coursesList.map(c => (
+                          <option key={c._id} value={c.title}>
+                            {c.title} ({c.category}) — Guru: {c.instructorId?.name || c.instructor || 'Lead Guru'}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">No courses found in database.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Certificate ID & Issue Date */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5"><FaBook className="text-brand-green" /> Course / Program Title *</span>
-                      {coursesList.length > 0 && (
-                        <span className="text-[11px] text-brand-green font-normal">Or select existing course</span>
-                      )}
+                      <span className="flex items-center gap-1.5"><FaIdCard className="text-brand-green" /> Certificate ID</span>
+                      <button
+                        type="button"
+                        onClick={() => handleFormChange('certificateId', generateNewCertId())}
+                        className="text-[11px] text-brand-green hover:underline flex items-center gap-1 font-bold"
+                      >
+                        <FaMagic size={10} /> Auto-Generate
+                      </button>
                     </label>
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Master Yoga Pranayama & Vedic Wellness"
-                        value={customForm.courseTitle}
-                        onChange={(e) => handleFormChange('courseTitle', e.target.value)}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
-                      />
-                      {coursesList.length > 0 ? (
-                        <select
-                          value={coursesList.some(c => c.title === customForm.courseTitle) ? customForm.courseTitle : ''}
-                          onChange={(e) => e.target.value && handleSelectCourse(e.target.value)}
-                          className="w-full px-3 py-2.5 bg-brand-green/5 border border-brand-green/30 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-green/20"
-                        >
-                          <option value="">-- Select from {coursesList.length} Database Courses --</option>
-                          {coursesList.map(c => (
-                            <option key={c._id} value={c.title}>
-                              {c.title} ({c.category}) — Guru: {c.instructorId?.name || c.instructor || 'Lead Guru'}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <p className="text-xs text-gray-400 italic">No courses found in database.</p>
-                      )}
-                    </div>
+                    <input
+                      type="text"
+                      placeholder="e.g. SDF-CERT-260823"
+                      value={customForm.certificateId}
+                      onChange={(e) => handleFormChange('certificateId', e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
+                    />
                   </div>
 
-                  {/* Certificate ID & Auto Generate */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5"><FaIdCard className="text-brand-green" /> Certificate ID</span>
-                        <button
-                          type="button"
-                          onClick={() => handleFormChange('certificateId', generateNewCertId())}
-                          className="text-[11px] text-brand-green hover:underline flex items-center gap-1 font-bold"
-                        >
-                          <FaMagic size={10} /> Auto-Generate
-                        </button>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. SDF-CERT-260823"
-                        value={customForm.certificateId}
-                        onChange={(e) => handleFormChange('certificateId', e.target.value)}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono font-bold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
-                      />
-                    </div>
+                  {/* Completion / Issue Date */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                      <FaCalendarAlt className="text-brand-green" /> Issue / Completion Date
+                    </label>
+                    <input
+                      type="date"
+                      value={customForm.completionDate}
+                      onChange={(e) => handleFormChange('completionDate', e.target.value)}
+                      className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
+                    />
+                  </div>
+                </div>
 
-                    {/* Completion / Issue Date */}
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                        <FaCalendarAlt className="text-brand-green" /> Issue / Completion Date
-                      </label>
-                      <input
-                        type="date"
-                        value={customForm.completionDate}
-                        onChange={(e) => handleFormChange('completionDate', e.target.value)}
-                        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
-                      />
-                    </div>
+                {/* Course Duration & Instructor Details */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700">Course Duration</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 30 Days (20 Hours)"
+                      value={customForm.duration}
+                      onChange={(e) => handleFormChange('duration', e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
+                    />
                   </div>
 
-                  {/* Course Duration & Instructor Details */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-gray-700">Course Duration</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 30 Days (20 Hours)"
-                        value={customForm.duration}
-                        onChange={(e) => handleFormChange('duration', e.target.value)}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                        <FaChalkboardTeacher className="text-brand-green" /> Instructor Name (Assigned Guru)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Assigned Course Guru"
-                        value={customForm.instructorName}
-                        onChange={(e) => handleFormChange('instructorName', e.target.value)}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none uppercase"
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                      <FaChalkboardTeacher className="text-brand-green" /> Instructor Name (Assigned Guru)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Assigned Course Guru"
+                      value={customForm.instructorName}
+                      onChange={(e) => handleFormChange('instructorName', e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none uppercase"
+                    />
                   </div>
+                </div>
 
-                  {/* Email & DB Update Checkboxes */}
-                  <div className="pt-2 border-t border-gray-100 space-y-2">
+                {/* Email & DB Update Checkboxes */}
+                <div className="pt-2 border-t border-gray-100 space-y-2">
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
+                    <input
+                      type="checkbox"
+                      checked={customForm.sendEmail}
+                      onChange={(e) => handleFormChange('sendEmail', e.target.checked)}
+                      className="w-4 h-4 text-brand-green rounded border-gray-300 focus:ring-brand-green"
+                    />
+                    <span>Email the official certificate PDF directly to the learner</span>
+                  </label>
+
+                  {customModalMode === 'edit' && (
                     <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
                       <input
                         type="checkbox"
-                        checked={customForm.sendEmail}
-                        onChange={(e) => handleFormChange('sendEmail', e.target.checked)}
+                        checked={customForm.updateEnrollment}
+                        onChange={(e) => handleFormChange('updateEnrollment', e.target.checked)}
                         className="w-4 h-4 text-brand-green rounded border-gray-300 focus:ring-brand-green"
                       />
-                      <span>Email the official certificate PDF directly to the learner</span>
+                      <span>Update student database enrollment status to 100% Completed</span>
                     </label>
-
-                    {customModalMode === 'edit' && (
-                      <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-gray-800">
-                        <input
-                          type="checkbox"
-                          checked={customForm.updateEnrollment}
-                          onChange={(e) => handleFormChange('updateEnrollment', e.target.checked)}
-                          className="w-4 h-4 text-brand-green rounded border-gray-300 focus:ring-brand-green"
-                        />
-                        <span>Update student database enrollment status to 100% Completed</span>
-                      </label>
-                    )}
-                  </div>
-
+                  )}
                 </div>
 
-                {/* Right Interactive Certificate Live Mockup (5 cols) */}
-                <div className="lg:col-span-5 flex flex-col justify-between space-y-3">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                        <FaAward className="text-yellow-600" /> Certificate Template Preview
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setFullScreenPreviewOpen(true)}
-                        className="text-[10px] bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all"
-                      >
-                        <FaExpand size={9} /> Full Screen
-                      </button>
-                    </div>
-
-                    {/* Official Template Canvas Image with Positioned Overlays (Clickable to Expand) */}
-                    <div 
-                      onClick={() => setFullScreenPreviewOpen(true)}
-                      className="relative w-full aspect-[842/595] rounded-2xl overflow-hidden shadow-xl border-2 border-[#D4AF37] select-none bg-[#FCFAF6] cursor-pointer group hover:ring-4 hover:ring-amber-400/30 transition-all"
-                      title="Click to view full screen preview"
-                    >
-                      <img
-                        src="/certificate_template.jpg"
-                        alt="Official Certificate Template"
-                        className="w-full h-full object-cover pointer-events-none group-hover:scale-[1.01] transition-transform duration-300"
-                      />
-
-                      {/* Hover Overlay Hint */}
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="bg-black/75 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5">
-                          <FaExpand size={11} /> Click for Full View
-                        </span>
-                      </div>
-
-                      {/* 1. Left Sidebar Meta Information */}
-                      {/* Student ID */}
-                      <div 
-                        style={{ top: '39.8%', left: '12.1%', width: '13%' }}
-                        className="absolute text-[6px] sm:text-[8px] font-bold text-gray-900 tracking-tight truncate pointer-events-none"
-                      >
-                        {customForm.studentId || 'SDWFY250501'}
-                      </div>
-
-                      {/* Issue Date */}
-                      <div 
-                        style={{ top: '51.2%', left: '12.1%', width: '13%' }}
-                        className="absolute text-[6px] sm:text-[8px] font-bold text-gray-900 tracking-tight whitespace-nowrap overflow-hidden pointer-events-none"
-                      >
-                        {customForm.completionDate ? new Date(customForm.completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '23 Aug 2026'}
-                      </div>
-
-                      {/* Course Duration */}
-                      <div 
-                        style={{ top: '58.5%', left: '12.1%', width: '13%' }}
-                        className="absolute text-[5.5px] sm:text-[7.5px] font-bold text-gray-900 tracking-tight leading-tight pointer-events-none"
-                      >
-                        {customForm.duration || '30 Days'}
-                      </div>
-
-                      {/* Certificate ID */}
-                      <div 
-                        style={{ top: '70.5%', left: '12.1%', width: '13%' }}
-                        className="absolute text-[5.5px] sm:text-[7.5px] font-mono font-bold text-gray-900 tracking-tight truncate pointer-events-none"
-                      >
-                        {customForm.certificateId || 'SDF-CERT-SAMPLE'}
-                      </div>
-
-                      {/* 2. Recipient Name */}
-                      <div 
-                        style={{ top: '49.0%', left: '19%', right: '19%' }}
-                        className="absolute flex items-center justify-center text-center pointer-events-none"
-                      >
-                        <span className="font-serif font-black uppercase text-[#0A4F2A] text-[10px] sm:text-[13px] md:text-[15px] tracking-wider truncate">
-                          {customForm.studentName || 'LEARNER FULL NAME'}
-                        </span>
-                      </div>
-
-                      {/* 3. Dynamic Course Title */}
-                      <div 
-                        style={{ top: '63.5%', left: '22%', right: '22%' }}
-                        className="absolute flex items-center justify-center text-center pointer-events-none"
-                      >
-                        <span className="font-bold text-gray-900 text-[7px] sm:text-[9px] md:text-[10px] bg-[#FAF7F2] px-2 py-0.5 rounded truncate shadow-sm">
-                          {customForm.courseTitle || 'Yoga for Wellness and Inner Balance'}
-                        </span>
-                      </div>
-
-                      {/* 4. Bottom Signatures */}
-                      {/* Instructor Name */}
-                      <div 
-                        style={{ top: '85.5%', left: '34%', width: '18%' }}
-                        className="absolute text-center leading-tight pointer-events-none"
-                      >
-                        <p className="text-[6px] sm:text-[7.5px] font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
-                          {customForm.instructorName || 'Lead Yoga Guru'}
-                        </p>
-                        <p className="text-[4px] sm:text-[5.5px] text-gray-600 truncate">
-                          {customForm.instructorTitle || 'Certified Yoga Professional'}
-                        </p>
-                      </div>
-
-                      {/* Director Name */}
-                      <div 
-                        style={{ top: '85.5%', left: '57%', width: '18%' }}
-                        className="absolute text-center leading-tight pointer-events-none"
-                      >
-                        <p className="text-[6px] sm:text-[7.5px] font-bold text-[#0A4F2A] uppercase tracking-wider truncate">
-                          SWAMY DWIJA
-                        </p>
-                        <p className="text-[4px] sm:text-[5.5px] text-gray-600 truncate">
-                          Founder & Director
-                        </p>
-                      </div>
-
-                    </div>
-                  </div>
-
-                  {/* Actions inside Modal */}
-                  <div className="space-y-2 pt-2">
-                    
-                    {/* Submit Button */}
+                {/* Modal Action Buttons Grid */}
+                <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  
+                  {/* Preview Options on Left */}
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     <button
-                      type="submit"
-                      disabled={customSubmitting}
-                      className="w-full py-3.5 bg-brand-green hover:bg-brand-green-dark text-white font-extrabold rounded-2xl text-sm shadow-md shadow-brand-green/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                      type="button"
+                      onClick={() => setFullScreenPreviewOpen(true)}
+                      className="px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white font-extrabold rounded-2xl text-xs shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
                     >
-                      {customSubmitting ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>Generating & Sending Certificate...</span>
-                        </>
+                      <FaExpand size={12} />
+                      <span>View Full-Screen Preview</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleOpenPreviewNewTab}
+                      className="px-4 py-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-bold rounded-2xl text-xs transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <FaExternalLinkAlt size={11} />
+                      <span>Separate Tab</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleDownloadPreviewPDF}
+                      disabled={customPreviewing}
+                      className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-2xl text-xs transition-all flex items-center justify-center gap-1.5"
+                    >
+                      {customPreviewing ? (
+                        <span>Rendering...</span>
                       ) : (
                         <>
-                          <FaPaperPlane size={13} className="text-yellow-300" />
-                          <span>{customForm.sendEmail ? 'Generate, Save & Send Email' : 'Generate & Save Certificate'}</span>
+                          <FaDownload size={11} />
+                          <span>PDF Preview</span>
                         </>
                       )}
                     </button>
-
-                    {/* Preview Buttons Grid */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={handleOpenPreviewNewTab}
-                        className="py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5"
-                      >
-                        <FaExternalLinkAlt size={10} />
-                        <span>Separate Tab</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleDownloadPreviewPDF}
-                        disabled={customPreviewing}
-                        className="py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5"
-                      >
-                        {customPreviewing ? (
-                          <span>Rendering...</span>
-                        ) : (
-                          <>
-                            <FaDownload size={11} />
-                            <span>PDF Preview</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
                   </div>
+
+                  {/* Main Submit Button on Right */}
+                  <button
+                    type="submit"
+                    disabled={customSubmitting}
+                    className="w-full sm:w-auto px-8 py-3.5 bg-brand-green hover:bg-brand-green-dark text-white font-extrabold rounded-2xl text-sm shadow-md shadow-brand-green/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {customSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Generating & Sending Certificate...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaPaperPlane size={13} className="text-yellow-300" />
+                        <span>{customForm.sendEmail ? 'Generate, Save & Send Email' : 'Generate & Save Certificate'}</span>
+                      </>
+                    )}
+                  </button>
 
                 </div>
 
