@@ -21,6 +21,7 @@ import { CustomButton } from '../../components/CustomButton';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { courseService } from '../../services/courseService';
+import { notificationService } from '../../services/notificationService';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../services/api';
@@ -129,6 +130,9 @@ export const HomeScreen = ({ navigation }) => {
             .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
           setLiveClasses(enrolledUpcoming);
+          if (enrolledUpcoming.length > 0) {
+            notificationService.syncUpcomingClassReminders(enrolledUpcoming);
+          }
         }
       }
     } catch (error) {

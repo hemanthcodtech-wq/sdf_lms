@@ -29,6 +29,8 @@ export const notificationService = {
             sound: 'default',
             enableVibrate: true,
             showBadge: true,
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            bypassDnd: true,
           });
         }
       }
@@ -44,10 +46,17 @@ export const notificationService = {
     try {
       const Notifications = require('expo-notifications');
       if (Notifications?.requestPermissionsAsync) {
-        const { status } = await Notifications.requestPermissionsAsync();
-        return status === 'granted';
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        return finalStatus === 'granted';
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Notification permission request error:', e);
+    }
     return false;
   },
 
@@ -58,6 +67,19 @@ export const notificationService = {
     try {
       const Notifications = require('expo-notifications');
       if (Notifications?.scheduleNotificationAsync) {
+        if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync('default', {
+            name: 'Swami Dwija Live Classes',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#0D5C31',
+            sound: 'default',
+            enableVibrate: true,
+            showBadge: true,
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          });
+        }
+
         await Notifications.scheduleNotificationAsync({
           content: {
             title: title || '🔔 Swamy Dwija Foundation',
@@ -96,6 +118,73 @@ export const notificationService = {
       }
     } catch (e) {
       console.warn('Could not schedule local notification:', e.message);
+    }
+  },
+
+  /**
+   * Sync upcoming live class alarms into Android system NotificationManager
+   */
+  syncUpcomingClassReminders: async (liveClasses = []) => {
+    try {
+      const Notifications = require('expo-notifications');
+      if (!Notifications?.scheduleNotificationAsync) return;
+
+      // Cancel old scheduled alarms to prevent duplicates
+      await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+
+      const now = new Date();
+      for (const cls of liveClasses) {
+        if (!cls.date) continue;
+        const datePart = new Date(cls.date).toISOString().split('T')[0];
+        let h = 6, m = 0;
+        if (cls.time) {
+          const parts = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+          if (parts) {
+            let hour = parseInt(parts[1], 10);
+            const min = parseInt(parts[2], 10);
+            const ampm = parts[3] ? parts[3].toUpperCase() : null;
+            if (ampm === 'PM' && hour < 12) hour += 12;
+            if (ampm === 'AM' && hour === 12) hour = 0;
+            h = hour;
+            m = min;
+          }
+        }
+        const timePart = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00+05:30`;
+        const sessionStart = new Date(`${datePart}T${timePart}`);
+
+        // Schedule 15 minutes before if in the future
+        const reminderTime15 = new Date(sessionStart.getTime() - 15 * 60 * 1000);
+        if (reminderTime15 > now) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `⏰ Live Class in 15 Minutes!`,
+              body: `"${cls.title}" is starting soon. Get ready to join your guru live on Zoom!`,
+              data: { zoomLink: cls.zoomLink || cls.zoomJoinUrl, classId: cls._id },
+              sound: 'default',
+              channelId: 'default',
+              priority: Notifications.AndroidNotificationPriority?.MAX,
+            },
+            trigger: reminderTime15,
+          }).catch(() => {});
+        }
+
+        // Schedule at start time if in the future
+        if (sessionStart > now) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `🔴 Live Class Starting Now!`,
+              body: `"${cls.title}" is starting right now. Tap to join Zoom immediately!`,
+              data: { zoomLink: cls.zoomLink || cls.zoomJoinUrl, classId: cls._id },
+              sound: 'default',
+              channelId: 'default',
+              priority: Notifications.AndroidNotificationPriority?.MAX,
+            },
+            trigger: sessionStart,
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn('Error syncing class reminders:', e);
     }
   },
 

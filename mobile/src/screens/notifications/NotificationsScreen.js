@@ -187,6 +187,10 @@ export const NotificationsScreen = ({ navigation }) => {
         } catch (e) {}
       }
 
+      if (liveClasses.length > 0) {
+        notificationService.syncUpcomingClassReminders(liveClasses);
+      }
+
       const list = await notificationService.getNotifications(user, liveClasses, myCourses);
       setNotifications(list);
     } catch (err) {
@@ -267,6 +271,28 @@ export const NotificationsScreen = ({ navigation }) => {
           <Text style={styles.clearBtnText}>Clear all</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Test External Notification Banner */}
+      <TouchableOpacity
+        style={styles.testNotificationBtn}
+        onPress={async () => {
+          const granted = await notificationService.requestPermissions();
+          if (!granted) {
+            Alert.alert('Permission Needed', 'Please enable notifications for Swamy Dwija in your device settings.');
+            return;
+          }
+          await notificationService.sendInstantNotification(
+            '🔔 Swamy Dwija Live Session',
+            'Your device external notification is working! You will receive live class reminders even when the app is closed.'
+          );
+          Alert.alert('Notification Sent', 'An external notification has been dispatched to your device status bar / tray.');
+        }}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="notifications-circle" size={20} color="#0d5c31" />
+        <Text style={styles.testNotificationBtnText}>Test Device Notification (External Status Bar)</Text>
+        <Ionicons name="arrow-forward" size={14} color="#0d5c31" />
+      </TouchableOpacity>
 
       <FlatList
         data={notifications}
@@ -485,5 +511,25 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  testNotificationBtn: {
+    marginHorizontal: 16,
+    marginVertical: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: '#ecfdf5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  testNotificationBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#065f46',
+    flex: 1,
+    marginLeft: 8,
   },
 });

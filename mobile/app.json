@@ -27,10 +27,20 @@
         "RECEIVE_BOOT_COMPLETED",
         "POST_NOTIFICATIONS",
         "VIBRATE",
+        "WAKE_LOCK",
         "INTERNET",
         "ACCESS_NETWORK_STATE"
       ]
     },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0d5c31"
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     },
