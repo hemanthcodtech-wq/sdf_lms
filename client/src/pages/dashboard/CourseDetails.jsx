@@ -255,6 +255,10 @@ const CourseContent = ({ course, handleEnroll, isEnrolled, isWishlisted, handleT
                 <p className="text-center text-sm text-gray-600 mt-5 font-semibold">{isEnrolled ? 'Access live classes and materials anytime.' : t('course_join_thousands')}</p>
                 <div className="mt-8 pt-6 border-t border-gray-300/50 space-y-5">
                   <div className="flex justify-between items-center text-base">
+                    <span className="text-gray-600 font-semibold">Course Duration</span>
+                    <span className="font-bold text-gray-900">{course.duration || (course.durationMonths ? `${course.durationMonths} Month${course.durationMonths > 1 ? 's' : ''}` : 'Self-Paced')}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-base">
                     <span className="text-gray-600 font-semibold">{t('course_access')}</span>
                     <span className="font-bold text-gray-900">{course.accessValidity ? `${course.accessValidity} after completion` : t('course_lifetime')}</span>
                   </div>
