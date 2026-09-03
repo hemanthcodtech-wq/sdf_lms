@@ -23,6 +23,8 @@ const CourseManagement = () => {
     category: 'Yoga', 
     price: '', 
     duration: '', 
+    durationDays: '30 Days',
+    durationHours: '20 Hours',
     durationMonths: 1, 
     startDate: '', 
     endDate: '', 
@@ -135,12 +137,33 @@ const CourseManagement = () => {
       const instId = course.instructorId?._id || course.instructorId || '';
       const modId = course.moderatorId?._id || course.moderatorId || '';
 
+      const rawDuration = course.duration || '';
+      let initialDays = course.durationDays || '';
+      let initialHours = course.durationHours || '';
+      if (!initialDays && rawDuration) {
+        if (rawDuration.includes('(')) {
+          initialDays = rawDuration.split('(')[0].trim();
+          initialHours = rawDuration.split('(')[1].replace(')', '').trim();
+        } else if (rawDuration.includes('\n')) {
+          initialDays = rawDuration.split('\n')[0].trim();
+          initialHours = rawDuration.split('\n')[1].trim();
+        }
+      }
+      if (!initialDays) {
+        initialDays = course.sessionDates?.length ? `${course.sessionDates.length} Sessions` : '30 Days';
+      }
+      if (!initialHours) {
+        initialHours = course.sessionDates?.length ? `${course.sessionDates.length} Hours` : '20 Hours';
+      }
+
       setFormData({
         title: course.title || '',
         description: course.description || '',
         category: course.category || 'Yoga',
         price: course.price !== undefined ? course.price : 0,
         duration: course.duration || '',
+        durationDays: initialDays,
+        durationHours: initialHours,
         durationMonths: course.durationMonths || 1,
         startDate: course.startDate ? new Date(course.startDate).toISOString().split('T')[0] : '',
         endDate: course.endDate ? new Date(course.endDate).toISOString().split('T')[0] : '',
@@ -164,6 +187,8 @@ const CourseManagement = () => {
         category: 'Yoga', 
         price: '', 
         duration: '', 
+        durationDays: '30 Days',
+        durationHours: '20 Hours',
         durationMonths: 1, 
         startDate: '', 
         endDate: '', 
@@ -325,6 +350,8 @@ const CourseManagement = () => {
           data.append(key, formData[key]);
         }
       });
+      const finalDuration = `${formData.durationDays || '30 Days'} (${formData.durationHours || '20 Hours'})`;
+      data.set('duration', finalDuration);
       if (thumbnailFile) data.append('thumbnail', thumbnailFile);
 
       const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
@@ -974,6 +1001,49 @@ const CourseManagement = () => {
                       <option value="1 Year">1 Year Access</option>
                       <option value="Lifetime">Lifetime Access</option>
                     </select>
+                  </div>
+
+                  {/* Certificate Course Duration & Hours */}
+                  <div className="col-span-full bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200/80 shadow-xs">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-base">📜</span>
+                      <label className="text-sm font-bold text-emerald-950">
+                        Certificate Course Duration & Hours *
+                      </label>
+                    </div>
+                    <p className="text-xs text-gray-600 mb-3">
+                      This will be printed on the official student completion certificate under <strong>Course Duration</strong> (e.g. <strong>30 Days (20 Hours)</strong> or <strong>13 Sessions (13 Hours)</strong>).
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Duration (Days or Sessions) *</label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.durationDays}
+                          onChange={e => setFormData({...formData, durationDays: e.target.value})}
+                          placeholder="e.g. 30 Days or 13 Sessions"
+                          className="w-full p-3 bg-white border border-gray-300 rounded-xl outline-none focus:border-brand-green text-sm font-semibold text-gray-800 shadow-2xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Total Course Hours *</label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.durationHours}
+                          onChange={e => setFormData({...formData, durationHours: e.target.value})}
+                          placeholder="e.g. 20 Hours or 13 Hours"
+                          className="w-full p-3 bg-white border border-gray-300 rounded-xl outline-none focus:border-brand-green text-sm font-semibold text-gray-800 shadow-2xs"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-2.5 text-xs font-semibold text-emerald-800 flex items-center gap-2">
+                      <span>Preview on Certificate:</span>
+                      <span className="bg-white px-2.5 py-1 rounded-lg border border-emerald-300 font-bold text-emerald-900 shadow-2xs">
+                        {formData.durationDays || '30 Days'} ({formData.durationHours || '20 Hours'})
+                      </span>
+                    </div>
                   </div>
 
                   {/* Level */}

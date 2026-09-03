@@ -41,6 +41,18 @@ const courseSchema = new mongoose.Schema({
   moderator: {
     type: String
   },
+  duration: {
+    type: String,
+    default: ''
+  },
+  durationDays: {
+    type: String,
+    default: ''
+  },
+  durationHours: {
+    type: String,
+    default: ''
+  },
   durationMonths: {
     type: Number,
     required: true,

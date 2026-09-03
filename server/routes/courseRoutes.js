@@ -108,7 +108,7 @@ router.get('/public/:slugOrId', async (req, res) => {
 router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1 }, { name: 'content', maxCount: 1 }]), async (req, res) => {
   try {
     const { 
-      title, description, category, durationMonths, startDate, endDate, level, language, 
+      title, description, category, duration, durationDays, durationHours, durationMonths, startDate, endDate, level, language, 
       accessValidity, startTime, endTime, price, instructorId, moderatorId, zoomMeetingLink,
       whatsappGroupLink
     } = req.body;
@@ -161,11 +161,19 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
       if (modUser) moderatorName = modUser.name || modUser.emailOrPhone;
     }
 
+    let finalDuration = duration;
+    if (!finalDuration && (durationDays || durationHours)) {
+      finalDuration = `${durationDays || '30 Days'} (${durationHours || '20 Hours'})`;
+    }
+
     const course = await Course.create({
       title, 
       slug, 
       description: description || title || 'Comprehensive course program', 
       category: category || 'Other', 
+      duration: finalDuration || '',
+      durationDays: durationDays || '',
+      durationHours: durationHours || '',
       durationMonths: durationMonths || 1, 
       startDate, 
       endDate, 
@@ -264,7 +272,7 @@ router.put('/:id', protect, admin, upload.fields([{ name: 'thumbnail', maxCount:
     if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
 
     const { 
-      title, description, category, durationMonths, startDate, endDate, timings, level, 
+      title, description, category, duration, durationDays, durationHours, durationMonths, startDate, endDate, timings, level, 
       language, accessValidity, price, startTime, endTime, instructorId, moderatorId, zoomMeetingLink,
       whatsappGroupLink
     } = req.body;
@@ -285,6 +293,13 @@ router.put('/:id', protect, admin, upload.fields([{ name: 'thumbnail', maxCount:
       title, slug, description, category, durationMonths, startDate, endDate, 
       level, language: language || 'English', whatYouWillLearn 
     };
+
+    if (duration !== undefined) updateData.duration = duration;
+    if (durationDays !== undefined) updateData.durationDays = durationDays;
+    if (durationHours !== undefined) updateData.durationHours = durationHours;
+    if ((durationDays || durationHours) && !duration) {
+      updateData.duration = `${durationDays || course.durationDays || '30 Days'} (${durationHours || course.durationHours || '20 Hours'})`;
+    }
 
     if (startTime !== undefined) updateData.startTime = startTime;
     if (endTime !== undefined) updateData.endTime = endTime;
@@ -536,13 +551,15 @@ router.post('/:id/complete', protect, async (req, res) => {
       (enrollment.studentEmail && enrollment.studentEmail.includes('@') ? enrollment.studentEmail : '')
     );
 
+    const courseDuration = course.duration || (course.durationDays && course.durationHours ? `${course.durationDays} (${course.durationHours})` : (course.sessionDates?.length ? `${course.sessionDates.length} Days (${course.sessionDates.length} Hours)` : '30 Days (20 Hours)'));
+
     // Generate Certificate PDF, upload, and auto-send completion email with attached PDF
     generateCertificatePDF({
       studentName,
       courseTitle: course.title,
       category: course.category || 'Yoga & Vedic Sciences',
       level: course.level || 'All Levels',
-      duration: course.duration || `${course.sessionDates?.length || 30} Live Sessions`,
+      duration: courseDuration,
       instructorName,
       completionDate: new Date(completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
       certificateId: certId
@@ -611,9 +628,12 @@ router.post('/certificate/:enrollmentId/update-name', protect, async (req, res) 
     }
     instructorName = instructorName || 'Course Instructor';
 
+    const courseDuration = courseObj?.duration || (courseObj?.durationDays && courseObj?.durationHours ? `${courseObj.durationDays} (${courseObj.durationHours})` : (courseObj?.sessionDates?.length ? `${courseObj.sessionDates.length} Days (${courseObj.sessionDates.length} Hours)` : '30 Days (20 Hours)'));
+
     const certPdfBuffer = await generateCertificatePDF({
       studentName: studentName.trim(),
       courseTitle: courseObj?.title || enrollment.course?.title || 'Workshop',
+      duration: courseDuration,
       instructorName,
       completionDate: new Date(compDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
       certificateId: certId
@@ -682,9 +702,12 @@ router.post('/admin/issue-certificate/:enrollmentId', protect, admin, async (req
     }
     instructorName = instructorName || 'Course Instructor';
 
+    const courseDuration = courseObj?.duration || (courseObj?.durationDays && courseObj?.durationHours ? `${courseObj.durationDays} (${courseObj.durationHours})` : (courseObj?.sessionDates?.length ? `${courseObj.sessionDates.length} Days (${courseObj.sessionDates.length} Hours)` : '30 Days (20 Hours)'));
+
     const certPdfBuffer = await generateCertificatePDF({
       studentName,
       courseTitle: courseObj?.title || enrollment.course?.title || 'Yoga Course',
+      duration: courseDuration,
       instructorName,
       completionDate: new Date(completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
       certificateId: certId
@@ -766,7 +789,7 @@ router.get('/certificate/:enrollmentId/download', async (req, res) => {
       instructorName,
       completionDate: new Date(compDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
       certificateId: certId,
-      duration: courseObj?.duration || enrollment.course?.duration || '30 Days\n(20 Hours)'
+      duration: courseObj?.duration || enrollment.course?.duration || (courseObj?.durationDays && courseObj?.durationHours ? `${courseObj.durationDays} (${courseObj.durationHours})` : (courseObj?.sessionDates?.length ? `${courseObj.sessionDates.length} Days (${courseObj.sessionDates.length} Hours)` : '30 Days (20 Hours)'))
     });
 
     res.setHeader('Content-Type', 'application/pdf');
