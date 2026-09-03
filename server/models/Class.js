@@ -25,6 +25,9 @@ const classSchema = new mongoose.Schema({
   zoomLink: {
     type: String
   },
+  zoomStartUrl: {
+    type: String
+  },
   zoomMeetingId: {
     type: String
   },

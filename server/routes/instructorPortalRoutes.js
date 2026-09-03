@@ -80,14 +80,23 @@ router.get('/dashboard-stats', protect, instructor, async (req, res) => {
           startMin = m;
         }
       }
-      const sessionStart = new Date(classDate);
-      sessionStart.setHours(startHour, startMin, 0, 0);
+      // Parse session date & time in IST (Asia/Kolkata +05:30)
+      const datePart = new Date(cl.date).toISOString().split('T')[0];
+      const timePart = `${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00+05:30`;
+      const sessionStart = new Date(`${datePart}T${timePart}`);
       const duration = cl.durationMinutes || 60;
       const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
 
       const isPast = now > sessionEnd;
       const isLiveNow = now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd;
       const status = isPast ? 'COMPLETED' : (isLiveNow ? 'LIVE NOW' : 'UPCOMING');
+
+      // Determine Host start URL for launching Zoom directly
+      let zoomHostUrl = cl.zoomStartUrl || '';
+      if (!zoomHostUrl && cl.zoomLink) {
+        // Convert /j/ (join) to /s/ (start) so Zoom prompts "Launch Zoom Meetings"
+        zoomHostUrl = cl.zoomLink.replace(/\/j\//, '/s/');
+      }
 
       return {
         ...clObj,
@@ -97,7 +106,9 @@ router.get('/dashboard-stats', protect, instructor, async (req, res) => {
         isLiveNow,
         isUpcoming: !isPast && !isLiveNow,
         sessionStart,
-        sessionEnd
+        sessionEnd,
+        zoomStartUrl: zoomHostUrl || cl.zoomLink,
+        zoomHostUrl: zoomHostUrl || cl.zoomLink
       };
     });
 

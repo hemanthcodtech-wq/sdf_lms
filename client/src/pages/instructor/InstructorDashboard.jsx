@@ -390,8 +390,9 @@ const InstructorDashboard = () => {
                         }
                       }
 
-                      const sessionStart = new Date(classDate);
-                      sessionStart.setHours(startHour, startMin, 0, 0);
+                      const datePart = new Date(cls.date).toISOString().split('T')[0];
+                      const timePart = `${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}:00+05:30`;
+                      const sessionStart = new Date(`${datePart}T${timePart}`);
                       const duration = cls.durationMinutes || 60;
                       const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
 
@@ -1018,9 +1019,9 @@ const InstructorDashboard = () => {
                     </div>
 
                     <div className="shrink-0 flex items-center gap-2">
-                      {cls.zoomLink || cls.zoomJoinUrl ? (
+                      {cls.zoomStartUrl || cls.zoomHostUrl || cls.zoomLink || cls.zoomJoinUrl ? (
                         <a
-                          href={cls.zoomLink || cls.zoomJoinUrl}
+                          href={cls.zoomStartUrl || cls.zoomHostUrl || (cls.zoomLink ? cls.zoomLink.replace(/\/j\//, '/s/') : cls.zoomJoinUrl)}
                           target="_blank"
                           rel="noreferrer"
                           className="px-5 py-2.5 bg-brand-green hover:bg-brand-green-dark text-white rounded-xl font-bold text-xs shadow-sm hover:shadow transition-all flex items-center gap-2 cursor-pointer"

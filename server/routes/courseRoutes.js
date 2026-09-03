@@ -215,12 +215,14 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
 
           const startTimeObj = new Date(`${sessionDate}T${startTime}:00`);
           let zoomJoinUrl = zoomMeetingLink || '';
+          let zoomStartUrl = '';
           let zoomId = '';
 
           try {
             const zoomDetails = await createZoomMeeting(classTitle, startTimeObj.toISOString(), durationMinutes > 0 ? durationMinutes : 60);
             if (zoomDetails?.joinUrl) {
               zoomJoinUrl = zoomDetails.joinUrl;
+              zoomStartUrl = zoomDetails.startUrl || '';
               zoomId = zoomDetails.meetingId;
             }
           } catch (zErr) {
@@ -236,6 +238,7 @@ router.post('/', protect, admin, upload.fields([{ name: 'thumbnail', maxCount: 1
             durationMinutes: durationMinutes > 0 ? durationMinutes : 60,
             isRecurring: false,
             zoomLink: zoomJoinUrl,
+            zoomStartUrl: zoomStartUrl,
             zoomMeetingId: zoomId
           });
         } catch (err) {

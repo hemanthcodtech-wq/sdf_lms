@@ -150,10 +150,15 @@ export const InstructorDashboardScreen = ({ navigation }) => {
       Alert.alert('Notice', 'Zoom meeting link has not been configured yet.');
       return;
     }
+    // For instructors, open via /s/ (start) instead of /j/ (join) to launch as Host
+    let launchUrl = zoomUrl;
+    if (launchUrl.includes('/j/')) {
+      launchUrl = launchUrl.replace('/j/', '/s/');
+    }
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.open(zoomUrl, '_blank');
+      window.open(launchUrl, '_blank');
     } else {
-      Linking.openURL(zoomUrl).catch(() => {
+      Linking.openURL(launchUrl).catch(() => {
         Alert.alert('Error', 'Unable to open Zoom application. Please check link validity.');
       });
     }
@@ -529,7 +534,7 @@ export const InstructorDashboardScreen = ({ navigation }) => {
                           ? styles.hostZoomBtnLive
                           : styles.hostZoomBtnUpcoming,
                       ]}
-                      onPress={() => handleStartZoom(cl.zoomLink || cl.courseId?.zoomMeetingLink)}
+                      onPress={() => handleStartZoom(cl.zoomStartUrl || cl.zoomHostUrl || cl.zoomLink || cl.courseId?.zoomMeetingLink)}
                       activeOpacity={0.8}
                     >
                       <Ionicons

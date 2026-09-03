@@ -134,6 +134,7 @@ router.post('/', protect, admin, async (req, res) => {
       durationMinutes,
       isRecurring,
       zoomLink: zoomDetails.joinUrl,
+      zoomStartUrl: zoomDetails.startUrl,
       zoomMeetingId: zoomDetails.meetingId
     });
 
@@ -216,6 +217,7 @@ router.post('/:id/reschedule', protect, admin, async (req, res) => {
     liveClass.time = formattedTime;
     liveClass.durationMinutes = classDuration;
     liveClass.zoomLink = zoomDetails.joinUrl;
+    liveClass.zoomStartUrl = zoomDetails.startUrl;
     liveClass.zoomMeetingId = zoomDetails.meetingId;
     await liveClass.save();
 
