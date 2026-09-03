@@ -26,11 +26,28 @@ router.get(['/history', '/my-enrollments', '/my-payments'], protect, async (req,
         { userId: req.user._id }
       ]
     })
-      .populate('course', 'title category thumbnailUrl accessValidity duration price instructor instructorId whatsappGroupLink')
+      .populate('course', 'title category thumbnailUrl accessValidity duration price instructor instructorId whatsappGroupLink sessionDates timings startDate startTime endTime sessions')
       .sort('-createdAt');
 
-    // Ensure any completed enrollment has a valid certificateId attached to their account
+    // Compute dynamic session progress and ensure completed courses have certificateId
     for (const enr of enrollments) {
+      if (enr.course) {
+        const dates = enr.course.sessionDates || [];
+        if (dates.length > 0) {
+          const now = new Date();
+          let completedCount = 0;
+          dates.forEach((sd) => {
+            const sDate = new Date(sd);
+            if (!isNaN(sDate.getTime()) && now > new Date(sDate.getTime() + 60 * 60 * 1000)) {
+              completedCount++;
+            }
+          });
+          if (completedCount > 0 && !enr.completed) {
+            enr.progress = Math.min(100, Math.round((completedCount / dates.length) * 100));
+          }
+        }
+      }
+
       if ((enr.completed || enr.progress >= 100) && !enr.certificateId) {
         enr.certificateId = `SDF-CERT-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
         enr.completed = true;

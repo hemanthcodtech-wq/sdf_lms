@@ -65,6 +65,72 @@ export const MyLearningScreen = ({ navigation }) => {
 
   const getEnrollmentProgress = (item) => {
     if (isCourseCompleted(item)) return 100;
+
+    const courseObj = (item && typeof item.course === 'object' && item.course !== null)
+      ? item.course
+      : item;
+
+    // Check if course has sessions or sessionDates
+    const dates = courseObj?.sessionDates || [];
+    const classes = courseObj?.classes || courseObj?.liveClasses || courseObj?.sessions || [];
+    const topics = courseObj?.topics || [];
+    const totalCount = dates.length > 0 ? dates.length : (classes.length > 0 ? classes.length : topics.length);
+
+    if (totalCount > 0) {
+      const now = new Date();
+      let completedCount = 0;
+
+      for (let idx = 0; idx < totalCount; idx++) {
+        const dateStr = dates[idx] || (classes[idx] && classes[idx].date) || courseObj?.startDate;
+        const timeStr = (classes[idx] && classes[idx].time) || courseObj?.startTime || (courseObj?.timings ? courseObj.timings.split(' to ')[0] : '06:00');
+        const endTimeStr = courseObj?.endTime || (courseObj?.timings && courseObj.timings.includes(' to ') ? courseObj.timings.split(' to ')[1] : null);
+
+        if (dateStr) {
+          try {
+            const rawDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+            const [y, m, d] = rawDate.split('-').map(Number);
+            if (y && m && d) {
+              let startH = 6, startM = 0;
+              if (timeStr) {
+                const cleanTime = timeStr.trim();
+                const match = cleanTime.match(/(\d{1,2}):(\d{2})/);
+                if (match) {
+                  startH = parseInt(match[1], 10);
+                  startM = parseInt(match[2], 10);
+                  if (cleanTime.toLowerCase().includes('pm') && startH < 12) startH += 12;
+                  if (cleanTime.toLowerCase().includes('am') && startH === 12) startH = 0;
+                }
+              }
+
+              let sessionEnd;
+              if (endTimeStr) {
+                const matchEnd = endTimeStr.match(/(\d{1,2}):(\d{2})/);
+                if (matchEnd) {
+                  let endH = parseInt(matchEnd[1], 10);
+                  let endM = parseInt(matchEnd[2], 10);
+                  if (endTimeStr.toLowerCase().includes('pm') && endH < 12) endH += 12;
+                  if (endTimeStr.toLowerCase().includes('am') && endH === 12) endH = 0;
+                  sessionEnd = new Date(y, m - 1, d, endH, endM, 0, 0);
+                }
+              }
+              if (!sessionEnd) {
+                const durMins = (classes[idx] && classes[idx].durationMinutes) || 60;
+                sessionEnd = new Date(new Date(y, m - 1, d, startH, startM, 0, 0).getTime() + durMins * 60 * 1000);
+              }
+
+              if (now > sessionEnd) {
+                completedCount++;
+              }
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (completedCount > 0) {
+        return Math.min(100, Math.round((completedCount / totalCount) * 100));
+      }
+    }
+
     if (typeof item.progress === 'number' && item.progress > 0 && item.progress < 100) {
       return item.progress;
     }

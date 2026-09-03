@@ -205,31 +205,20 @@ export const StudentClassesScreen = ({ route, navigation }) => {
 
   const currentLesson = realSessions[activeLessonIndex] || realSessions[0] || null;
   
-  const isCourseCertified = Boolean(
-    route.params?.enrollment?.completed ||
-    course?.completed ||
-    route.params?.enrollment?.certificateId
-  );
-  const backendProgress = typeof route.params?.enrollment?.progress === 'number'
-    ? route.params.enrollment.progress
-    : null;
-
   const completedCount = realSessions.filter((lesson, idx) => getSessionStatus(lesson, idx).isCompleted).length;
   const calculatedPercent = realSessions.length > 0
     ? Math.round((completedCount / realSessions.length) * 100)
     : 0;
 
-  const progressPercent = isCourseCertified
-    ? 100
-    : (backendProgress !== null && backendProgress > 0 && backendProgress < 100
-        ? backendProgress
-        : calculatedPercent);
+  // Strict Rule: A course is ONLY completed if ALL real sessions are finished!
+  const allSessionsFinished = !loading && realSessions.length > 0 && completedCount === realSessions.length;
+  const isCourseCertified = Boolean(certIssued || (allSessionsFinished && route.params?.enrollment?.certificateId));
 
-  const isCourseCompleted =
-    progressPercent >= 100 ||
-    (completedCount > 0 && completedCount === realSessions.length) ||
-    isCourseCertified ||
-    certIssued;
+  const progressPercent = allSessionsFinished
+    ? 100
+    : calculatedPercent;
+
+  const isCourseCompleted = allSessionsFinished;
 
   const handleClaimOrViewCert = async () => {
     if (certIssued || isCourseCertified) {
@@ -249,11 +238,11 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         `Congratulations on completing "${course?.title || 'your course'}"! Your official certificate has been issued, sent to your email, and saved to your account.`
       );
       Alert.alert(
-        '🏆 Certificate Generated & Sent!',
-        res?.message || 'Your official Certificate of Completion has been generated, saved to your account, and emailed to you.',
+        '🏆 Certificate Generated!',
+        res?.message || 'Your official Certificate of Completion has been generated and saved to your profile. You can view and download it now.',
         [
           {
-            text: 'View in Portal',
+            text: 'View in Profile',
             onPress: () => navigation.navigate('Certificates'),
           },
           { text: 'OK', style: 'cancel' },
@@ -686,22 +675,20 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                 <ProgressBar progress={progressPercent} height={7} />
               </View>
 
-              {/* Action Buttons */}
+              {/* Action Button */}
               {certIssued || isCourseCertified ? (
-                <View style={{ gap: 10, marginTop: 16 }}>
-                  <CustomButton
-                    title="View Certificate in Portal →"
+                <View style={{ marginTop: 16 }}>
+                  <TouchableOpacity
+                    style={styles.genCertBtn}
                     onPress={() => navigation.navigate('Certificates')}
-                    variant="primary"
-                    size="lg"
-                  />
-                  <CustomButton
-                    title={claimingCert ? "Resending Email..." : "Resend to Registered Email"}
-                    onPress={handleClaimOrViewCert}
-                    disabled={claimingCert}
-                    variant="outline"
-                    size="md"
-                  />
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="download-outline" size={18} color="#ffffff" style={{ marginRight: 8 }} />
+                    <Text style={styles.genCertBtnText}>View & Download Certificate in Profile →</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.certLockedExplanation}>
+                    Your official certificate is issued and saved. You can download the PDF anytime from Profile → My Certificates.
+                  </Text>
                 </View>
               ) : (
                 <View style={{ marginTop: 16 }}>
@@ -728,14 +715,14 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                           styles.genCertBtnText,
                           !isCourseCompleted && styles.genCertBtnTextDisabled
                         ]}>
-                          {isCourseCompleted ? "Generate Certificate (Save & Email)" : "Locked: Complete All Sessions"}
+                          {isCourseCompleted ? "Generate Certificate" : "Generate Certificate (Locked)"}
                         </Text>
                       </>
                     )}
                   </TouchableOpacity>
                   {!isCourseCompleted && (
                     <Text style={styles.certLockedExplanation}>
-                      This button will automatically unlock and become clickable once all course sessions are completed.
+                      This button is locked and will automatically unlock once all {realSessions.length} sessions are completed.
                     </Text>
                   )}
                 </View>
