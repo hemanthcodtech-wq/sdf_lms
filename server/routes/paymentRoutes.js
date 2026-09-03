@@ -57,7 +57,28 @@ router.get(['/history', '/my-enrollments', '/my-payments'], protect, async (req,
       }
     }
 
-    res.json({ success: true, data: enrollments });
+    const formattedEnrollments = enrollments.map((enr) => {
+      const obj = enr.toObject ? enr.toObject() : enr;
+      const amount = (typeof obj.amountPaid === 'number' && !isNaN(obj.amountPaid))
+        ? obj.amountPaid 
+        : (obj.course?.price || 0);
+      const rawDate = obj.createdAt || obj.updatedAt;
+      const formattedDate = rawDate 
+        ? new Date(rawDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+        : 'Recent';
+
+      return {
+        ...obj,
+        amount,
+        amountPaid: amount,
+        transactionId: obj.invoiceNumber || (obj._id ? `TXN-${String(obj._id).slice(-8).toUpperCase()}` : 'TXN-ONLINE'),
+        id: obj.invoiceNumber || obj._id,
+        date: formattedDate,
+        method: obj.paymentMethod || 'Online (Razorpay)'
+      };
+    });
+
+    res.json({ success: true, data: formattedEnrollments });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error fetching enrollments', error: error.message });
   }
