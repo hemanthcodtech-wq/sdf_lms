@@ -225,6 +225,12 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         ? backendProgress
         : calculatedPercent);
 
+  const isCourseCompleted =
+    progressPercent >= 100 ||
+    (completedCount > 0 && completedCount === realSessions.length) ||
+    isCourseCertified ||
+    certIssued;
+
   const handleClaimOrViewCert = async () => {
     if (certIssued || isCourseCertified) {
       return navigation.navigate('Certificates');
@@ -392,47 +398,12 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         <ProgressBar progress={progressPercent} height={6} />
       </View>
 
-      {/* Course Completion & Certificate Section */}
-      {(progressPercent >= 100 || isCourseCertified || certIssued || (completedCount > 0 && completedCount === realSessions.length)) && (
-        <View style={styles.certificateBanner}>
-          <View style={styles.certificateBannerLeft}>
-            <View style={styles.certIconCircle}>
-              <Ionicons name="trophy" size={22} color="#d97706" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.certBannerTitle}>Course Completed! 🎓</Text>
-              <Text style={styles.certBannerSubtitle}>
-                {certIssued || isCourseCertified
-                  ? 'Official certificate has been auto-sent to your email and saved in your account.'
-                  : 'Congratulations on finishing all sessions! Tap below to auto-send certificate.'}
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.certActionBtn}
-            onPress={handleClaimOrViewCert}
-            disabled={claimingCert}
-            activeOpacity={0.85}
-          >
-            {claimingCert ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <>
-                <Ionicons name={certIssued || isCourseCertified ? "ribbon-outline" : "send"} size={16} color="#ffffff" />
-                <Text style={styles.certActionBtnText}>
-                  {certIssued || isCourseCertified ? "View Certificate in Portal →" : "Auto-Send Certificate to Email & Account →"}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* Navigation Tabs */}
       <View style={styles.tabNav}>
         {[
           { id: 'lessons', label: `Sessions (${realSessions.length})` },
           { id: 'materials', label: 'Materials & Notes' },
+          { id: 'certificate', label: 'Certificate' },
           { id: 'community', label: 'Batch Community' },
         ].map((t) => (
           <TouchableOpacity
@@ -643,6 +614,133 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                 description="Your instructor has not attached additional downloadable study files for this course yet."
               />
             )}
+          </View>
+        )}
+
+        {activeTab === 'certificate' && (
+          <View style={styles.certTabSection}>
+            <View style={[styles.certCard, shadows.md]}>
+              {/* Top Certificate Header */}
+              <View style={styles.certCardHeader}>
+                <View style={[
+                  styles.certIconBigCircle,
+                  { backgroundColor: isCourseCompleted ? '#ecfdf5' : '#f8fafc' }
+                ]}>
+                  <Ionicons
+                    name={isCourseCompleted ? (certIssued || isCourseCertified ? "ribbon" : "trophy") : "lock-closed"}
+                    size={34}
+                    color={isCourseCompleted ? (certIssued || isCourseCertified ? "#0d5c31" : "#d97706") : "#94a3b8"}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.certCourseTitle} numberOfLines={2}>
+                    {course?.title || 'Course Certificate'}
+                  </Text>
+                  <Text style={styles.certFacultyText}>
+                    Instructor: <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{course?.instructor || course?.instructorId?.name || 'Assigned Instructor'}</Text>
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.certDivider} />
+
+              {/* Status Box */}
+              {certIssued || isCourseCertified ? (
+                <View style={styles.certStatusSuccess}>
+                  <Ionicons name="checkmark-circle" size={22} color="#0d5c31" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.certStatusTitleSuccess}>Certificate Issued & Verified</Text>
+                    <Text style={styles.certStatusDesc}>
+                      Your verified Certificate of Completion is saved to your account and has been emailed to you.
+                    </Text>
+                  </View>
+                </View>
+              ) : isCourseCompleted ? (
+                <View style={styles.certStatusUnlocked}>
+                  <Ionicons name="sparkles" size={22} color="#d97706" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.certStatusTitleUnlocked}>Course Completed! 🎉</Text>
+                    <Text style={styles.certStatusDesc}>
+                      Congratulations on completing all sessions! Tap below to generate your official certificate.
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.certStatusLocked}>
+                  <Ionicons name="lock-closed" size={22} color="#64748b" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.certStatusTitleLocked}>Certificate Locked</Text>
+                    <Text style={styles.certStatusDesc}>
+                      Complete all {realSessions.length} sessions to unlock and generate your official Certificate of Completion.
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Progress Bar & Details */}
+              <View style={styles.certProgressBox}>
+                <View style={styles.certProgressHeader}>
+                  <Text style={styles.certProgressLabel}>Course Sessions Progress</Text>
+                  <Text style={styles.certProgressPercent}>{completedCount}/{realSessions.length} Sessions ({progressPercent}%)</Text>
+                </View>
+                <ProgressBar progress={progressPercent} height={7} />
+              </View>
+
+              {/* Action Buttons */}
+              {certIssued || isCourseCertified ? (
+                <View style={{ gap: 10, marginTop: 16 }}>
+                  <CustomButton
+                    title="View Certificate in Portal →"
+                    onPress={() => navigation.navigate('Certificates')}
+                    variant="primary"
+                    size="lg"
+                  />
+                  <CustomButton
+                    title={claimingCert ? "Resending Email..." : "Resend to Registered Email"}
+                    onPress={handleClaimOrViewCert}
+                    disabled={claimingCert}
+                    variant="outline"
+                    size="md"
+                  />
+                </View>
+              ) : (
+                <View style={{ marginTop: 16 }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.genCertBtn,
+                      !isCourseCompleted && styles.genCertBtnDisabled
+                    ]}
+                    onPress={isCourseCompleted ? handleClaimOrViewCert : null}
+                    disabled={!isCourseCompleted || claimingCert}
+                    activeOpacity={isCourseCompleted ? 0.8 : 1}
+                  >
+                    {claimingCert ? (
+                      <ActivityIndicator color="#ffffff" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons
+                          name={isCourseCompleted ? "ribbon-outline" : "lock-closed-outline"}
+                          size={18}
+                          color={isCourseCompleted ? "#ffffff" : "#94a3b8"}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text style={[
+                          styles.genCertBtnText,
+                          !isCourseCompleted && styles.genCertBtnTextDisabled
+                        ]}>
+                          {isCourseCompleted ? "Generate Certificate (Save & Email)" : "Locked: Complete All Sessions"}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  {!isCourseCompleted && (
+                    <Text style={styles.certLockedExplanation}>
+                      This button will automatically unlock and become clickable once all course sessions are completed.
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
           </View>
         )}
 
@@ -1017,66 +1115,155 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  certificateBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 4,
-    backgroundColor: '#fffbeb',
-    borderWidth: 1.5,
-    borderColor: '#f59e0b',
-    borderRadius: 16,
-    padding: 14,
-    shadowColor: '#d97706',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
+  certTabSection: {
+    paddingVertical: 6,
   },
-  certificateBannerLeft: {
+  certCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  certCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 10,
+    gap: 14,
   },
-  certIconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#fef3c7',
-    borderWidth: 1,
-    borderColor: '#fcd34d',
+  certIconBigCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
-  certBannerTitle: {
-    fontSize: 15,
+  certCourseTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  certFacultyText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  certDivider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+    marginVertical: 16,
+  },
+  certStatusSuccess: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    borderRadius: 14,
+    padding: 12,
+    gap: 10,
+    marginBottom: 16,
+  },
+  certStatusTitleSuccess: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#065f46',
+    marginBottom: 2,
+  },
+  certStatusUnlocked: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    borderRadius: 14,
+    padding: 12,
+    gap: 10,
+    marginBottom: 16,
+  },
+  certStatusTitleUnlocked: {
+    fontSize: 14,
     fontWeight: '800',
     color: '#92400e',
+    marginBottom: 2,
   },
-  certBannerSubtitle: {
+  certStatusLocked: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    padding: 12,
+    gap: 10,
+    marginBottom: 16,
+  },
+  certStatusTitleLocked: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#475569',
+    marginBottom: 2,
+  },
+  certStatusDesc: {
     fontSize: 12,
-    color: '#78350f',
-    marginTop: 2,
-    lineHeight: 16,
+    color: colors.textSecondary,
+    lineHeight: 17,
   },
-  certActionBtn: {
+  certProgressBox: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+  },
+  certProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  certProgressLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  certProgressPercent: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.primary,
+  },
+  genCertBtn: {
     backgroundColor: '#0d5c31',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    shadowColor: '#0d5c31',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  certActionBtnText: {
+  genCertBtnDisabled: {
+    backgroundColor: '#e2e8f0',
+    opacity: 0.55,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  genCertBtnText: {
     color: '#ffffff',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
+  },
+  genCertBtnTextDisabled: {
+    color: '#94a3b8',
+  },
+  certLockedExplanation: {
+    fontSize: 11,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 15,
   },
 });

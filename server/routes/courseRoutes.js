@@ -523,7 +523,12 @@ router.post('/:id/complete', protect, async (req, res) => {
       studentName = (req.user.email || req.user.emailOrPhone || 'Learner').split('@')[0];
     }
 
-    const instructorName = course.instructorId?.name || course.instructor || 'Lead Yoga Guru';
+    let instructorName = course.instructor || course.instructorId?.name;
+    if (!instructorName && course.instructorId) {
+      const instUser = await User.findById(course.instructorId).select('name');
+      if (instUser?.name) instructorName = instUser.name;
+    }
+    instructorName = instructorName || 'Course Instructor';
 
     const toEmail = (
       req.user.email || 
@@ -598,9 +603,18 @@ router.post('/certificate/:enrollmentId/update-name', protect, async (req, res) 
     const certId = enrollment.certificateId || `SDF-CERT-${Date.now().toString().slice(-6)}`;
     const compDate = enrollment.completionDate || new Date();
 
+    const courseObj = await Course.findById(enrollment.course).populate('instructorId');
+    let instructorName = courseObj?.instructor || courseObj?.instructorId?.name;
+    if (!instructorName && courseObj?.instructorId) {
+      const instUser = await User.findById(courseObj.instructorId).select('name');
+      if (instUser?.name) instructorName = instUser.name;
+    }
+    instructorName = instructorName || 'Course Instructor';
+
     const certPdfBuffer = await generateCertificatePDF({
       studentName: studentName.trim(),
-      courseTitle: enrollment.course?.title || 'Workshop',
+      courseTitle: courseObj?.title || enrollment.course?.title || 'Workshop',
+      instructorName,
       completionDate: new Date(compDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-'),
       certificateId: certId
     });
@@ -660,9 +674,18 @@ router.post('/admin/issue-certificate/:enrollmentId', protect, admin, async (req
       studentName = enrollment.studentEmail.split('@')[0];
     }
 
+    const courseObj = await Course.findById(enrollment.course).populate('instructorId');
+    let instructorName = courseObj?.instructor || courseObj?.instructorId?.name;
+    if (!instructorName && courseObj?.instructorId) {
+      const instUser = await User.findById(courseObj.instructorId).select('name');
+      if (instUser?.name) instructorName = instUser.name;
+    }
+    instructorName = instructorName || 'Course Instructor';
+
     const certPdfBuffer = await generateCertificatePDF({
       studentName,
-      courseTitle: enrollment.course?.title || 'Yoga Course',
+      courseTitle: courseObj?.title || enrollment.course?.title || 'Yoga Course',
+      instructorName,
       completionDate: new Date(completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
       certificateId: certId
     });
@@ -728,13 +751,22 @@ router.get('/certificate/:enrollmentId/download', async (req, res) => {
     const compDate = enrollment.completionDate || enrollment.updatedAt || new Date();
     const studentId = user?.studentId || (user?._id ? `SDWFY${user._id.toString().slice(-6).toUpperCase()}` : 'SDWFY250501');
 
+    const courseObj = await Course.findById(enrollment.course).populate('instructorId');
+    let instructorName = courseObj?.instructor || courseObj?.instructorId?.name;
+    if (!instructorName && courseObj?.instructorId) {
+      const instUser = await User.findById(courseObj.instructorId).select('name');
+      if (instUser?.name) instructorName = instUser.name;
+    }
+    instructorName = instructorName || 'Course Instructor';
+
     const certBuffer = await generateCertificatePDF({
       studentName,
       studentId,
-      courseTitle: enrollment.course?.title || 'Yoga & Vedic Sciences',
+      courseTitle: courseObj?.title || enrollment.course?.title || 'Yoga & Vedic Sciences',
+      instructorName,
       completionDate: new Date(compDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
       certificateId: certId,
-      duration: enrollment.course?.duration || '30 Days\n(20 Hours)'
+      duration: courseObj?.duration || enrollment.course?.duration || '30 Days\n(20 Hours)'
     });
 
     res.setHeader('Content-Type', 'application/pdf');

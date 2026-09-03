@@ -456,9 +456,12 @@ const generateCertificatePDF = (data) => {
       const instWidth = 160;
       const instBoxX = 289.4 - (instWidth / 2); // 209.4 pt
 
-      const instName = (data.instructorName || 'RISHI KRISHNA').toUpperCase();
-      const instTitle = data.instructorTitle || 'Yoga Instructor';
-      const instSub = data.instructorSubtitle || 'Certified Yoga Professional';
+      const rawInstName = data.instructorName && data.instructorName !== 'RISHI KRISHNA'
+        ? data.instructorName
+        : (data.instructor || 'Course Instructor');
+      const instName = String(rawInstName).toUpperCase();
+      const instTitle = data.instructorTitle || 'Course Instructor';
+      const instSub = data.instructorSubtitle || 'Swamy Dwija Foundation';
 
       doc.fillColor('#0A4F2A')
          .font('Helvetica-Bold')

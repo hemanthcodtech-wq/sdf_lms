@@ -326,7 +326,7 @@ const Certificates = () => {
                       {/* Bottom Instructor Details (Left, Centered under left diamond ornament) */}
                       <div className="absolute left-[24.5%] -translate-x-1/2 bottom-[9%] text-center w-[22%]">
                         <p className="font-extrabold text-[8px] md:text-[10px] text-[#0A4F2A] uppercase tracking-tight">
-                          {instructorName || 'RISHI KRISHNA'}
+                          {certCourse?.instructor || certCourse?.instructorId?.name || certCourse?.instructorName || 'Course Instructor'}
                         </p>
                         <p className="text-[6.5px] md:text-[8px] text-gray-600 font-medium">
                           Yoga Instructor
