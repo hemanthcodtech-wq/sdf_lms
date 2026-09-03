@@ -420,9 +420,9 @@ const StudentClasses = () => {
                                 cls.zoomLink ? (
                                   <button 
                                     onClick={() => setSelectedLiveClass(cls)}
-                                    className="text-[11px] font-bold text-white tracking-wider uppercase bg-brand-green hover:bg-brand-green-dark px-4 py-2 rounded-full shadow-md shadow-brand-green/30 transition-all hover:scale-105 flex items-center gap-1.5 cursor-pointer"
+                                    className="text-[11px] font-bold text-white tracking-wider uppercase bg-brand-green hover:bg-brand-green-dark px-4 py-2 rounded-full shadow-md shadow-brand-green/30 transition-all hover:scale-105 flex items-center gap-1.5 cursor-pointer animate-pulse"
                                   >
-                                    <FaVideo size={12}/> JOIN LIVE
+                                    <FaVideo size={12}/> JOIN CLASS
                                   </button>
                                 ) : (
                                   <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full">Link Pending</span>
@@ -430,14 +430,21 @@ const StudentClasses = () => {
                               ) : isPast ? (
                                 <button 
                                   onClick={() => handleViewClassMaterial(cls)} 
-                                  className="text-[11px] font-bold text-brand-green-dark hover:text-white bg-brand-green/10 hover:bg-brand-green px-4 py-2 rounded-full border border-brand-green/20 transition-all flex items-center gap-1.5 shadow-sm"
+                                  className="text-[11px] font-bold text-brand-green-dark hover:text-white bg-brand-green/10 hover:bg-brand-green px-4 py-2 rounded-full border border-brand-green/20 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
                                 >
                                   <FaBook size={11} /> VIEW MATERIALS
                                 </button>
                               ) : (
-                                <span className="text-[11px] font-semibold text-amber-700 bg-amber-50/80 border border-amber-200/60 px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
-                                  <FaCalendarAlt size={11} className="text-[#C08552]" /> Scheduled
-                                </span>
+                                <div className="relative group/joinbtn flex items-center">
+                                  <button
+                                    disabled={true}
+                                    title={`Join Class activates 2 minutes before ${cls.time || 'start time'}`}
+                                    className="text-[11px] font-bold text-gray-400 bg-gray-100/90 border border-gray-200 px-3.5 py-1.5 rounded-full flex items-center gap-1.5 cursor-not-allowed opacity-60 filter blur-[0.3px] select-none"
+                                  >
+                                    <FaVideo size={10} className="text-gray-400" />
+                                    <span>Join Class</span>
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </motion.div>

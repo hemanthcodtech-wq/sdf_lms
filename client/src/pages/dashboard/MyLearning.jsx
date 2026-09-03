@@ -40,6 +40,52 @@ const MyLearning = () => {
             .filter(enrollment => enrollment && (enrollment.course || enrollment.courseId))
             .map(enrollment => {
               const courseObj = typeof enrollment.course === 'object' ? enrollment.course : {};
+              
+              // Dynamic progress calculation matching session dates
+              const dates = courseObj.sessionDates || [];
+              const classes = courseObj.classes || courseObj.sessions || [];
+              const totalCount = dates.length > 0 ? dates.length : classes.length;
+              let calcProgress = 0;
+              let allFinished = false;
+
+              if (totalCount > 0) {
+                const now = new Date();
+                let completedCount = 0;
+                for (let idx = 0; idx < totalCount; idx++) {
+                  const rawDate = dates[idx] || (classes[idx] && classes[idx].date) || courseObj.startDate;
+                  if (rawDate) {
+                    try {
+                      const dateStr = String(rawDate).includes('T') ? String(rawDate).split('T')[0] : String(rawDate);
+                      const [y, m, d] = dateStr.split('-').map(Number);
+                      if (y && m && d) {
+                        let startH = 6, startM = 0;
+                        const timeStr = (classes[idx] && classes[idx].time) || courseObj.startTime || (courseObj.timings ? courseObj.timings.split(' to ')[0] : '06:00');
+                        if (timeStr) {
+                          const match = timeStr.trim().match(/(\d{1,2}):(\d{2})/);
+                          if (match) {
+                            startH = parseInt(match[1], 10);
+                            startM = parseInt(match[2], 10);
+                            if (timeStr.toLowerCase().includes('pm') && startH < 12) startH += 12;
+                            if (timeStr.toLowerCase().includes('am') && startH === 12) startH = 0;
+                          }
+                        }
+                        const sessionStart = new Date(y, m - 1, d, startH, startM, 0, 0);
+                        const durMins = (classes[idx] && classes[idx].durationMinutes) || 60;
+                        const sessionEnd = new Date(sessionStart.getTime() + durMins * 60 * 1000);
+                        if (now > sessionEnd) {
+                          completedCount++;
+                        }
+                      }
+                    } catch (e) {}
+                  }
+                }
+                allFinished = completedCount === totalCount && totalCount > 0;
+                calcProgress = allFinished ? 100 : Math.round((completedCount / totalCount) * 100);
+              } else if (typeof enrollment.progress === 'number' && enrollment.progress > 0) {
+                calcProgress = enrollment.progress;
+                allFinished = enrollment.completed || enrollment.progress >= 100;
+              }
+
               return {
                 id: enrollment._id,
                 courseId: courseObj._id || enrollment.course,
@@ -47,7 +93,8 @@ const MyLearning = () => {
                 category: courseObj.category || 'Vedic Sciences',
                 image: courseObj.thumbnailUrl || courseObj.thumbnail || courseObj.image || '',
                 whatsappGroupLink: courseObj.whatsappGroupLink || '',
-                progress: enrollment.progress || Math.floor(Math.random() * 40) + 15
+                progress: calcProgress,
+                completed: allFinished && Boolean(enrollment.certificateId)
               };
             });
           setCourses(fetchedCourses);
@@ -118,6 +165,33 @@ const MyLearning = () => {
     return colors[category] || colors['General'];
   };
 
+  const isClassLive = (cls) => {
+    if (!cls || !cls.date) return false;
+    try {
+      const now = new Date();
+      const rawDate = String(cls.date).split('T')[0];
+      let startH = 6, startM = 0;
+      if (cls.time) {
+        const match = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+        if (match) {
+          startH = parseInt(match[1], 10);
+          startM = parseInt(match[2], 10);
+          const ampm = match[3] ? match[3].toUpperCase() : null;
+          if (ampm === 'PM' && startH < 12) startH += 12;
+          if (ampm === 'AM' && startH === 12) startH = 0;
+        }
+      }
+      const [y, m, d] = rawDate.split('-').map(Number);
+      const sessionStart = new Date(y, m - 1, d, startH, startM, 0, 0);
+      const joinWindowStart = new Date(sessionStart.getTime() - 2 * 60 * 1000);
+      const duration = cls.durationMinutes || 60;
+      const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+      return now >= joinWindowStart && now <= sessionEnd;
+    } catch (e) {
+      return false;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F9F7F5] pb-24 md:pb-8 pt-20 md:pt-8">
       <div className="max-w-7xl mx-auto px-4 lg:px-8 pt-6">
@@ -173,13 +247,31 @@ const MyLearning = () => {
               </div>
 
               {upcomingClass && (
-                <a 
-                  href={upcomingClass.zoomLink || '#'} 
-                  target={upcomingClass.zoomLink ? "_blank" : "_self"}
-                  className={`bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900 font-bold px-8 py-3.5 rounded-full text-lg shadow-[0_4px_15px_rgba(252,213,54,0.3)] transition-all hover:scale-105 flex items-center gap-2 whitespace-nowrap ${!upcomingClass.zoomLink && 'opacity-70 cursor-not-allowed'}`}
-                >
-                  Join Now
-                </a>
+                isClassLive(upcomingClass) ? (
+                  <a 
+                    href={upcomingClass.zoomLink || '#'} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900 font-extrabold px-8 py-3.5 rounded-full text-base shadow-[0_4px_15px_rgba(252,213,54,0.3)] transition-all hover:scale-105 flex items-center gap-2 whitespace-nowrap animate-pulse cursor-pointer"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping inline-block"></span>
+                    Join Now (Live)
+                  </a>
+                ) : (
+                  <div className="flex flex-col items-center md:items-end gap-1.5">
+                    <button 
+                      disabled={true}
+                      title={`Join button activates 2 minutes before ${upcomingClass.time || 'class starts'}`}
+                      className="bg-gray-200/90 text-gray-400 font-bold px-8 py-3.5 rounded-full text-base shadow-none cursor-not-allowed flex items-center gap-2 whitespace-nowrap opacity-60 filter blur-[0.3px] select-none"
+                    >
+                      <FaVideo size={14} className="text-gray-400" />
+                      Join Now
+                    </button>
+                    <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 border border-amber-300/70 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      STARTS 2M BEFORE
+                    </span>
+                  </div>
+                )
               )}
             </div>
 
@@ -256,7 +348,7 @@ const MyLearning = () => {
                             )}
                           </div>
 
-                          {(course.progress === 100 || course.completed) && (
+                          {(course.progress === 100 && course.completed) && (
                             <button
                               onClick={() => navigate('/dashboard/certificates')}
                               className="w-full mt-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
