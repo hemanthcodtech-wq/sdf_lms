@@ -197,19 +197,19 @@ export const ProfileScreen = ({ navigation }) => {
   const effectiveUser = detailedProfile || user;
   const avatarUri = getAvatarUrl(effectiveUser?.avatar);
 
-  const menuSections = [
+  const menuItems = [
     {
       id: 'wishlist',
-      title: t('myWishlist'),
+      title: t('myWishlist') || 'My Wishlist',
       subtitle: `${wishlist?.length || 0} saved courses`,
       icon: 'heart-outline',
       color: '#ef4444',
       badge: wishlist?.length > 0 ? wishlist.length.toString() : null,
-      onPress: () => navigation.navigate('Wishlist'),
+      onPress: () => navigation.navigate('WishlistTab'),
     },
     {
       id: 'learning',
-      title: t('myEnrollments'),
+      title: t('myEnrollments') || 'My Enrollments',
       subtitle: `${stats.enrolledCount} active courses`,
       icon: 'book-outline',
       color: colors.primary,
@@ -218,7 +218,7 @@ export const ProfileScreen = ({ navigation }) => {
     },
     {
       id: 'payments',
-      title: t('paymentHistory'),
+      title: t('paymentHistory') || 'Payment History',
       subtitle: `${stats.paymentsCount} transactions`,
       icon: 'card-outline',
       color: colors.secondary,
@@ -226,7 +226,7 @@ export const ProfileScreen = ({ navigation }) => {
     },
     {
       id: 'certificates',
-      title: t('myCertificates'),
+      title: t('myCertificates') || 'My Certificates',
       subtitle: `${stats.certificatesCount} certificates earned`,
       icon: 'ribbon-outline',
       color: '#f59e0b',
@@ -235,11 +235,19 @@ export const ProfileScreen = ({ navigation }) => {
     },
     {
       id: 'settings',
-      title: t('settings'),
+      title: t('settings') || 'Settings',
       subtitle: 'App preferences & language selection',
       icon: 'settings-outline',
       color: '#6366f1',
       onPress: () => navigation.navigate('Settings'),
+    },
+    {
+      id: 'help',
+      title: t('helpSupport') || 'Help & Support',
+      subtitle: 'FAQ, contact info & direct guidance',
+      icon: 'help-circle-outline',
+      color: '#0284c7',
+      onPress: () => navigation.navigate('HelpSupport'),
     },
   ];
 
@@ -299,25 +307,25 @@ export const ProfileScreen = ({ navigation }) => {
             </Text>
             <View style={styles.roleBadgeWrap}>
               <Badge
-                text={user.role ? user.role.toUpperCase() : 'STUDENT'}
-                variant={user.role === 'admin' ? 'danger' : 'primary'}
+                text={effectiveUser?.role ? effectiveUser.role.toUpperCase() : 'STUDENT'}
+                variant={effectiveUser?.role === 'admin' ? 'danger' : 'primary'}
               />
             </View>
 
-            <View style={styles.metricsBar}>
-              <View style={styles.metricItem}>
-                <Text style={styles.metricVal}>{stats.enrolledCount}</Text>
-                <Text style={styles.metricLabel}>{t('courses')}</Text>
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{stats.enrolledCount}</Text>
+                <Text style={styles.statLabel}>{t('courses') || 'Courses'}</Text>
               </View>
-              <View style={styles.metricDivider} />
-              <View style={styles.metricItem}>
-                <Text style={styles.metricVal}>{stats.certificatesCount}</Text>
-                <Text style={styles.metricLabel}>{t('certificates')}</Text>
+              <View style={styles.statDivider} />
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{stats.certificatesCount}</Text>
+                <Text style={styles.statLabel}>{t('certificates') || 'Certificates'}</Text>
               </View>
-              <View style={styles.metricDivider} />
-              <View style={styles.metricItem}>
-                <Text style={styles.metricVal}>{stats.paymentsCount}</Text>
-                <Text style={styles.metricLabel}>Paid</Text>
+              <View style={styles.statDivider} />
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{stats.paymentsCount}</Text>
+                <Text style={styles.statLabel}>Paid</Text>
               </View>
             </View>
           </View>

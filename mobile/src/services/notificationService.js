@@ -152,28 +152,44 @@ export const notificationService = {
         const timePart = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00+05:30`;
         const sessionStart = new Date(`${datePart}T${timePart}`);
 
-        // Schedule 15 minutes before if in the future
-        const reminderTime15 = new Date(sessionStart.getTime() - 15 * 60 * 1000);
-        if (reminderTime15 > now) {
+        // 1. Schedule 2 minutes before session start
+        const reminderTime2Min = new Date(sessionStart.getTime() - 2 * 60 * 1000);
+        if (reminderTime2Min > now) {
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: `⏰ Live Class in 15 Minutes!`,
-              body: `"${cls.title}" is starting soon. Get ready to join your guru live on Zoom!`,
+              title: `🔴 Live Session Starting in 2 Minutes!`,
+              body: `"${cls.title}" starts in 2 minutes. Tap to join Zoom now!`,
               data: { zoomLink: cls.zoomLink || cls.zoomJoinUrl, classId: cls._id },
               sound: 'default',
               channelId: 'default',
               priority: Notifications.AndroidNotificationPriority?.MAX,
             },
+            trigger: reminderTime2Min,
+          }).catch(() => {});
+        }
+
+        // 2. Schedule 15 minutes before if in the future
+        const reminderTime15 = new Date(sessionStart.getTime() - 15 * 60 * 1000);
+        if (reminderTime15 > now) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `⏰ Live Class in 15 Minutes!`,
+              body: `"${cls.title}" is starting soon. Get ready to join your live session on Zoom!`,
+              data: { zoomLink: cls.zoomLink || cls.zoomJoinUrl, classId: cls._id },
+              sound: 'default',
+              channelId: 'default',
+              priority: Notifications.AndroidNotificationPriority?.HIGH,
+            },
             trigger: reminderTime15,
           }).catch(() => {});
         }
 
-        // Schedule at start time if in the future
+        // 3. Schedule at start time if in the future
         if (sessionStart > now) {
           await Notifications.scheduleNotificationAsync({
             content: {
-              title: `🔴 Live Class Starting Now!`,
-              body: `"${cls.title}" is starting right now. Tap to join Zoom immediately!`,
+              title: `🔴 Live Session Starting Now!`,
+              body: `"${cls.title}" has started. Tap to join Zoom immediately!`,
               data: { zoomLink: cls.zoomLink || cls.zoomJoinUrl, classId: cls._id },
               sound: 'default',
               channelId: 'default',
@@ -263,11 +279,28 @@ export const notificationService = {
       }
 
       if (Array.isArray(myCourses) && myCourses.length > 0) {
-        myCourses.slice(0, 3).forEach((enroll) => {
+        myCourses.forEach((enroll) => {
           const courseTitle = enroll.course?.title || enroll.title || 'Your Course';
           const courseId = enroll.course?._id || enroll._id;
-          const notifId = `enroll_${courseId}`;
 
+          // Certificate notification if course is completed
+          if (enroll.completed || enroll.certificateId) {
+            const certNotifId = `cert_${courseId}`;
+            if (!dismissedIds.has(certNotifId)) {
+              dynamicLiveNotifications.push({
+                id: certNotifId,
+                type: 'certificate',
+                title: '🏆 Certificate of Completion Issued!',
+                message: `Congratulations! Your official certificate for "${courseTitle}" has been issued and is available in your account.`,
+                time: 'Certificate Ready',
+                unread: true,
+                urgent: false,
+                createdAt: enroll.completedAt || enroll.updatedAt || new Date().toISOString(),
+              });
+            }
+          }
+
+          const notifId = `enroll_${courseId}`;
           if (!dismissedIds.has(notifId)) {
             dynamicLiveNotifications.push({
               id: notifId,

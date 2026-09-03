@@ -18,6 +18,7 @@ import { colors, shadows } from '../../theme/colors';
 import { CustomButton } from '../../components/CustomButton';
 import { useAuth } from '../../context/AuthContext';
 import { paymentService } from '../../services/paymentService';
+import { notificationService } from '../../services/notificationService';
 import { getCourseImageUrl } from '../../utils/imageHelper';
 
 // Conditionally load react-native-webview on native platforms
@@ -190,6 +191,10 @@ export const CheckoutScreen = ({ route, navigation }) => {
                 });
 
                 if (verifyRes.success) {
+                  await notificationService.sendInstantNotification(
+                    '🎉 Course Enrollment Confirmed!',
+                    `You are now enrolled in "${course.title}". Your live classes and syllabus are active!`
+                  );
                   if (typeof window !== 'undefined') {
                     window.alert(`🎉 Payment Successful!\n\nYou are now enrolled into ${course.title}.`);
                   }
@@ -422,6 +427,10 @@ export const CheckoutScreen = ({ route, navigation }) => {
         });
 
         if (verifyRes.success) {
+          await notificationService.sendInstantNotification(
+            '🎉 Course Enrollment Confirmed!',
+            `You are now enrolled in "${course.title}". Your live classes and syllabus are active!`
+          );
           Alert.alert(
             'Payment Successful! 🎉',
             `Congratulations! You have been enrolled into ${course.title}.`,

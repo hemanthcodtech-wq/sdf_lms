@@ -22,6 +22,7 @@ import { Badge } from '../../components/Badge';
 import { ProgressBar } from '../../components/Badge';
 import { EmptyState } from '../../components/EmptyState';
 import { courseService } from '../../services/courseService';
+import { notificationService } from '../../services/notificationService';
 import { getCourseImageUrl } from '../../utils/imageHelper';
 
 export const StudentClassesScreen = ({ route, navigation }) => {
@@ -237,6 +238,10 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       setClaimingCert(true);
       const res = await courseService.completeCourse(courseId);
       setCertIssued(true);
+      await notificationService.sendInstantNotification(
+        '🏆 Certificate of Completion Issued!',
+        `Congratulations on completing "${course?.title || 'your course'}"! Your official certificate has been issued, sent to your email, and saved to your account.`
+      );
       Alert.alert(
         '🏆 Certificate Generated & Sent!',
         res?.message || 'Your official Certificate of Completion has been generated, saved to your account, and emailed to you.',

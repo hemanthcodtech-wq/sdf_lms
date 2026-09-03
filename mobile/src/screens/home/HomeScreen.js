@@ -40,14 +40,10 @@ export const HomeScreen = ({ navigation }) => {
 
   const userAvatarUri = getAvatarUrl(user?.avatar || user?.profileImage || user?.photoURL || user?.image);
 
-  const defaultCategories = ['All', 'Yoga', 'Meditation', 'Nutrition', 'Ayurveda'];
-  const categories = Array.from(
-    new Set([
-      'All',
-      ...courses.map((c) => c.category).filter(Boolean),
-      ...defaultCategories
-    ])
+  const courseCategories = Array.from(
+    new Set(courses.map((c) => c.category?.trim()).filter(Boolean))
   );
+  const categories = ['All', ...courseCategories];
 
   const getClassSessionTimes = (cl) => {
     if (!cl || !cl.date) return null;

@@ -33,15 +33,10 @@ export const CourseListScreen = ({ navigation }) => {
   const [selectedLevel, setSelectedLevel] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const defaultCategories = ['All', 'Yoga', 'Meditation', 'Ayurveda', 'Spiritual', 'Personality', 'Skill Development', 'Vedic Science', 'Other'];
-
-  const dynamicCategories = Array.from(
-    new Set([
-      'All',
-      ...courses.map((c) => c.category).filter(Boolean),
-      ...defaultCategories
-    ])
+  const courseCategories = Array.from(
+    new Set(courses.map((c) => c.category?.trim()).filter(Boolean))
   );
+  const dynamicCategories = ['All', ...courseCategories];
 
   const fetchCourses = useCallback(async (isInitial = false) => {
     try {
