@@ -53,7 +53,11 @@ export const authService = {
         },
         body: formData,
       });
-      return await res.json();
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || 'Upload failed');
+      }
+      return data;
     } catch (err) {
       console.error('Fetch avatar upload failed, trying api fallback', err);
       const response = await api.post('/auth/upload-avatar', formData);

@@ -22,7 +22,7 @@ export const HelpSupportScreen = ({ navigation }) => {
   const faqs = [
     {
       q: 'How do I join my live Zoom classes?',
-      a: 'Navigate to the Home screen or "My Learning" -> click on your course -> select "Launch Zoom Session" under Live & Community.',
+      a: 'Navigate to the Home screen under "Upcoming Live Classes" or go to "My Learning" -> tap your enrolled course -> select your active session under "Sessions" to join the live Zoom class.',
     },
     {
       q: 'When do I receive my course certificate?',

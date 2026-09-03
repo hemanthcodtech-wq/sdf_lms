@@ -49,6 +49,51 @@ export const HomeScreen = ({ navigation }) => {
     ])
   );
 
+  const getClassSessionTimes = (cl) => {
+    if (!cl || !cl.date) return null;
+    try {
+      const rawDate = typeof cl.date === 'string'
+        ? (cl.date.includes('T') ? cl.date.split('T')[0] : cl.date)
+        : new Date(cl.date).toISOString().split('T')[0];
+      const [y, m, d] = rawDate.split('-').map(Number);
+      if (!y || !m || !d) return null;
+
+      let timeStr = (cl.time || cl.courseId?.startTime || (cl.courseId?.timings ? cl.courseId.timings.split(' to ')[0] : '06:00') || '').trim();
+      let startH = 6, startM = 0;
+      const match = timeStr.match(/(\d{1,2}):(\d{2})/);
+      if (match) {
+        startH = parseInt(match[1], 10);
+        startM = parseInt(match[2], 10);
+        if (timeStr.toLowerCase().includes('pm') && startH < 12) startH += 12;
+        if (timeStr.toLowerCase().includes('am') && startH === 12) startH = 0;
+      }
+
+      const sessionStart = new Date(y, m - 1, d, startH, startM, 0, 0);
+
+      let sessionEnd = null;
+      let endTimeStr = cl.endTime || cl.courseId?.endTime || (cl.courseId?.timings && (cl.courseId.timings.includes(' to ') || cl.courseId.timings.includes('-')) ? cl.courseId.timings.split(/to|-/)[1] : null);
+      if (endTimeStr) {
+        const matchEnd = endTimeStr.trim().match(/(\d{1,2}):(\d{2})/);
+        if (matchEnd) {
+          let endH = parseInt(matchEnd[1], 10);
+          let endM = parseInt(matchEnd[2], 10);
+          if (endTimeStr.toLowerCase().includes('pm') && endH < 12) endH += 12;
+          if (endTimeStr.toLowerCase().includes('am') && endH === 12) endH = 0;
+          sessionEnd = new Date(y, m - 1, d, endH, endM, 0, 0);
+        }
+      }
+
+      if (!sessionEnd || isNaN(sessionEnd.getTime()) || sessionEnd <= sessionStart) {
+        const durMins = cl.durationMinutes || 60;
+        sessionEnd = new Date(sessionStart.getTime() + durMins * 60 * 1000);
+      }
+
+      return { sessionStart, sessionEnd };
+    } catch (e) {
+      return null;
+    }
+  };
+
   const loadData = useCallback(async () => {
     try {
       const promises = [courseService.getPublicCourses()];
@@ -98,8 +143,10 @@ export const HomeScreen = ({ navigation }) => {
           const rawClasses = results[1].value.data;
           const today = new Date();
           today.setHours(0, 0, 0, 0);
+          const now = new Date();
 
           // Only show upcoming classes belonging to courses the student is actually enrolled in!
+          // Exclude any class that has already completed (now > sessionEnd)
           const enrolledUpcoming = rawClasses
             .filter((cl) => {
               const classCourseId = (cl.courseId?._id || cl.course?._id || cl.courseId || cl.course || '').toString();
@@ -122,12 +169,27 @@ export const HomeScreen = ({ navigation }) => {
 
               if (!isEnrolled) return false;
 
-              if (!cl.date) return true;
-              const d = new Date(cl.date);
-              d.setHours(23, 59, 59, 999);
-              return d >= today;
+              const times = getClassSessionTimes(cl);
+              if (times) {
+                // If session has already completed, exclude from Upcoming Live Classes
+                if (now > times.sessionEnd) {
+                  return false;
+                }
+              } else if (cl.date) {
+                const d = new Date(cl.date);
+                d.setHours(23, 59, 59, 999);
+                if (d < today) return false;
+              }
+
+              return true;
             })
-            .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+            .sort((a, b) => {
+              const timesA = getClassSessionTimes(a);
+              const timesB = getClassSessionTimes(b);
+              const timeAVal = timesA ? timesA.sessionStart.getTime() : new Date(a.date || 0).getTime();
+              const timeBVal = timesB ? timesB.sessionStart.getTime() : new Date(b.date || 0).getTime();
+              return timeAVal - timeBVal;
+            });
 
           setLiveClasses(enrolledUpcoming);
           if (enrolledUpcoming.length > 0) {
@@ -206,7 +268,7 @@ export const HomeScreen = ({ navigation }) => {
           >
             <View style={styles.avatarCircle}>
               {userAvatarUri ? (
-                <Image source={{ uri: userAvatarUri, cache: 'force-cache' }} style={styles.avatarImg} />
+                <Image source={{ uri: userAvatarUri }} style={styles.avatarImg} />
               ) : (
                 <Text style={styles.avatarText}>
                   {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}

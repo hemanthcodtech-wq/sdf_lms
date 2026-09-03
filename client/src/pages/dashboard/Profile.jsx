@@ -48,7 +48,6 @@ const ProfileMenu = () => {
 
       const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/upload-avatar`, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
       });
@@ -63,6 +62,8 @@ const ProfileMenu = () => {
             const parsed = JSON.parse(storedUser);
             parsed.avatar = res.data.avatar;
             localStorage.setItem('user', JSON.stringify(parsed));
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event('user-updated'));
           } catch (e) {}
         }
 
@@ -73,6 +74,7 @@ const ProfileMenu = () => {
       console.error("Error uploading avatar:", err);
       alert(err?.response?.data?.message || 'Failed to upload profile picture.');
     } finally {
+      if (e.target) e.target.value = '';
       setUploading(false);
     }
   };

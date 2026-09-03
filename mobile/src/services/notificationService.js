@@ -207,11 +207,38 @@ export const notificationService = {
       if (Array.isArray(liveClasses)) {
         liveClasses.forEach((cls) => {
           if (cls.date) {
-            const classTime = new Date(cls.date);
-            const diffMinutes = Math.round((classTime - now) / (1000 * 60));
+            let sessionStart = new Date(cls.date);
+            let sessionEnd = new Date(sessionStart.getTime() + (cls.durationMinutes || 60) * 60 * 1000);
+
+            if (cls.time) {
+              const parts = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+              if (parts) {
+                let hour = parseInt(parts[1], 10);
+                const min = parseInt(parts[2], 10);
+                const ampm = parts[3] ? parts[3].toUpperCase() : null;
+                if (ampm === 'PM' && hour < 12) hour += 12;
+                if (ampm === 'AM' && hour === 12) hour = 0;
+
+                const rawDate = typeof cls.date === 'string'
+                  ? (cls.date.includes('T') ? cls.date.split('T')[0] : cls.date)
+                  : new Date(cls.date).toISOString().split('T')[0];
+                const [y, m, d] = rawDate.split('-').map(Number);
+                if (y && m && d) {
+                  sessionStart = new Date(y, m - 1, d, hour, min, 0, 0);
+                  sessionEnd = new Date(sessionStart.getTime() + (cls.durationMinutes || 60) * 60 * 1000);
+                }
+              }
+            }
+
+            // Do not show notification for completed sessions
+            if (now > sessionEnd) {
+              return;
+            }
+
+            const diffMinutes = Math.round((sessionStart - now) / (1000 * 60));
 
             if (diffMinutes >= -60 && diffMinutes <= 1440) {
-              const isUrgent = diffMinutes <= 15 && diffMinutes >= -30;
+              const isUrgent = diffMinutes <= 15 && diffMinutes >= -15;
               const notifId = `live_${cls._id || cls.id}_${cls.date}`;
 
               if (!dismissedIds.has(notifId)) {

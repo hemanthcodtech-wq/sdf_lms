@@ -24,7 +24,7 @@ api.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      if (config.data instanceof FormData) {
+      if (config.data && (config.data instanceof FormData || (typeof config.data === 'object' && config.data._parts))) {
         delete config.headers['Content-Type'];
       }
     } catch (error) {

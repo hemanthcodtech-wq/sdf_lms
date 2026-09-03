@@ -428,7 +428,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         {[
           { id: 'lessons', label: `Sessions (${realSessions.length})` },
           { id: 'materials', label: 'Materials & Notes' },
-          { id: 'community', label: 'Live & Community' },
+          { id: 'community', label: 'Batch Community' },
         ].map((t) => (
           <TouchableOpacity
             key={t.id}
@@ -643,24 +643,6 @@ export const StudentClassesScreen = ({ route, navigation }) => {
 
         {activeTab === 'community' && (
           <View style={styles.communitySection}>
-            {/* Live Zoom Action */}
-            <View style={[styles.actionCard, shadows.sm]}>
-              <View style={styles.actionCardHeader}>
-                <Ionicons name="videocam" size={24} color={colors.primary} />
-                <Text style={styles.actionCardTitle}>Live Class Room</Text>
-              </View>
-              <Text style={styles.actionCardDesc}>
-                Timings: {course?.timings || 'Live interactive batch sessions'}
-              </Text>
-              <CustomButton
-                title="Launch Zoom Session"
-                onPress={() => handleJoinZoom(null)}
-                variant="primary"
-                size="md"
-                style={{ marginTop: 10 }}
-              />
-            </View>
-
             {/* WhatsApp Group */}
             {course?.whatsappGroupLink ? (
               <View style={[styles.actionCard, shadows.sm]}>

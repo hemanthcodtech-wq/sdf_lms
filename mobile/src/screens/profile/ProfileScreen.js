@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +21,6 @@ import { useLanguage } from '../../context/LanguageContext';
 import { courseService } from '../../services/courseService';
 import { paymentService } from '../../services/paymentService';
 import { authService } from '../../services/authService';
-import { API_BASE_URL } from '../../services/api';
 import { getAvatarUrl } from '../../utils/imageHelper';
 
 export const ProfileScreen = ({ navigation }) => {
@@ -28,7 +28,6 @@ export const ProfileScreen = ({ navigation }) => {
   const { user, logout, wishlist, updateUserProfile } = useAuth();
   const { t } = useLanguage();
 
-  const fileInputRef = React.useRef(null);
   const [stats, setStats] = useState({
     enrolledCount: 0,
     certificatesCount: 0,
@@ -89,30 +88,55 @@ export const ProfileScreen = ({ navigation }) => {
     }, [user, loadProfileData])
   );
 
-  const handleUploadAvatar = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    } else if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = handleFileChange;
-      input.click();
-    }
-  };
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleUploadAvatar = async () => {
     try {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permission Needed',
+            'Please grant permission to access your photo library to update your profile photo.'
+          );
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const selectedAsset = result.assets[0];
       setUploadingAvatar(true);
       setUploadSuccess(false);
+
       const formData = new FormData();
-      formData.append('avatar', file);
+      if (Platform.OS === 'web') {
+        const fetchRes = await fetch(selectedAsset.uri);
+        const blob = await fetchRes.blob();
+        formData.append('avatar', blob, 'avatar.jpg');
+      } else {
+        const uri = selectedAsset.uri;
+        const uriParts = uri.split('/');
+        const fileName = selectedAsset.fileName || uriParts[uriParts.length - 1] || `avatar_${Date.now()}.jpg`;
+        const match = /\.(\w+)$/.exec(fileName);
+        const type = selectedAsset.mimeType || (match ? `image/${match[1]}` : 'image/jpeg');
+
+        formData.append('avatar', {
+          uri,
+          name: fileName,
+          type,
+        });
+      }
 
       const res = await authService.uploadAvatar(formData);
-      if (res.success && res.avatar) {
+      if (res && res.success && res.avatar) {
         setDetailedProfile((prev) => ({ ...prev, avatar: res.avatar }));
         if (updateUserProfile) {
           await updateUserProfile({ avatar: res.avatar });
@@ -120,14 +144,15 @@ export const ProfileScreen = ({ navigation }) => {
         setUploadSuccess(true);
         setTimeout(() => setUploadSuccess(false), 3000);
       } else {
-        throw new Error(res.message || 'Upload failed');
+        throw new Error(res?.message || 'Upload failed');
       }
     } catch (err) {
       console.error('Avatar upload error:', err);
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to update profile photo.';
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.alert(err?.response?.data?.message || err.message || 'Failed to update profile photo.');
+        window.alert(errMsg);
       } else {
-        Alert.alert('Upload Error', err?.response?.data?.message || err.message || 'Failed to update profile photo.');
+        Alert.alert('Upload Error', errMsg);
       }
     } finally {
       setUploadingAvatar(false);
@@ -164,38 +189,49 @@ export const ProfileScreen = ({ navigation }) => {
           },
         ]);
       }
-    } catch (err) {
-      console.error('Logout error:', err);
+    } catch (error) {
+      console.error('Error logging out:', error);
     }
   };
 
   const effectiveUser = detailedProfile || user;
   const avatarUri = getAvatarUrl(effectiveUser?.avatar);
 
-  const menuItems = [
+  const menuSections = [
     {
-      id: 'certificates',
-      title: 'My Certificates',
-      subtitle: `${stats.certificatesCount} earned certificates`,
-      icon: 'ribbon-outline',
-      color: '#f59e0b',
-      onPress: () => navigation.navigate('Certificates'),
-    },
-    {
-      id: 'payments',
-      title: 'Payment History',
-      subtitle: `${stats.paymentsCount} orders & invoices`,
-      icon: 'receipt-outline',
-      color: colors.primary,
-      onPress: () => navigation.navigate('PaymentHistory'),
+      id: 'wishlist',
+      title: t('myWishlist'),
+      subtitle: `${wishlist?.length || 0} saved courses`,
+      icon: 'heart-outline',
+      color: '#ef4444',
+      badge: wishlist?.length > 0 ? wishlist.length.toString() : null,
+      onPress: () => navigation.navigate('Wishlist'),
     },
     {
       id: 'learning',
-      title: 'My Enrollments',
+      title: t('myEnrollments'),
       subtitle: `${stats.enrolledCount} active courses`,
       icon: 'book-outline',
-      color: colors.secondary,
+      color: colors.primary,
+      badge: stats.enrolledCount > 0 ? stats.enrolledCount.toString() : null,
       onPress: () => navigation.navigate('LearningTab'),
+    },
+    {
+      id: 'payments',
+      title: t('paymentHistory'),
+      subtitle: `${stats.paymentsCount} transactions`,
+      icon: 'card-outline',
+      color: colors.secondary,
+      onPress: () => navigation.navigate('PaymentHistory'),
+    },
+    {
+      id: 'certificates',
+      title: t('myCertificates'),
+      subtitle: `${stats.certificatesCount} certificates earned`,
+      icon: 'ribbon-outline',
+      color: '#f59e0b',
+      badge: stats.certificatesCount > 0 ? stats.certificatesCount.toString() : null,
+      onPress: () => navigation.navigate('Certificates'),
     },
     {
       id: 'settings',
@@ -205,45 +241,20 @@ export const ProfileScreen = ({ navigation }) => {
       color: '#6366f1',
       onPress: () => navigation.navigate('Settings'),
     },
-    {
-      id: 'help',
-      title: t('helpSupport'),
-      subtitle: 'FAQ, contact info & direct guidance',
-      icon: 'help-circle-outline',
-      color: '#0284c7',
-      onPress: () => navigation.navigate('HelpSupport'),
-    },
   ];
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 14 : Math.max(insets.top, 20) }]}>
         <Text style={styles.headerTitle}>{t('profile')}</Text>
-        {user && (
-          <TouchableOpacity onPress={loadProfileData} style={styles.refreshBtn} activeOpacity={0.7}>
-            <Ionicons name="refresh" size={18} color={colors.textPrimary} />
-          </TouchableOpacity>
-        )}
       </View>
 
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 36 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* User Profile Card */}
         {user ? (
           <View style={[styles.profileCard, shadows.md]}>
-            {Platform.OS === 'web' && (
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                accept="image/*"
-                onChange={handleFileChange}
-              />
-            )}
-            {/* Avatar with Interactive Upload Camera Badge */}
             <View style={styles.avatarWrapper}>
               <TouchableOpacity
                 onPress={handleUploadAvatar}
@@ -252,7 +263,7 @@ export const ProfileScreen = ({ navigation }) => {
                 style={styles.avatarContainer}
               >
                 {avatarUri ? (
-                  <Image source={{ uri: avatarUri, cache: 'force-cache' }} style={styles.avatarImg} />
+                  <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
                 ) : (
                   <View style={styles.avatarLarge}>
                     <Text style={styles.avatarLargeText}>
@@ -261,7 +272,6 @@ export const ProfileScreen = ({ navigation }) => {
                   </View>
                 )}
 
-                {/* Camera Icon Overlay */}
                 <View style={styles.cameraBadge}>
                   {uploadingAvatar ? (
                     <ActivityIndicator size="small" color="#ffffff" />
@@ -288,24 +298,26 @@ export const ProfileScreen = ({ navigation }) => {
               {effectiveUser?.email || effectiveUser?.emailOrPhone || 'student@sdflms.org'}
             </Text>
             <View style={styles.roleBadgeWrap}>
-              <Badge text={(effectiveUser?.role || 'STUDENT').toUpperCase()} variant="primary" />
+              <Badge
+                text={user.role ? user.role.toUpperCase() : 'STUDENT'}
+                variant={user.role === 'admin' ? 'danger' : 'primary'}
+              />
             </View>
 
-            {/* Quick Stats Row */}
-            <View style={styles.statsRow}>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{stats.enrolledCount}</Text>
-                <Text style={styles.statLabel}>Enrolled</Text>
+            <View style={styles.metricsBar}>
+              <View style={styles.metricItem}>
+                <Text style={styles.metricVal}>{stats.enrolledCount}</Text>
+                <Text style={styles.metricLabel}>{t('courses')}</Text>
               </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{stats.certificatesCount}</Text>
-                <Text style={styles.statLabel}>Certificates</Text>
+              <View style={styles.metricDivider} />
+              <View style={styles.metricItem}>
+                <Text style={styles.metricVal}>{stats.certificatesCount}</Text>
+                <Text style={styles.metricLabel}>{t('certificates')}</Text>
               </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{wishlist?.length || 0}</Text>
-                <Text style={styles.statLabel}>Wishlist</Text>
+              <View style={styles.metricDivider} />
+              <View style={styles.metricItem}>
+                <Text style={styles.metricVal}>{stats.paymentsCount}</Text>
+                <Text style={styles.metricLabel}>Paid</Text>
               </View>
             </View>
           </View>
@@ -325,7 +337,6 @@ export const ProfileScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* Detailed Student Information Card */}
         {user && (
           <View style={[styles.infoCard, shadows.sm]}>
             <Text style={styles.sectionHeaderTitle}>Student Details</Text>
