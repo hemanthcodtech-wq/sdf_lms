@@ -3,7 +3,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaCalendarAlt, FaVideo, FaFilePdf, FaTimes, FaBook, 
-  FaArrowLeft, FaChevronRight, FaAward, FaPlayCircle, FaWhatsapp, FaCheckCircle 
+  FaArrowLeft, FaChevronRight, FaAward, FaPlayCircle, FaWhatsapp, FaCheckCircle, FaLock 
 } from 'react-icons/fa';
 import { useParams, useNavigate } from 'react-router-dom';
 import ZoomLiveClassroom from '../../components/classroom/ZoomLiveClassroom';
@@ -20,10 +20,44 @@ const StudentClasses = () => {
   
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [certSuccessMessage, setCertSuccessMessage] = useState('');
+  const [enrollment, setEnrollment] = useState(null);
+
+  const completedCount = allClasses.filter((cls) => {
+    try {
+      const now = new Date();
+      const classDate = new Date(cls.date);
+      let startHour = 6, startMin = 0;
+      if (cls.time) {
+        const parts = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+        if (parts) {
+          let h = parseInt(parts[1], 10);
+          const m = parseInt(parts[2], 10);
+          const ampm = parts[3] ? parts[3].toUpperCase() : null;
+          if (ampm === 'PM' && h < 12) h += 12;
+          if (ampm === 'AM' && h === 12) h = 0;
+          startHour = h;
+          startMin = m;
+        }
+      }
+      const sessionStart = new Date(classDate);
+      sessionStart.setHours(startHour, startMin, 0, 0);
+      const duration = cls.durationMinutes || 60;
+      const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+      return now > sessionEnd;
+    } catch (e) {
+      return false;
+    }
+  }).length;
+
+  const allSessionsCompleted = !loading && allClasses.length > 0 && completedCount === allClasses.length;
+  const isCertified = Boolean(allSessionsCompleted && (enrollment?.certificateId || enrollment?.completed));
 
   const handleClaimCertificate = async () => {
     if (!courseId) {
       return navigate('/dashboard/certificates');
+    }
+    if (!allSessionsCompleted) {
+      return;
     }
     setCompleting(true);
     try {
@@ -89,6 +123,20 @@ const StudentClasses = () => {
         }
       }
       setMaterials(allMaterials);
+
+      // Fetch enrollment to check completion / certificate status
+      try {
+        const payRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/payments/history`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (payRes.data?.data && Array.isArray(payRes.data.data)) {
+          const matchEnr = payRes.data.data.find(e => {
+            const cid = e.course?._id || e.course;
+            return String(cid) === String(courseId);
+          });
+          if (matchEnr) setEnrollment(matchEnr);
+        }
+      } catch (e) {}
       
     } catch (err) {
       console.error("Error fetching student data:", err);
@@ -251,17 +299,49 @@ const StudentClasses = () => {
                     </div>
                   )}
 
-                  <button 
-                    onClick={handleClaimCertificate}
-                    disabled={completing}
-                    className="rounded-xl py-4 px-5 flex items-center justify-between shadow-sm border border-brand-green/30 bg-green-50 hover:bg-green-100 text-brand-green transition-all duration-300 col-span-2 lg:col-span-1 cursor-pointer"
-                  >
-                    <span className="text-[13px] font-extrabold flex items-center gap-2">
-                      <FaAward className="text-yellow-600" />
-                      {completing ? 'Auto-Sending Certificate...' : 'Get & Auto-Send Certificate of Completion'}
-                    </span>
-                    <FaChevronRight className="text-brand-green text-[12px]" />
-                  </button>
+                  {isCertified ? (
+                    <button 
+                      onClick={() => navigate('/dashboard/certificates')}
+                      className="rounded-xl py-4 px-5 flex items-center justify-between shadow-sm border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-all duration-300 col-span-2 lg:col-span-1 cursor-pointer"
+                    >
+                      <span className="text-[13px] font-extrabold flex items-center gap-2">
+                        <FaAward className="text-yellow-600 text-base" />
+                        <span>View & Download Certificate →</span>
+                      </span>
+                      <FaChevronRight className="text-emerald-700 text-[12px]" />
+                    </button>
+                  ) : allSessionsCompleted ? (
+                    <button 
+                      onClick={handleClaimCertificate}
+                      disabled={completing}
+                      className="rounded-xl py-4 px-5 flex items-center justify-between shadow-md border border-brand-green/30 bg-emerald-600 hover:bg-emerald-700 text-white transition-all duration-300 col-span-2 lg:col-span-1 cursor-pointer transform hover:-translate-y-0.5"
+                    >
+                      <span className="text-[13px] font-extrabold flex items-center gap-2">
+                        <FaAward className="text-yellow-300 text-base" />
+                        {completing ? 'Generating Certificate...' : 'Generate Certificate'}
+                      </span>
+                      <FaChevronRight className="text-white text-[12px]" />
+                    </button>
+                  ) : (
+                    <div className="col-span-2 lg:col-span-1 space-y-1.5">
+                      <button 
+                        disabled={true}
+                        title="Complete all course sessions to unlock certificate"
+                        className="w-full rounded-xl py-4 px-5 flex items-center justify-between shadow-2xs border border-gray-200 bg-gray-100/90 text-gray-400 opacity-60 cursor-not-allowed select-none transition-all"
+                      >
+                        <span className="text-[13px] font-bold flex items-center gap-2 text-gray-500">
+                          <FaLock className="text-gray-400" />
+                          <span>Generate Certificate (Locked)</span>
+                        </span>
+                        <span className="text-[11px] font-bold bg-gray-200 text-gray-600 px-2.5 py-0.5 rounded-full">
+                          {completedCount}/{allClasses.length} Done
+                        </span>
+                      </button>
+                      <p className="text-[11px] text-gray-500 font-medium px-1">
+                        🔒 Automatically unlocks once all {allClasses.length} scheduled sessions are completed.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
