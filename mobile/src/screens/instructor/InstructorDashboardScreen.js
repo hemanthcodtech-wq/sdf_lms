@@ -545,9 +545,7 @@ export const InstructorDashboardScreen = ({ navigation }) => {
                       >
                         {isCompleted
                           ? 'Replay / Enter Session ↗'
-                          : isLive
-                          ? 'Join Live Classroom ↗'
-                          : 'Host / Join Zoom Class ↗'}
+                          : 'Start Session ↗'}
                       </Text>
                     </TouchableOpacity>
                   </View>
