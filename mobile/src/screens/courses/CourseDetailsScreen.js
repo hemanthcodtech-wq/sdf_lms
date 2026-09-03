@@ -157,7 +157,7 @@ export const CourseDetailsScreen = ({ route, navigation }) => {
               <Ionicons name="time-outline" size={20} color={colors.primary} />
               <Text style={styles.infoLabel}>Duration</Text>
               <Text style={styles.infoValue}>
-                {course.durationMonths ? `${course.durationMonths} Months` : 'Self-Paced'}
+                {course.duration || (course.durationMonths ? `${course.durationMonths} Months` : 'Self-Paced')}
               </Text>
             </View>
             <View style={styles.infoDivider} />
