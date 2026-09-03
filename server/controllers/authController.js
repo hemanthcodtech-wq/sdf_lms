@@ -24,19 +24,18 @@ exports.sendRegisterOtp = async (req, res, next) => {
     const emailClean = email.trim().toLowerCase();
     const phoneClean = (phone || '').trim();
 
-    // Check if user already exists with this email or phone
+    // Check if user already exists with this email address (do not block on phone collisions)
     const existingUser = await User.findOne({
       $or: [
         { email: emailClean },
-        { emailOrPhone: emailClean },
-        ...(phoneClean ? [{ phone: phoneClean }, { emailOrPhone: phoneClean }] : [])
+        { emailOrPhone: emailClean }
       ]
     });
 
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'An account with this email or phone number already exists. Please login.'
+        message: 'An account with this email address already exists. Please sign in with your email and password.'
       });
     }
 
@@ -88,18 +87,17 @@ exports.verifyRegisterOtp = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid or expired verification code. Please request a new code.' });
     }
 
-    // Double check user doesn't already exist
+    // Double check user doesn't already exist with this email
     let user = await User.findOne({
       $or: [
         { email: emailClean },
-        { emailOrPhone: emailClean },
-        ...(record.phone ? [{ phone: record.phone }, { emailOrPhone: record.phone }] : [])
+        { emailOrPhone: emailClean }
       ]
     });
 
     if (user) {
       await OtpVerification.deleteMany({ email: emailClean });
-      return res.status(400).json({ success: false, message: 'User already registered. Please log in.' });
+      return res.status(400).json({ success: false, message: 'An account with this email is already registered. Please log in.' });
     }
 
     user = await User.create({
@@ -142,13 +140,12 @@ exports.registerUser = async (req, res, next) => {
     const userExists = await User.findOne({
       $or: [
         { email: targetEmail },
-        { emailOrPhone: targetEmail },
-        ...(targetPhone ? [{ phone: targetPhone }, { emailOrPhone: targetPhone }] : [])
+        { emailOrPhone: targetEmail }
       ]
     });
 
     if (userExists) {
-      return res.status(400).json({ success: false, message: 'User already exists' });
+      return res.status(400).json({ success: false, message: 'An account with this email address already exists. Please log in.' });
     }
 
     const user = await User.create({
@@ -200,7 +197,15 @@ exports.loginUser = async (req, res, next) => {
       ]
     });
 
-    if (user && (await user.comparePassword(password))) {
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        notRegistered: true,
+        message: 'Account not found. Please sign up first to create an account.'
+      });
+    }
+
+    if (await user.comparePassword(password)) {
       if (user.status === 'inactive') {
         return res.status(403).json({ 
           success: false, 
@@ -224,7 +229,10 @@ exports.loginUser = async (req, res, next) => {
         token: generateToken(user._id),
       });
     } else {
-      res.status(401).json({ success: false, message: 'Invalid credentials. Please check your email or phone number and password.' });
+      res.status(401).json({
+        success: false,
+        message: 'Incorrect password. Please check your password or reset it.'
+      });
     }
   } catch (error) {
     next(error);
@@ -484,9 +492,21 @@ exports.forgotPassword = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Please provide your registered email or phone' });
     }
 
-    const user = await User.findOne({ emailOrPhone: emailOrPhone.trim() });
+    const cleanIdentifier = emailOrPhone.trim().toLowerCase();
+    const user = await User.findOne({
+      $or: [
+        { email: cleanIdentifier },
+        { emailOrPhone: cleanIdentifier },
+        { phone: emailOrPhone.trim() },
+        { emailOrPhone: emailOrPhone.trim() }
+      ]
+    });
     if (!user) {
-      return res.status(404).json({ success: false, message: 'No registered account found with this email' });
+      return res.status(404).json({
+        success: false,
+        notRegistered: true,
+        message: 'Account not found. Please sign up first to create an account.'
+      });
     }
 
     // Generate 6-digit OTP

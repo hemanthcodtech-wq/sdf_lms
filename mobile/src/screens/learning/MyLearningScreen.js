@@ -165,7 +165,9 @@ export const MyLearningScreen = ({ navigation }) => {
             />
           }
           renderItem={({ item }) => {
-            const courseObj = item.course || item;
+            const courseObj = (item && typeof item.course === 'object' && item.course !== null)
+              ? { ...item, ...item.course, title: item.course.title || item.title, thumbnailUrl: item.course.thumbnailUrl || item.course.thumbnail || item.thumbnailUrl }
+              : item;
             const progressVal = getEnrollmentProgress(item);
             return (
               <CourseCard

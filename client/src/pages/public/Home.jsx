@@ -144,7 +144,10 @@ const FeaturedCourseCard = ({ course, navigate }) => {
             src={getCourseImageUrl(course.thumbnailUrl)}
             alt={course.title}
             className="w-full h-full object-cover"
-            onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
+            onError={(e) => { 
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = '/images/morning_yoga.png'; 
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-brand-green/50 bg-brand-green/10 font-bold">No Image</div>

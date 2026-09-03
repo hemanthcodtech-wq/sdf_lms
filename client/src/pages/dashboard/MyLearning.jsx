@@ -3,6 +3,7 @@ import { FaUser, FaQuestionCircle, FaBell, FaVideo, FaGraduationCap, FaChevronRi
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { getCourseImageUrl } from '../../utils/imageHelper';
 
 const MyLearning = () => {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ const MyLearning = () => {
                 courseId: courseObj._id || enrollment.course,
                 title: courseObj.title || 'Enrolled Course',
                 category: courseObj.category || 'Vedic Sciences',
-                image: courseObj.thumbnailUrl || '',
+                image: courseObj.thumbnailUrl || courseObj.thumbnail || courseObj.image || '',
                 whatsappGroupLink: courseObj.whatsappGroupLink || '',
                 progress: enrollment.progress || Math.floor(Math.random() * 40) + 15
               };
@@ -206,7 +207,19 @@ const MyLearning = () => {
                       <div className="p-6 flex-1 flex flex-col">
                         <div className="flex items-start gap-4 mb-4">
                           <div className="w-14 h-14 rounded-xl bg-gray-50 shrink-0 overflow-hidden border border-gray-100 flex items-center justify-center">
-                            {course.image ? <img src={course.image.startsWith('http') ? course.image : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}/${course.image.replace(/\\/g, '/')}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : <FaGraduationCap className="text-gray-300 size-6" />}
+                            {course.image ? (
+                              <img
+                                src={getCourseImageUrl(course.image)}
+                                alt={course.title}
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = '/images/morning_yoga.png';
+                                }}
+                              />
+                            ) : (
+                              <FaGraduationCap className="text-gray-300 size-6" />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0 pt-1">
                             <h3 className="text-lg font-black text-gray-800 leading-snug line-clamp-2">{course.title}</h3>

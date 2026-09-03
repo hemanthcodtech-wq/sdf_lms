@@ -303,7 +303,10 @@ const Checkout = () => {
                     src={getCourseImageUrl(course.thumbnailUrl)}
                     alt={course.title}
                     className="w-full h-full object-cover"
-                    onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
+                    onError={(e) => { 
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/images/morning_yoga.png'; 
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full bg-brand-green/10 flex items-center justify-center text-xs font-bold text-brand-green">SDF</div>

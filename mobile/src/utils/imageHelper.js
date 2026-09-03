@@ -1,54 +1,115 @@
 import { API_BASE_URL } from '../services/api';
 
-const BACKEND_HOST = API_BASE_URL.replace(/\/api\/?$/, '');
+const getBackendHost = () => {
+  const host = API_BASE_URL || 'https://swamidwijafoundation.com/api';
+  return host.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+};
 
 export const getCourseImageUrl = (url) => {
-  const fallback = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=60';
+  const fallback = 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=800&auto=format&fit=crop&q=80';
   if (!url || typeof url !== 'string') return fallback;
 
-  const clean = url.trim().replace(/\\/g, '/');
+  let clean = url.trim().replace(/\\/g, '/');
 
-  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:')) {
-    return clean;
-  }
-
+  // If contains /uploads/, always route through backend host
   const uploadIdx = clean.indexOf('/uploads/');
   if (uploadIdx !== -1) {
-    return `${BACKEND_HOST}${clean.substring(uploadIdx)}`;
+    const backendHost = getBackendHost();
+    const relativePath = clean.substring(uploadIdx).replace(/^\/+/, '/');
+    return encodeURI(`${backendHost}${relativePath}`);
   }
 
   if (clean.startsWith('uploads/')) {
-    return `${BACKEND_HOST}/${clean}`;
+    const backendHost = getBackendHost();
+    return encodeURI(`${backendHost}/${clean}`);
+  }
+
+  // Handle protocol-relative URL
+  if (clean.startsWith('//')) {
+    if (clean.startsWith('//uploads/')) {
+      const backendHost = getBackendHost();
+      return encodeURI(`${backendHost}${clean.substring(1)}`);
+    }
+    return encodeURI(`https:${clean}`);
+  }
+
+  // If localhost / 127.0.0.1 in mobile, rewrite to backendHost
+  if (clean.startsWith('http://localhost') || clean.startsWith('http://127.0.0.1') || clean.startsWith('http://10.0.2.2')) {
+    const backendHost = getBackendHost();
+    try {
+      const parsed = new URL(clean);
+      return encodeURI(`${backendHost}${parsed.pathname}${parsed.search}`);
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  // Upgrade http to https to prevent cleartext blocking
+  if (clean.startsWith('http://')) {
+    clean = clean.replace(/^http:\/\//i, 'https://');
+  }
+
+  if (clean.startsWith('https://') || clean.startsWith('data:')) {
+    return encodeURI(clean);
   }
 
   if (clean.startsWith('/')) {
-    return `${BACKEND_HOST}${clean}`;
+    const backendHost = getBackendHost();
+    return encodeURI(`${backendHost}${clean}`);
   }
 
-  return `${BACKEND_HOST}/uploads/courses/${clean}`;
+  const backendHost = getBackendHost();
+  return encodeURI(`${backendHost}/uploads/courses/${clean}`);
 };
 
 export const getAvatarUrl = (url) => {
   if (!url || typeof url !== 'string') return null;
 
-  const clean = url.trim().replace(/\\/g, '/');
-
-  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:')) {
-    return clean;
-  }
+  let clean = url.trim().replace(/\\/g, '/');
 
   const uploadIdx = clean.indexOf('/uploads/');
   if (uploadIdx !== -1) {
-    return `${BACKEND_HOST}${clean.substring(uploadIdx)}`;
+    const backendHost = getBackendHost();
+    const relativePath = clean.substring(uploadIdx).replace(/^\/+/, '/');
+    return encodeURI(`${backendHost}${relativePath}`);
   }
 
   if (clean.startsWith('uploads/')) {
-    return `${BACKEND_HOST}/${clean}`;
+    const backendHost = getBackendHost();
+    return encodeURI(`${backendHost}/${clean}`);
+  }
+
+  if (clean.startsWith('//')) {
+    if (clean.startsWith('//uploads/')) {
+      const backendHost = getBackendHost();
+      return encodeURI(`${backendHost}${clean.substring(1)}`);
+    }
+    return encodeURI(`https:${clean}`);
+  }
+
+  if (clean.startsWith('http://localhost') || clean.startsWith('http://127.0.0.1') || clean.startsWith('http://10.0.2.2')) {
+    const backendHost = getBackendHost();
+    try {
+      const parsed = new URL(clean);
+      return encodeURI(`${backendHost}${parsed.pathname}${parsed.search}`);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  if (clean.startsWith('http://')) {
+    clean = clean.replace(/^http:\/\//i, 'https://');
+  }
+
+  if (clean.startsWith('https://') || clean.startsWith('data:')) {
+    return encodeURI(clean);
   }
 
   if (clean.startsWith('/')) {
-    return `${BACKEND_HOST}${clean}`;
+    const backendHost = getBackendHost();
+    return encodeURI(`${backendHost}${clean}`);
   }
 
-  return `${BACKEND_HOST}/uploads/avatars/${clean}`;
+  const backendHost = getBackendHost();
+  return encodeURI(`${backendHost}/uploads/avatars/${clean}`);
 };

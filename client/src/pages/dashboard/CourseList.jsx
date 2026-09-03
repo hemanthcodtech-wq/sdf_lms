@@ -23,7 +23,10 @@ const CourseCard = ({ course, isEnrolled, isWishlisted, onToggleWishlist, onClic
             src={getCourseImageUrl(course.thumbnailUrl)}
             alt={course.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-            onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
+            onError={(e) => { 
+              e.currentTarget.onerror = null; 
+              e.currentTarget.src = '/images/morning_yoga.png'; 
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300"><FaImage size={24} className="md:w-10 md:h-10" /></div>

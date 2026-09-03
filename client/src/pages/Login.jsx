@@ -141,8 +141,18 @@ const Login = () => {
           </div>
 
           {error && (
-            <div className="w-full mb-4 p-3 bg-red-100/80 backdrop-blur-sm border border-red-200 text-red-600 rounded-lg text-sm text-center">
-              {error}
+            <div className="w-full mb-4 p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm text-center">
+              <p className="font-semibold">{error}</p>
+              {(error.toLowerCase().includes('not found') || error.toLowerCase().includes('sign up') || error.toLowerCase().includes('not registered')) && (
+                <div className="mt-2.5 pt-2.5 border-t border-red-200/60 flex justify-center">
+                  <Link
+                    to="/register"
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-brand-green hover:bg-brand-green-dark text-white rounded-lg text-xs font-bold shadow-sm transition-all"
+                  >
+                    <span>👉 New to SDF? Click here to Sign Up</span>
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../theme/colors';
@@ -16,6 +16,8 @@ export const CourseCard = ({
   const { isInWishlist, toggleWishlist } = useAuth();
   const wishlisted = isInWishlist(course._id || course.id);
 
+  const [imgError, setImgError] = useState(false);
+  const fallbackUrl = 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=800&auto=format&fit=crop&q=80';
   const rawImage = course.thumbnail || course.thumbnailUrl || course.image;
   const imageUrl = getCourseImageUrl(rawImage);
 
@@ -42,9 +44,10 @@ export const CourseCard = ({
       {/* Thumbnail Container */}
       <View style={horizontal ? styles.horizontalImageWrap : styles.verticalImageWrap}>
         <Image
-          source={{ uri: imageUrl, cache: 'force-cache' }}
+          source={{ uri: imgError ? fallbackUrl : imageUrl }}
           style={styles.image}
           resizeMode="cover"
+          onError={() => setImgError(true)}
         />
         
         {/* Wishlist Button */}

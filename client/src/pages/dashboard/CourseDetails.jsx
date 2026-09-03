@@ -44,7 +44,10 @@ const CourseContent = ({ course, handleEnroll, isEnrolled, isWishlisted, handleT
               src={getCourseImageUrl(course.thumbnailUrl)}
               alt={course.title}
               className="w-full h-full object-cover"
-              onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
+              onError={(e) => { 
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/images/morning_yoga.png'; 
+              }}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-brand-green/20 text-brand-green font-bold">No Image</div>
@@ -171,7 +174,10 @@ const CourseContent = ({ course, handleEnroll, isEnrolled, isWishlisted, handleT
                     src={getCourseImageUrl(course.thumbnailUrl)}
                     alt={course.title}
                     className="w-full h-full object-cover"
-                    onError={(e) => { e.currentTarget.src = '/assets/course_yoga.png'; }}
+                    onError={(e) => { 
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/images/morning_yoga.png'; 
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-brand-green bg-brand-green/10">No Image</div>

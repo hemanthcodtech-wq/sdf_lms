@@ -105,7 +105,19 @@ export const ForgotPasswordScreen = ({ navigation }) => {
           {error ? (
             <View style={styles.errorBanner}>
               <Ionicons name="alert-circle" size={18} color={colors.error} />
-              <Text style={styles.errorBannerText}>{error}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.errorBannerText}>{error}</Text>
+                {(error.toLowerCase().includes('not found') || error.toLowerCase().includes('sign up') || error.toLowerCase().includes('not registered')) && (
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('Register')}
+                    style={{ marginTop: 6 }}
+                  >
+                    <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 12, textDecorationLine: 'underline' }}>
+                      👉 Don't have an account? Tap here to Sign Up
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           ) : null}
 
