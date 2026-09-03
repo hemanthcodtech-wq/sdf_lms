@@ -12,6 +12,7 @@ const router = express.Router();
 
 // GET all enrollments for a user (Payment History / My Courses)
 router.get(['/history', '/my-enrollments', '/my-payments'], protect, async (req, res) => {
+  try {
     const studentIdentifiers = [
       req.user.emailOrPhone,
       req.user.email,
