@@ -19,6 +19,7 @@ const StudentClasses = () => {
   const [selectedLiveClass, setSelectedLiveClass] = useState(null);
   
   const [selectedMaterial, setSelectedMaterial] = useState(null);
+  const [certSuccessMessage, setCertSuccessMessage] = useState('');
 
   const handleClaimCertificate = async () => {
     if (!courseId) {
@@ -27,12 +28,15 @@ const StudentClasses = () => {
     setCompleting(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
+      const res = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/courses/${courseId}/complete`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      navigate('/dashboard/certificates');
+      setCertSuccessMessage(res.data?.message || 'Certificate generated and emailed to your registered address!');
+      setTimeout(() => {
+        navigate('/dashboard/certificates');
+      }, 1500);
     } catch(e) {
       navigate('/dashboard/certificates');
     } finally {
@@ -240,14 +244,21 @@ const StudentClasses = () => {
                     <span className={`text-[13px] font-bold ${activeTab === 'materials' ? 'text-white' : 'text-gray-700'}`}>Course Materials ({materials.length})</span>
                     <FaChevronRight className={`${activeTab === 'materials' ? 'text-white' : 'text-gray-400'} text-[12px]`} />
                   </button>
+                  {certSuccessMessage && (
+                    <div className="p-3.5 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold flex items-center gap-2 col-span-2 lg:col-span-1 shadow-sm">
+                      <FaCheckCircle className="text-emerald-600 shrink-0" size={16} />
+                      <span>{certSuccessMessage}</span>
+                    </div>
+                  )}
+
                   <button 
                     onClick={handleClaimCertificate}
                     disabled={completing}
-                    className="rounded-xl py-4 px-5 flex items-center justify-between shadow-sm border border-brand-green/30 bg-green-50 hover:bg-green-100 text-brand-green transition-all duration-300 col-span-2 lg:col-span-1"
+                    className="rounded-xl py-4 px-5 flex items-center justify-between shadow-sm border border-brand-green/30 bg-green-50 hover:bg-green-100 text-brand-green transition-all duration-300 col-span-2 lg:col-span-1 cursor-pointer"
                   >
                     <span className="text-[13px] font-extrabold flex items-center gap-2">
                       <FaAward className="text-yellow-600" />
-                      {completing ? 'Generating Certificate...' : 'Get Certificate of Completion'}
+                      {completing ? 'Auto-Sending Certificate...' : 'Get & Auto-Send Certificate of Completion'}
                     </span>
                     <FaChevronRight className="text-brand-green text-[12px]" />
                   </button>

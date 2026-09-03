@@ -12,16 +12,32 @@ const router = express.Router();
 
 // GET all enrollments for a user (Payment History / My Courses)
 router.get(['/history', '/my-enrollments', '/my-payments'], protect, async (req, res) => {
-  try {
-    const studentIdentifiers = [req.user.emailOrPhone];
-    if (req.user.email) studentIdentifiers.push(req.user.email);
-    if (req.user.phone) studentIdentifiers.push(req.user.phone);
+    const studentIdentifiers = [
+      req.user.emailOrPhone,
+      req.user.email,
+      req.user.phone
+    ].filter(Boolean);
 
     const enrollments = await Enrollment.find({
-      studentEmail: { $in: studentIdentifiers },
+      $or: [
+        { studentEmail: { $in: studentIdentifiers } },
+        { user: req.user._id },
+        { userId: req.user._id }
+      ]
     })
       .populate('course', 'title category thumbnailUrl accessValidity duration price instructor instructorId whatsappGroupLink')
       .sort('-createdAt');
+
+    // Ensure any completed enrollment has a valid certificateId attached to their account
+    for (const enr of enrollments) {
+      if ((enr.completed || enr.progress >= 100) && !enr.certificateId) {
+        enr.certificateId = `SDF-CERT-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+        enr.completed = true;
+        enr.progress = 100;
+        if (!enr.completionDate) enr.completionDate = new Date();
+        await enr.save().catch(() => {});
+      }
+    }
 
     res.json({ success: true, data: enrollments });
   } catch (error) {

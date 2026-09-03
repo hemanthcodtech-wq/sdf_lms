@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaUser, FaQuestionCircle, FaBell, FaVideo, FaGraduationCap, FaChevronRight, FaWhatsapp } from 'react-icons/fa';
+import { FaUser, FaQuestionCircle, FaBell, FaVideo, FaGraduationCap, FaChevronRight, FaWhatsapp, FaAward } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -255,6 +255,16 @@ const MyLearning = () => {
                               </a>
                             )}
                           </div>
+
+                          {(course.progress === 100 || course.completed) && (
+                            <button
+                              onClick={() => navigate('/dashboard/certificates')}
+                              className="w-full mt-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                            >
+                              <FaAward className="text-amber-600" />
+                              <span>Certificate Ready • View in Portal</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </motion.div>

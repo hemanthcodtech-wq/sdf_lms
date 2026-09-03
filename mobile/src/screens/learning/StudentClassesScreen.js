@@ -34,6 +34,8 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('lessons'); // 'lessons', 'materials', 'community'
   const [materials, setMaterials] = useState([]);
+  const [claimingCert, setClaimingCert] = useState(false);
+  const [certIssued, setCertIssued] = useState(Boolean(route.params?.enrollment?.completed || route.params?.enrollment?.certificateId));
 
   useEffect(() => {
     fetchCourseClasses();
@@ -222,6 +224,38 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         ? backendProgress
         : calculatedPercent);
 
+  const handleClaimOrViewCert = async () => {
+    if (certIssued || isCourseCertified) {
+      return navigation.navigate('Certificates');
+    }
+    const courseId = course?._id || course?.id;
+    if (!courseId) {
+      return navigation.navigate('Certificates');
+    }
+
+    try {
+      setClaimingCert(true);
+      const res = await courseService.completeCourse(courseId);
+      setCertIssued(true);
+      Alert.alert(
+        '🏆 Certificate Generated & Sent!',
+        res?.message || 'Your official Certificate of Completion has been generated, saved to your account, and emailed to you.',
+        [
+          {
+            text: 'View in Portal',
+            onPress: () => navigation.navigate('Certificates'),
+          },
+          { text: 'OK', style: 'cancel' },
+        ]
+      );
+    } catch (e) {
+      console.error('Error claiming certificate:', e);
+      navigation.navigate('Certificates');
+    } finally {
+      setClaimingCert(false);
+    }
+  };
+
   const handleJoinZoom = (lessonItem) => {
     const target = lessonItem || currentLesson;
     const link =
@@ -352,6 +386,42 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         </View>
         <ProgressBar progress={progressPercent} height={6} />
       </View>
+
+      {/* Course Completion & Certificate Section */}
+      {(progressPercent >= 100 || isCourseCertified || certIssued || (completedCount > 0 && completedCount === realSessions.length)) && (
+        <View style={styles.certificateBanner}>
+          <View style={styles.certificateBannerLeft}>
+            <View style={styles.certIconCircle}>
+              <Ionicons name="trophy" size={22} color="#d97706" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.certBannerTitle}>Course Completed! 🎓</Text>
+              <Text style={styles.certBannerSubtitle}>
+                {certIssued || isCourseCertified
+                  ? 'Official certificate has been auto-sent to your email and saved in your account.'
+                  : 'Congratulations on finishing all sessions! Tap below to auto-send certificate.'}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.certActionBtn}
+            onPress={handleClaimOrViewCert}
+            disabled={claimingCert}
+            activeOpacity={0.85}
+          >
+            {claimingCert ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <>
+                <Ionicons name={certIssued || isCourseCertified ? "ribbon-outline" : "send"} size={16} color="#ffffff" />
+                <Text style={styles.certActionBtnText}>
+                  {certIssued || isCourseCertified ? "View Certificate in Portal →" : "Auto-Send Certificate to Email & Account →"}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Navigation Tabs */}
       <View style={styles.tabNav}>
@@ -959,5 +1029,67 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  certificateBanner: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    backgroundColor: '#fffbeb',
+    borderWidth: 1.5,
+    borderColor: '#f59e0b',
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: '#d97706',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  certificateBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+  },
+  certIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  certBannerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#92400e',
+  },
+  certBannerSubtitle: {
+    fontSize: 12,
+    color: '#78350f',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  certActionBtn: {
+    backgroundColor: '#0d5c31',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  certActionBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

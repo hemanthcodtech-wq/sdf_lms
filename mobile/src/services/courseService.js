@@ -88,4 +88,10 @@ export const courseService = {
       return { success: true, data: [] };
     }
   },
+
+  // Complete Course and auto-generate / email certificate
+  completeCourse: async (courseId, studentName) => {
+    const response = await api.post(`/courses/${courseId}/complete`, { studentName });
+    return response.data;
+  },
 };

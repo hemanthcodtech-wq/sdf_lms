@@ -477,9 +477,19 @@ router.post('/:id/complete', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
 
+    const studentIdentifiers = [
+      req.user.emailOrPhone,
+      req.user.email,
+      req.user.phone
+    ].filter(Boolean);
+
     let enrollment = await Enrollment.findOne({
       course: courseId,
-      studentEmail: req.user.emailOrPhone
+      $or: [
+        { studentEmail: { $in: studentIdentifiers } },
+        { user: req.user._id },
+        { userId: req.user._id }
+      ]
     });
 
     if (!enrollment) {
@@ -510,12 +520,18 @@ router.post('/:id/complete', protect, async (req, res) => {
       studentName = `${user.firstName} ${user.lastName || ''}`.trim();
     }
     if (!studentName) {
-      studentName = req.user.emailOrPhone.split('@')[0];
+      studentName = (req.user.email || req.user.emailOrPhone || 'Learner').split('@')[0];
     }
 
     const instructorName = course.instructorId?.name || course.instructor || 'Lead Yoga Guru';
 
-    // Generate Certificate PDF, upload to Cloudinary, and send completion email asynchronously
+    const toEmail = (
+      req.user.email || 
+      (req.user.emailOrPhone && req.user.emailOrPhone.includes('@') ? req.user.emailOrPhone : '') ||
+      (enrollment.studentEmail && enrollment.studentEmail.includes('@') ? enrollment.studentEmail : '')
+    );
+
+    // Generate Certificate PDF, upload, and auto-send completion email with attached PDF
     generateCertificatePDF({
       studentName,
       courseTitle: course.title,
@@ -526,7 +542,7 @@ router.post('/:id/complete', protect, async (req, res) => {
       completionDate: new Date(completionDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
       certificateId: certId
     }).then(async (certPdfBuffer) => {
-      // Upload to Cloudinary
+      // Upload to Cloudinary if configured
       try {
         const cloudUrl = await uploadBufferToCloudinary(certPdfBuffer, certId, 'sdf_certificates');
         if (cloudUrl) {
@@ -537,18 +553,20 @@ router.post('/:id/complete', protect, async (req, res) => {
         console.error("Cloudinary certificate upload error:", cErr);
       }
 
-      sendCourseCompletionEmail({
-        to: req.user.emailOrPhone,
-        studentName,
-        course,
-        certId,
-        certificatePdfBuffer: certPdfBuffer
-      }).catch(emailErr => console.error("Certificate email error:", emailErr));
-    }).catch(pdfErr => console.error("Certificate PDF generation error:", pdfErr));
+      if (toEmail) {
+        sendCourseCompletionEmail({
+          to: toEmail,
+          studentName,
+          course,
+          certId,
+          certificatePdfBuffer: certPdfBuffer
+        }).catch(emailErr => console.error("[Certificate] Email dispatch error:", emailErr));
+      }
+    }).catch(pdfErr => console.error("[Certificate] PDF generation error:", pdfErr));
 
     res.json({
       success: true,
-      message: 'Congratulations! Your certificate has been generated and sent to your email.',
+      message: `Congratulations! Your certificate has been successfully generated and sent to ${toEmail || 'your registered email'}.`,
       certificateId: certId,
       enrollment
     });
