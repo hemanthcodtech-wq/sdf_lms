@@ -263,54 +263,54 @@ const Home = () => {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full text-center">
           <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold font-outfit text-white mb-6 drop-shadow-2xl tracking-tight">
+            <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-extrabold font-outfit text-white mb-4 sm:mb-6 drop-shadow-2xl tracking-tight break-words">
               {t('hero_title_1')} <br />
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-brand-green via-yellow-400 to-brand-orange bg-[length:200%_auto] animate-text-shimmer drop-shadow-lg">
                 <TypewriterText text={t('hero_title_2')} />
               </span>
             </h1>
-            <p className="text-xl md:text-2xl text-blue-100/80 font-inter mb-10 max-w-3xl mx-auto font-light">
+            <p className="text-sm sm:text-lg md:text-2xl text-blue-100/80 font-inter mb-6 sm:mb-10 max-w-3xl mx-auto font-light leading-relaxed">
               {t('hero_subtitle')}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              <Link to="/courses" className="group relative overflow-hidden bg-brand-green text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-brand-green-dark transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(13,92,49,0.5)] inline-flex items-center justify-center border border-brand-green/50">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 justify-center">
+              <Link to="/courses" className="group relative overflow-hidden bg-brand-green text-white px-6 py-3 sm:px-8 sm:py-4 rounded-full font-bold text-sm sm:text-lg hover:bg-brand-green-dark transition-all duration-300 transform hover:scale-105 shadow-[0_0_20px_rgba(13,92,49,0.5)] inline-flex items-center justify-center border border-brand-green/50">
                 <span className="relative z-10 flex items-center">
                   {t('hero_explore')}
                   <FaArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </span>
                 <div className="absolute inset-0 -translate-x-full group-hover:animate-text-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
               </Link>
-              <Link to="/register" className="bg-brand-orange text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-[#d66b1a] transition-all duration-300 transform hover:scale-105 shadow-lg border border-transparent">
+              <Link to="/register" className="bg-brand-orange text-white px-6 py-3 sm:px-8 sm:py-4 rounded-full font-bold text-sm sm:text-lg hover:bg-[#d66b1a] transition-all duration-300 transform hover:scale-105 shadow-lg border border-transparent">
                 {t('hero_start')}
               </Link>
             </div>
 
             {/* Stats Glass Cards */}
-            <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-6 animate-fade-in-up">
-              <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
-                <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
+            <div className="mt-8 sm:mt-10 grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-6 animate-fade-in-up">
+              <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
+                <div className="text-xl sm:text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
                   <AnimatedCounter from={0} to={platformStats.studentsCount || 5000} suffix={platformStats.studentsSuffix || '+'} duration={2.5} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{platformStats.studentsLabel || t('stat_students')}</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-[11px] sm:text-sm">{platformStats.studentsLabel || t('stat_students')}</div>
               </div>
-              <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
-                <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
+              <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
+                <div className="text-xl sm:text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
                   <AnimatedCounter from={0} to={platformStats.coursesCount || 50} suffix={platformStats.coursesSuffix || '+'} duration={2} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{platformStats.coursesLabel || t('stat_courses')}</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-[11px] sm:text-sm">{platformStats.coursesLabel || t('stat_courses')}</div>
               </div>
-              <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
-                <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
+              <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
+                <div className="text-xl sm:text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
                   <AnimatedCounter from={0} to={platformStats.instructorsCount || 20} suffix={platformStats.instructorsSuffix || '+'} duration={2} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{platformStats.instructorsLabel || t('stat_instructors')}</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-[11px] sm:text-sm">{platformStats.instructorsLabel || t('stat_instructors')}</div>
               </div>
-              <div className="p-6 rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
-                <div className="text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
+              <div className="p-3.5 sm:p-6 rounded-xl sm:rounded-2xl glass hover:bg-white/10 transition-colors border border-white/10">
+                <div className="text-xl sm:text-3xl md:text-4xl font-bold text-white mb-1 drop-shadow-lg">
                   <AnimatedCounter from={0} to={platformStats.satisfactionRate || 99} suffix={platformStats.satisfactionSuffix || '%'} duration={2.5} />
                 </div>
-                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-sm">{platformStats.satisfactionLabel || t('stat_satisfaction')}</div>
+                <div className="text-blue-200/70 font-medium tracking-wide uppercase text-[11px] sm:text-sm">{platformStats.satisfactionLabel || t('stat_satisfaction')}</div>
               </div>
             </div>
           </motion.div>

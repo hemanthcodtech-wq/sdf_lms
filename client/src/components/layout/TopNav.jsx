@@ -44,23 +44,24 @@ const TopNav = () => {
     <header
       className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-8 xl:px-24 h-18 md:h-20 bg-white border-b border-gray-100 shadow-sm"
     >
-      {/* Far Left on Mobile (Back button if available, or left-align on desktop) */}
-      <div className="flex items-center">
-        {isCourseDetails || isCourseList ? (
-          <button onClick={() => navigate(-1)} className="md:hidden flex items-center gap-1.5 text-brand-green-dark p-2 -ml-2 hover:bg-brand-green/10 rounded-full transition-colors">
-            <FaArrowLeft size={17} />
+      {/* Left Side: Logo & Optional Back Button */}
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        {(isCourseDetails || isCourseList) && (
+          <button 
+            onClick={() => navigate(-1)} 
+            className="md:hidden flex items-center justify-center text-brand-green-dark p-1.5 hover:bg-brand-green/10 rounded-full transition-colors flex-shrink-0"
+            aria-label="Go back"
+          >
+            <FaArrowLeft size={16} />
           </button>
-        ) : null}
+        )}
 
-        {/* Desktop-Left Logo */}
-        <div className="hidden md:flex items-center">
-          <img src="/logo.png" alt="Logo" className="h-16 w-auto object-contain drop-shadow-sm cursor-pointer" onClick={() => navigate('/')} />
-        </div>
-      </div>
-
-      {/* Mobile-Centered Large Logo */}
-      <div className="md:hidden absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-auto">
-        <img src="/logo.png" alt="Logo" className="h-14 w-auto object-contain drop-shadow-sm cursor-pointer" onClick={() => navigate('/')} />
+        <img 
+          src="/logo.png" 
+          alt="Logo" 
+          className="h-10 sm:h-12 md:h-16 w-auto max-h-16 object-contain drop-shadow-sm cursor-pointer flex-shrink-0" 
+          onClick={() => navigate('/')} 
+        />
       </div>
 
       {/* Desktop Nav Links */}

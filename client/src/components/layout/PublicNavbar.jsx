@@ -44,27 +44,29 @@ const PublicNavbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="flex justify-between items-center w-full relative">
           
-          {/* Far Left on Mobile (Back button if on course pages, otherwise empty spacer) */}
-          <div className="flex items-center">
-            {isCourseDetails || isCourseList ? (
-              <button onClick={() => navigate(-1)} className="md:hidden flex items-center gap-1.5 text-brand-green-dark p-2 -ml-2 hover:bg-brand-green/10 rounded-full transition-colors">
-                <FaArrowLeft size={17} />
+          {/* Left Side: Logo & Optional Back Button */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {(isCourseDetails || isCourseList) && (
+              <button 
+                onClick={() => navigate(-1)} 
+                className="md:hidden flex items-center justify-center text-brand-green-dark p-1.5 hover:bg-brand-green/10 rounded-full transition-colors flex-shrink-0"
+                aria-label="Go back"
+              >
+                <FaArrowLeft size={16} />
               </button>
-            ) : (
-              <div className="w-8 h-10 md:hidden"></div>
             )}
 
-            {/* Desktop Logo */}
-            <Link to="/" className="hidden md:flex flex-shrink-0 items-center gap-2">
-              <img src="/Swamy logo.png" alt="Logo" className="h-16 w-auto object-contain" />
-              <span className="font-outfit font-bold text-lg text-brand-green-dark hidden lg:block">Swamy Dwija Foundation</span>
+            <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+              <img 
+                src="/Swamy logo.png" 
+                alt="Swamy Dwija Foundation" 
+                className="h-10 sm:h-12 md:h-16 w-auto max-h-16 object-contain" 
+              />
+              <span className="font-outfit font-bold text-lg text-brand-green-dark hidden lg:block">
+                Swamy Dwija Foundation
+              </span>
             </Link>
           </div>
-
-          {/* Mobile-Centered Large Logo */}
-          <Link to="/" className="md:hidden absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-auto">
-            <img src="/Swamy logo.png" alt="Logo" className="h-14 w-auto object-contain" />
-          </Link>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex space-x-8 items-center">
@@ -120,15 +122,15 @@ const PublicNavbar = () => {
             )}
           </div>
 
-          {/* Mobile Language + Hamburger */}
-          <div className="md:hidden flex items-center gap-2">
+          {/* Mobile Right Controls: Language + Hamburger */}
+          <div className="md:hidden flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {/* Mobile Language Select */}
-            <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-gray-200 bg-gray-50">
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 bg-gray-50 flex-shrink-0">
               <FaGlobe className="text-brand-green text-[10px]" />
               <select
                 value={lang}
                 onChange={(e) => setLang(e.target.value)}
-                className="bg-transparent text-xs font-bold text-gray-700 font-outfit outline-none cursor-pointer"
+                className="bg-transparent text-xs font-bold text-gray-700 font-outfit outline-none cursor-pointer pr-0.5"
               >
                 <option value="en">EN</option>
                 <option value="te">TE</option>
@@ -136,7 +138,8 @@ const PublicNavbar = () => {
             </div>
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-gray-700 hover:text-brand-green focus:outline-none"
+              className="p-1 text-gray-700 hover:text-brand-green focus:outline-none flex-shrink-0"
+              aria-label="Toggle navigation menu"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {isMobileMenuOpen ? (
@@ -196,23 +199,23 @@ const PublicNavbar = () => {
       </AnimatePresence>
 
       {/* Bottom Navbar (Mobile Only) */}
-      <div className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-100 z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
-        <div className="flex justify-around items-center pt-3 pb-4 px-2">
-          <Link to="/" className={`flex flex-col items-center gap-1.5 transition-colors ${isActive('/') ? 'text-brand-green' : 'text-gray-400 hover:text-brand-green'}`}>
-            <FaHome className="text-xl" />
-            <span className="text-[11px] font-outfit font-bold tracking-wide">{t('nav_bottom_home')}</span>
+      <div className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-gray-100 z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <div className="flex justify-around items-center pt-2 pb-3 px-1 max-w-full">
+          <Link to="/" className={`flex flex-col items-center gap-1 transition-colors flex-1 py-1 ${isActive('/') ? 'text-brand-green font-bold' : 'text-gray-400 hover:text-brand-green'}`}>
+            <FaHome className="text-lg sm:text-xl" />
+            <span className="text-[10px] sm:text-[11px] font-outfit tracking-tight truncate max-w-[65px] text-center">{t('nav_bottom_home')}</span>
           </Link>
-          <Link to="/courses" className={`flex flex-col items-center gap-1.5 transition-colors ${isActive('/courses') ? 'text-brand-green' : 'text-gray-400 hover:text-brand-green'}`}>
-            <FaBook className="text-xl" />
-            <span className="text-[11px] font-outfit font-bold tracking-wide">{t('nav_bottom_classes')}</span>
+          <Link to="/courses" className={`flex flex-col items-center gap-1 transition-colors flex-1 py-1 ${isActive('/courses') ? 'text-brand-green font-bold' : 'text-gray-400 hover:text-brand-green'}`}>
+            <FaBook className="text-lg sm:text-xl" />
+            <span className="text-[10px] sm:text-[11px] font-outfit tracking-tight truncate max-w-[65px] text-center">{t('nav_bottom_classes')}</span>
           </Link>
-          <Link to="/about" className={`flex flex-col items-center gap-1.5 transition-colors ${isActive('/about') ? 'text-brand-green' : 'text-gray-400 hover:text-brand-green'}`}>
-            <FaInfoCircle className="text-xl" />
-            <span className="text-[11px] font-outfit font-bold tracking-wide">{t('nav_bottom_about')}</span>
+          <Link to="/about" className={`flex flex-col items-center gap-1 transition-colors flex-1 py-1 ${isActive('/about') ? 'text-brand-green font-bold' : 'text-gray-400 hover:text-brand-green'}`}>
+            <FaInfoCircle className="text-lg sm:text-xl" />
+            <span className="text-[10px] sm:text-[11px] font-outfit tracking-tight truncate max-w-[65px] text-center">{t('nav_bottom_about')}</span>
           </Link>
-          <Link to={token ? (user?.role === 'admin' ? '/admin/dashboard' : '/dashboard') : '/login'} className={`flex flex-col items-center gap-1.5 transition-colors ${location.pathname.includes('/dashboard') || location.pathname.includes('/login') ? 'text-brand-green' : 'text-gray-400 hover:text-brand-green'}`}>
-            <FaUser className="text-xl" />
-            <span className="text-[11px] font-outfit font-bold tracking-wide">{token ? t('nav_dashboard') : t('nav_bottom_login')}</span>
+          <Link to={token ? (user?.role === 'admin' ? '/admin/dashboard' : '/dashboard') : '/login'} className={`flex flex-col items-center gap-1 transition-colors flex-1 py-1 ${location.pathname.includes('/dashboard') || location.pathname.includes('/login') ? 'text-brand-green font-bold' : 'text-gray-400 hover:text-brand-green'}`}>
+            <FaUser className="text-lg sm:text-xl" />
+            <span className="text-[10px] sm:text-[11px] font-outfit tracking-tight truncate max-w-[65px] text-center">{token ? t('nav_dashboard') : t('nav_bottom_login')}</span>
           </Link>
         </div>
       </div>
