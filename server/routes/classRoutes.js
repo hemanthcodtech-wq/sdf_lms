@@ -6,6 +6,7 @@ const { createZoomMeeting } = require('../services/zoomService');
 const { sendClassUpdateAlert, sendClassReminder } = require('../services/emailService');
 
 const Enrollment = require('../models/Enrollment');
+const { calculateAccessValidity } = require('../utils/courseValidityHelper');
 
 const router = express.Router();
 
@@ -63,8 +64,9 @@ router.get('/student', protect, async (req, res) => {
     // Find all courses the student is enrolled in
     const enrollments = await Enrollment.find({
       studentEmail: { $in: studentIdentifiers.filter(Boolean) },
-    });
-    const enrolledCourseIds = enrollments.map((e) => e.course).filter(Boolean);
+    }).populate('course');
+
+    const enrolledCourseIds = enrollments.map((e) => e.course?._id || e.course).filter(Boolean);
 
     // Auto-generate session schedules for any course that doesn't have classes yet
     for (const cid of enrolledCourseIds) {
@@ -73,10 +75,30 @@ router.get('/student', protect, async (req, res) => {
 
     // Find all scheduled classes for those courses
     const classes = await Class.find({ courseId: { $in: enrolledCourseIds } })
-      .populate('courseId', 'title category level thumbnailUrl whatsappGroupLink instructor timings zoomMeetingLink')
+      .populate('courseId', 'title category level thumbnailUrl whatsappGroupLink instructor timings zoomMeetingLink accessValidity startDate endDate duration sessionDates')
       .sort('date time');
+
+    // Enrich classes with student's access validity status
+    const enrichedClasses = classes.map((clsDoc) => {
+      const cls = clsDoc.toObject ? clsDoc.toObject() : clsDoc;
+      const matchingEnrollment = enrollments.find((e) => 
+        String(e.course?._id || e.course) === String(cls.courseId?._id || cls.courseId)
+      );
+      const courseObj = cls.courseId && typeof cls.courseId === 'object' ? cls.courseId : matchingEnrollment?.course;
+      const validityInfo = calculateAccessValidity(courseObj, matchingEnrollment);
+
+      return {
+        ...cls,
+        isAccessExpired: validityInfo.isExpired,
+        accessValidity: validityInfo.validity,
+        accessExpiryDate: validityInfo.accessExpiryDate,
+        validityLabel: validityInfo.validityLabel,
+        // If access has expired, suppress direct zoom link
+        zoomLink: validityInfo.isExpired ? null : (cls.zoomLink || courseObj?.zoomMeetingLink)
+      };
+    });
       
-    res.json({ success: true, data: classes });
+    res.json({ success: true, data: enrichedClasses });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
@@ -88,11 +110,36 @@ router.get('/course/:courseId', protect, async (req, res) => {
     const { courseId } = req.params;
     await ensureCourseSessions(courseId);
 
+    const studentIdentifiers = [req.user.emailOrPhone, req.user.email, req.user.phone].filter(Boolean);
+    const enrollment = await Enrollment.findOne({
+      course: courseId,
+      studentEmail: { $in: studentIdentifiers }
+    }).populate('course');
+
     const classes = await Class.find({ courseId })
-      .populate('courseId', 'title category level thumbnailUrl whatsappGroupLink instructor timings zoomMeetingLink')
+      .populate('courseId', 'title category level thumbnailUrl whatsappGroupLink instructor timings zoomMeetingLink accessValidity startDate endDate duration sessionDates')
       .sort('date time');
 
-    res.json({ success: true, data: classes });
+    const courseObj = enrollment?.course || (classes[0] && typeof classes[0].courseId === 'object' ? classes[0].courseId : await Course.findById(courseId));
+    const validityInfo = calculateAccessValidity(courseObj, enrollment);
+
+    const enrichedClasses = classes.map((clsDoc) => {
+      const cls = clsDoc.toObject ? clsDoc.toObject() : clsDoc;
+      return {
+        ...cls,
+        isAccessExpired: validityInfo.isExpired,
+        accessValidity: validityInfo.validity,
+        accessExpiryDate: validityInfo.accessExpiryDate,
+        validityLabel: validityInfo.validityLabel,
+        zoomLink: validityInfo.isExpired ? null : (cls.zoomLink || courseObj?.zoomMeetingLink)
+      };
+    });
+
+    res.json({ 
+      success: true, 
+      data: enrichedClasses,
+      validity: validityInfo 
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }

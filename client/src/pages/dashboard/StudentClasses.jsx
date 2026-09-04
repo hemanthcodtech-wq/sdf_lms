@@ -221,6 +221,21 @@ const StudentClasses = () => {
         ) : (
           <div className="space-y-6">
             
+            {/* Access Validity Alert Banner if Expired */}
+            {enrollment?.isExpired && (
+              <div className="bg-amber-50 border border-amber-300/90 rounded-2xl p-4 md:p-5 flex items-start gap-3.5 shadow-xs text-amber-950">
+                <div className="w-10 h-10 rounded-xl bg-amber-200/90 flex items-center justify-center shrink-0 text-amber-800 font-bold">
+                  <FaLock size={18} />
+                </div>
+                <div className="flex-1 text-sm">
+                  <h4 className="font-extrabold text-amber-900 text-base mb-1">Course Access Validity Expired</h4>
+                  <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                    Your access validity period for this course concluded on <strong>{enrollment.accessExpiryDate ? new Date(enrollment.accessExpiryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'completion'}</strong> ({enrollment.accessValidity || 'Admin validity period'}). Live classes and interactive sessions are now archived. Your official Certificate and Payment Invoices remain permanently accessible in your account.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
               {/* Left Column (Sticky Sidebar on Desktop) */}
               <div className="lg:sticky lg:top-28 space-y-4">
@@ -229,7 +244,7 @@ const StudentClasses = () => {
                 <div className="bg-[#2D2D2D] rounded-2xl p-6 md:p-8 flex flex-col justify-center text-white shadow-xl relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-xl"></div>
                   
-                  <div className="flex items-center gap-4 mb-8">
+                  <div className="flex items-center gap-4 mb-6">
                     <div className="w-12 h-12 border border-white/20 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-md shadow-sm">
                       <FaBook size={20} className="text-gray-200" />
                     </div>
@@ -241,9 +256,16 @@ const StudentClasses = () => {
                     </div>
                   </div>
                   
-                  <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-1">Next Class on</span>
-                    <span className="text-base font-bold text-yellow-400">{nextDate}</span>
+                  <div className="bg-white/5 rounded-xl p-3.5 border border-white/10 mb-3">
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">Next Class on</span>
+                    <span className="text-sm font-bold text-yellow-400">{nextDate}</span>
+                  </div>
+
+                  <div className="bg-white/5 rounded-xl p-3.5 border border-white/10">
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">Access Validity</span>
+                    <span className={`text-xs font-bold ${enrollment?.isExpired ? 'text-red-400' : 'text-emerald-400'}`}>
+                      {enrollment?.validityLabel || (enrollment?.accessValidity ? `${enrollment.accessValidity} Access` : 'Active Enrollment')}
+                    </span>
                   </div>
                 </div>
 
@@ -416,7 +438,12 @@ const StudentClasses = () => {
                               </span>
                               
                               {/* Dynamic Action Buttons based on Status */}
-                              {isLiveNow ? (
+                              {enrollment?.isExpired ? (
+                                <span className="text-[11px] font-bold text-gray-400 bg-gray-100 border border-gray-200 px-3.5 py-1.5 rounded-full flex items-center gap-1.5 cursor-not-allowed">
+                                  <FaLock size={10} className="text-gray-400" />
+                                  <span>Access Expired</span>
+                                </span>
+                              ) : isLiveNow ? (
                                 cls.zoomLink ? (
                                   <button 
                                     onClick={() => setSelectedLiveClass(cls)}

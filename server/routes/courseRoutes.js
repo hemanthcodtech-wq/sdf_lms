@@ -8,6 +8,7 @@ const { createZoomMeeting } = require('../services/zoomService');
 const { sendCourseCompletionEmail } = require('../utils/emailService');
 const { generateCertificatePDF } = require('../utils/pdfGenerator');
 const { uploadBufferToCloudinary } = require('../utils/cloudinaryUploader');
+const { isCourseBatchCompleted, getCourseBatchEndDate, calculateAccessValidity } = require('../utils/courseValidityHelper');
 const upload = require('../middleware/upload');
 
 const router = express.Router();
@@ -38,14 +39,27 @@ const cleanCourseUrls = (courseDoc) => {
   return course;
 };
 
-// Get all courses (admin)
+// Get all courses (admin) - returns all courses with batch completion & access status
 router.get('/', protect, admin, async (req, res) => {
   try {
     const courses = await Course.find()
       .populate('instructorId', 'name emailOrPhone speciality phone')
       .populate('moderatorId', 'name emailOrPhone phone')
       .sort('-createdAt');
-    res.json({ success: true, data: courses.map(cleanCourseUrls) });
+
+    const enrichedCourses = courses.map((courseDoc) => {
+      const course = cleanCourseUrls(courseDoc);
+      const isBatchCompleted = isCourseBatchCompleted(course);
+      const batchEndDate = getCourseBatchEndDate(course);
+      return {
+        ...course,
+        isBatchCompleted,
+        batchEndDate,
+        isEnrollmentClosed: Boolean(course.isEnrollmentClosed || isBatchCompleted)
+      };
+    });
+
+    res.json({ success: true, data: enrichedCourses });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
@@ -62,15 +76,23 @@ router.get('/:id/enrollments', protect, admin, async (req, res) => {
   }
 });
 
-// Get all courses (public)
+// Get all courses (public) - automatically hides completed batches from new students
 router.get('/public', async (req, res) => {
   try {
-    const courses = await Course.find({ isPublished: true })
+    const courses = await Course.find({ 
+      isPublished: true, 
+      isArchived: { $ne: true },
+      isEnrollmentClosed: { $ne: true }
+    })
       .populate('instructorId', 'name emailOrPhone speciality phone bio')
       .populate('moderatorId', 'name emailOrPhone phone')
       .sort('-createdAt')
       .lean();
-    res.json({ success: true, data: courses.map(cleanCourseUrls) });
+
+    // Auto-hide courses whose batch duration/session dates have completed
+    const activeCourses = courses.filter((c) => !isCourseBatchCompleted(c));
+
+    res.json({ success: true, data: activeCourses.map(cleanCourseUrls) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
@@ -98,7 +120,20 @@ router.get('/public/:slugOrId', async (req, res) => {
     }
 
     if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
-    res.json({ success: true, data: cleanCourseUrls(course) });
+
+    const cleaned = cleanCourseUrls(course);
+    const isBatchCompleted = isCourseBatchCompleted(course);
+    const batchEndDate = getCourseBatchEndDate(course);
+
+    res.json({ 
+      success: true, 
+      data: {
+        ...cleaned,
+        isBatchCompleted,
+        batchEndDate,
+        isEnrollmentClosed: Boolean(course.isEnrollmentClosed || isBatchCompleted)
+      } 
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
@@ -323,6 +358,16 @@ router.put('/:id', protect, admin, upload.fields([{ name: 'thumbnail', maxCount:
       try {
         updateData.topics = JSON.parse(req.body.topics);
       } catch (e) {}
+    }
+
+    if (req.body.isEnrollmentClosed !== undefined) {
+      updateData.isEnrollmentClosed = req.body.isEnrollmentClosed === true || req.body.isEnrollmentClosed === 'true';
+    }
+    if (req.body.isArchived !== undefined) {
+      updateData.isArchived = req.body.isArchived === true || req.body.isArchived === 'true';
+    }
+    if (req.body.isPublished !== undefined) {
+      updateData.isPublished = req.body.isPublished === true || req.body.isPublished === 'true';
     }
 
     if (instructorId !== undefined) {

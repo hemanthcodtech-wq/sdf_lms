@@ -438,6 +438,25 @@ const CourseManagement = () => {
                       {course.category}
                     </div>
 
+                    {/* Status Badge: Active vs Batch Completed (Hidden from Public) */}
+                    <div className="absolute top-2.5 left-2.5 flex flex-col gap-1">
+                      {course.isBatchCompleted ? (
+                        <div className="bg-red-600/95 text-white backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-extrabold shadow-sm uppercase tracking-wider flex items-center gap-1.5" title="Course duration has completed. Hidden from public catalog so new students cannot enroll. Enrolled students retain access based on Access Validity.">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                          <span>Completed • Hidden</span>
+                        </div>
+                      ) : course.isEnrollmentClosed ? (
+                        <div className="bg-amber-600/95 text-white backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-extrabold shadow-sm uppercase tracking-wider">
+                          Closed for Enrollment
+                        </div>
+                      ) : (
+                        <div className="bg-emerald-600/95 text-white backdrop-blur-md px-2.5 py-1 rounded-xl text-[10px] font-extrabold shadow-sm uppercase tracking-wider flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-200"></span>
+                          <span>Open for Enrollment</span>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Batch Timing Tag */}
                     {(course.timings || course.startTime) && (
                       <div className="absolute bottom-2.5 left-2.5 bg-black/75 backdrop-blur-md px-3 py-1 rounded-xl text-[11px] font-bold text-white shadow-xs flex items-center gap-1.5">
@@ -502,13 +521,13 @@ const CourseManagement = () => {
                       <span className="font-bold text-gray-800">{course.level || 'All Levels'}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-gray-400 block">Language</span>
-                      <span className="font-bold text-gray-800 truncate block">{course.language || 'English'}</span>
+                      <span className="text-[10px] uppercase font-bold text-gray-400 block">Duration</span>
+                      <span className="font-bold text-gray-800 truncate block">{course.duration || '1 Month'}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-gray-400 block">Sessions</span>
-                      <span className="font-bold text-brand-green-dark">
-                        {course.sessionDates?.length || 0} Live Classes
+                      <span className="text-[10px] uppercase font-bold text-gray-400 block">Access Validity</span>
+                      <span className="font-bold text-brand-green-dark truncate block">
+                        {course.accessValidity || '2 Months'}
                       </span>
                     </div>
                   </div>

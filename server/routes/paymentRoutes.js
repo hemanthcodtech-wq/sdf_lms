@@ -7,6 +7,7 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { generateInvoicePDF } = require('../utils/pdfGenerator');
 const { sendCourseEnrollmentEmail } = require('../utils/emailService');
+const { isCourseBatchCompleted, calculateAccessValidity } = require('../utils/courseValidityHelper');
 
 const router = express.Router();
 
@@ -67,6 +68,8 @@ router.get(['/history', '/my-enrollments', '/my-payments'], protect, async (req,
         ? new Date(rawDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
         : 'Recent';
 
+      const validityInfo = calculateAccessValidity(obj.course, obj);
+
       return {
         ...obj,
         amount,
@@ -74,7 +77,12 @@ router.get(['/history', '/my-enrollments', '/my-payments'], protect, async (req,
         transactionId: obj.invoiceNumber || (obj._id ? `TXN-${String(obj._id).slice(-8).toUpperCase()}` : 'TXN-ONLINE'),
         id: obj.invoiceNumber || obj._id,
         date: formattedDate,
-        method: obj.paymentMethod || 'Online (Razorpay)'
+        method: obj.paymentMethod || 'Online (Razorpay)',
+        accessValidity: validityInfo.validity,
+        accessExpiryDate: validityInfo.accessExpiryDate,
+        isExpired: validityInfo.isExpired,
+        validityLabel: validityInfo.validityLabel,
+        batchEndDate: validityInfo.batchEndDate
       };
     });
 
@@ -128,6 +136,13 @@ router.post('/create-order', protect, async (req, res) => {
     const course = await Course.findById(courseId);
     if (!course) {
       return res.status(404).json({ success: false, message: 'Course not found' });
+    }
+
+    if (isCourseBatchCompleted(course)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Enrollment for this course batch has completed and is closed for new registrations.' 
+      });
     }
 
     // Determine final price (use amount passed if provided and valid, otherwise course.price)
@@ -192,6 +207,13 @@ router.post('/verify-payment', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Course not found' });
     }
 
+    if (isCourseBatchCompleted(course)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Enrollment for this course batch has completed and is closed for new registrations.' 
+      });
+    }
+
     // Check if free course enrollment
     const isFreeEnrollment = isFree === true || amountPaid === 0 || razorpay_order_id?.startsWith('free_');
 
@@ -212,6 +234,8 @@ router.post('/verify-payment', protect, async (req, res) => {
       const invoiceNumber = `SDF-INV-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
       const finalAmount = amountPaid !== undefined ? Number(amountPaid) : (isFreeEnrollment ? 0 : Number(course.price || 0));
 
+      const validityInfo = calculateAccessValidity(course);
+
       // Create Enrollment
       const enrollment = await Enrollment.create({
         course: courseId,
@@ -219,7 +243,8 @@ router.post('/verify-payment', protect, async (req, res) => {
         amountPaid: finalAmount,
         invoiceNumber: invoiceNumber,
         paymentStatus: 'completed',
-        progress: 0
+        progress: 0,
+        accessExpiryDate: validityInfo.accessExpiryDate
       });
 
       // Get student name for invoice

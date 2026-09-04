@@ -47,6 +47,10 @@ const enrollmentSchema = new mongoose.Schema({
   invoiceUrl: {
     type: String,
     default: null
+  },
+  accessExpiryDate: {
+    type: Date,
+    default: null
   }
 }, { timestamps: true });
 

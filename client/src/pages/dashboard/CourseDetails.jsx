@@ -234,16 +234,25 @@ const CourseContent = ({ course, handleEnroll, isEnrolled, isWishlisted, handleT
                 )}
 
                 <div className="flex gap-3">
-                  <button 
-                    onClick={handleEnroll}
-                    className={`flex-1 py-4 px-6 text-white text-xl font-bold rounded-2xl transition-all duration-300 transform hover:-translate-y-1 shadow-lg ${
-                      isEnrolled 
-                        ? 'bg-[#C08552] hover:bg-[#a06b3e] shadow-[#C08552]/30' 
-                        : 'bg-brand-green hover:bg-brand-green-dark shadow-[0_10px_25px_rgba(41,120,56,0.4)]'
-                    }`}
-                  >
-                    {isEnrolled ? 'Go to Learning' : t('course_enroll')}
-                  </button>
+                  {!isEnrolled && (course.isBatchCompleted || course.isEnrollmentClosed) ? (
+                    <button 
+                      disabled={true}
+                      className="flex-1 py-4 px-4 text-gray-500 bg-gray-200 text-base font-bold rounded-2xl cursor-not-allowed shadow-none select-none text-center"
+                    >
+                      Batch Completed • Enrollment Closed
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={handleEnroll}
+                      className={`flex-1 py-4 px-6 text-white text-xl font-bold rounded-2xl transition-all duration-300 transform hover:-translate-y-1 shadow-lg ${
+                        isEnrolled 
+                          ? 'bg-[#C08552] hover:bg-[#a06b3e] shadow-[#C08552]/30' 
+                          : 'bg-brand-green hover:bg-brand-green-dark shadow-[0_10px_25px_rgba(41,120,56,0.4)]'
+                      }`}
+                    >
+                      {isEnrolled ? 'Go to Learning' : t('course_enroll')}
+                    </button>
+                  )}
                   <button
                     onClick={handleToggleWishlist}
                     className="w-16 py-4 flex items-center justify-center rounded-2xl border border-gray-200 hover:border-red-300 bg-white hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all shadow-sm"

@@ -186,7 +186,9 @@ export const StudentClassesScreen = ({ route, navigation }) => {
 
       displayTime = `${formatTime12(sessionStart)}`;
 
-      const now = new Date();
+      if (route.params?.enrollment?.isExpired) {
+        return { isCompleted: true, isLiveNow: false, canJoin: false, label: 'Expired', displayDate, displayTime };
+      }
 
       if (now > sessionEnd) {
         return { isCompleted: true, isLiveNow: false, canJoin: false, label: 'Completed', displayDate, displayTime };
@@ -257,6 +259,14 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   };
 
   const handleJoinZoom = (lessonItem) => {
+    if (route.params?.enrollment?.isExpired) {
+      Alert.alert(
+        'Access Validity Expired',
+        'Your access validity period for this course has ended. Live classes and interactive sessions are now archived.\n\nYour Certificate and Invoices remain permanently accessible in your account.'
+      );
+      return;
+    }
+
     const target = lessonItem || currentLesson;
     const link =
       target?.zoomLink ||
@@ -386,6 +396,26 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         </View>
         <ProgressBar progress={progressPercent} height={6} />
       </View>
+
+      {/* Access Validity Notification */}
+      {route.params?.enrollment?.isExpired ? (
+        <View style={styles.expiredBanner}>
+          <Ionicons name="lock-closed" size={16} color="#991b1b" />
+          <View style={{ flex: 1, marginLeft: 8 }}>
+            <Text style={styles.expiredBannerTitle}>Course Access Validity Expired</Text>
+            <Text style={styles.expiredBannerSubtitle}>
+              Your access validity concluded on {route.params?.enrollment?.accessExpiryDate ? new Date(route.params.enrollment.accessExpiryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'completion'}. Live classes and interactive sessions are now archived. Your official Certificate and Invoices remain permanently available.
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.validityActiveBanner}>
+          <Ionicons name="time-outline" size={13} color="#065f46" />
+          <Text style={styles.validityActiveText}>
+            {route.params?.enrollment?.validityLabel || (course?.accessValidity ? `Access Valid: ${course.accessValidity}` : 'Access Active')}
+          </Text>
+        </View>
+      )}
 
       {/* Navigation Tabs */}
       <View style={styles.tabNav}>
@@ -1252,5 +1282,46 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 15,
+  },
+  expiredBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  expiredBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#991b1b',
+    marginBottom: 2,
+  },
+  expiredBannerSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#b91c1c',
+    lineHeight: 15,
+  },
+  validityActiveBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    gap: 6,
+  },
+  validityActiveText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#065f46',
   },
 });

@@ -94,7 +94,11 @@ const MyLearning = () => {
                 image: courseObj.thumbnailUrl || courseObj.thumbnail || courseObj.image || '',
                 whatsappGroupLink: courseObj.whatsappGroupLink || '',
                 progress: calcProgress,
-                completed: allFinished && Boolean(enrollment.certificateId)
+                completed: allFinished && Boolean(enrollment.certificateId),
+                accessValidity: enrollment.accessValidity || courseObj.accessValidity || '2 Months',
+                accessExpiryDate: enrollment.accessExpiryDate,
+                isExpired: Boolean(enrollment.isExpired),
+                validityLabel: enrollment.validityLabel || (courseObj.accessValidity ? `${courseObj.accessValidity} Access` : '2 Months Access')
               };
             });
           setCourses(fetchedCourses);
@@ -290,14 +294,20 @@ const MyLearning = () => {
                       {/* Top colored banner */}
                       <div className={`${colors} px-5 py-3 flex justify-between items-center border-b border-white/50`}>
                         <span className="font-bold text-sm tracking-tight">{course.category}</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wide opacity-80 flex items-center gap-1 bg-white/30 px-2 py-0.5 rounded-full">
-                          Enrolled
-                        </span>
+                        {course.isExpired ? (
+                          <span className="text-[10px] font-extrabold uppercase tracking-wide flex items-center gap-1 bg-red-600 text-white px-2.5 py-0.5 rounded-full shadow-2xs">
+                            Expired
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold uppercase tracking-wide opacity-80 flex items-center gap-1 bg-white/30 px-2 py-0.5 rounded-full">
+                            Enrolled
+                          </span>
+                        )}
                       </div>
 
                       {/* Content */}
                       <div className="p-6 flex-1 flex flex-col">
-                        <div className="flex items-start gap-4 mb-4">
+                        <div className="flex items-start gap-4 mb-3">
                           <div className="w-14 h-14 rounded-xl bg-gray-50 shrink-0 overflow-hidden border border-gray-100 flex items-center justify-center">
                             {course.image ? (
                               <img
@@ -318,6 +328,18 @@ const MyLearning = () => {
                           </div>
                         </div>
 
+                        {/* Access Validity Badge */}
+                        <div className="mb-3">
+                          <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                            course.isExpired 
+                              ? 'bg-red-50 text-red-700 border-red-200' 
+                              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                          }`}>
+                            <span>{course.isExpired ? '🔒' : '⏳'}</span>
+                            <span>{course.validityLabel}</span>
+                          </span>
+                        </div>
+
                         <div className="mt-auto pt-4 border-t border-gray-50">
                           <div className="flex justify-between items-center mb-2">
                             <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Progress</div>
@@ -330,9 +352,13 @@ const MyLearning = () => {
                           <div className="flex gap-2">
                             <button 
                               onClick={() => navigate(`/dashboard/learning/${course.courseId}`)}
-                              className="flex-1 bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900 font-bold px-3 py-3 rounded-xl text-xs sm:text-sm shadow-sm transition-transform active:scale-95 flex justify-center items-center gap-1.5 cursor-pointer"
+                              className={`flex-1 font-bold px-3 py-3 rounded-xl text-xs sm:text-sm shadow-sm transition-transform active:scale-95 flex justify-center items-center gap-1.5 cursor-pointer ${
+                                course.isExpired 
+                                  ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200' 
+                                  : 'bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900'
+                              }`}
                             >
-                              <span>View Classes</span> <FaChevronRight className="text-[10px]" />
+                              <span>{course.isExpired ? 'View Course (Archived)' : 'View Classes'}</span> <FaChevronRight className="text-[10px]" />
                             </button>
 
                             {course.whatsappGroupLink && (

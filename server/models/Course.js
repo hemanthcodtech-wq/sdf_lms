@@ -127,6 +127,14 @@ const courseSchema = new mongoose.Schema({
   isPublished: {
     type: Boolean,
     default: true
+  },
+  isEnrollmentClosed: {
+    type: Boolean,
+    default: false
+  },
+  isArchived: {
+    type: Boolean,
+    default: false
   }
 }, { timestamps: true });
 

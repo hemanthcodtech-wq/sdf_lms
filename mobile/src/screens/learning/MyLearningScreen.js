@@ -235,8 +235,19 @@ export const MyLearningScreen = ({ navigation }) => {
               ? { ...item, ...item.course, title: item.course.title || item.title, thumbnailUrl: item.course.thumbnailUrl || item.course.thumbnail || item.thumbnailUrl }
               : item;
             const progressVal = getEnrollmentProgress(item);
+            const isExpired = Boolean(item.isExpired);
+            const validityLabel = item.validityLabel || (courseObj.accessValidity ? `${courseObj.accessValidity} Access` : '2 Months Access');
+
             return (
-              <View style={{ marginBottom: 12 }}>
+              <View style={{ marginBottom: 14 }}>
+                {/* Access Validity Pill */}
+                <View style={[styles.validityBadgeContainer, isExpired ? styles.validityBadgeExpired : styles.validityBadgeActive]}>
+                  <Ionicons name={isExpired ? "lock-closed" : "time"} size={12} color={isExpired ? "#b91c1c" : "#047857"} />
+                  <Text style={[styles.validityBadgeText, isExpired ? styles.validityTextExpired : styles.validityTextActive]}>
+                    {validityLabel}
+                  </Text>
+                </View>
+
                 <CourseCard
                   course={courseObj}
                   showProgress
@@ -343,5 +354,35 @@ const styles = StyleSheet.create({
     color: '#92400e',
     flex: 1,
     marginLeft: 8,
+  },
+  validityBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 6,
+    marginHorizontal: 2,
+    borderWidth: 1,
+    gap: 5,
+  },
+  validityBadgeActive: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+  },
+  validityBadgeExpired: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+  },
+  validityBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  validityTextActive: {
+    color: '#065f46',
+  },
+  validityTextExpired: {
+    color: '#991b1b',
   },
 });
