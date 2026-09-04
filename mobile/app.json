@@ -2,7 +2,7 @@
   "expo": {
     "name": "Swamy dwija Foundation",
     "slug": "sdf-lms",
-    "owner": "student16s-team",
+    "owner": "student17s-team",
     "scheme": "sdflms",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -24,12 +24,13 @@
       },
       "package": "com.sdflms.app",
       "permissions": [
-        "RECEIVE_BOOT_COMPLETED",
-        "POST_NOTIFICATIONS",
-        "VIBRATE",
-        "WAKE_LOCK",
-        "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "plugins": [
@@ -53,7 +54,7 @@
     "extra": {
       "apiUrl": "https://swamidwijafoundation.com/api",
       "eas": {
-        "projectId": "2f4db4c9-a87f-46ba-a136-f7be36197182"
+        "projectId": "ad472c0b-35db-40c3-ae8b-ba5d20cc87ad"
       }
     }
   }
