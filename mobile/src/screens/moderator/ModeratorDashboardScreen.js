@@ -72,9 +72,11 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
   });
   const [updatingProfile, setUpdatingProfile] = useState(false);
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchDashboard = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent && !dashboardData) {
+        setLoading(true);
+      }
       const res = await moderatorService.getDashboardStats();
       if (res?.data) {
         setDashboardData(res.data);
@@ -84,30 +86,25 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
             phone: res.data.profile.phone || '',
             bio: res.data.profile.bio || '',
           });
-          if (updateUserProfile && res.data.profile.name) {
-            updateUserProfile({
-              name: res.data.profile.name,
-              phone: res.data.profile.phone,
-              bio: res.data.profile.bio,
-            });
-          }
         }
       }
     } catch (err) {
       console.error('Error fetching moderator dashboard stats:', err);
-      Alert.alert('Error', 'Unable to load moderator dashboard. Please verify your session.');
+      if (!dashboardData) {
+        Alert.alert('Error', 'Unable to load moderator dashboard. Please verify your session.');
+      }
     } finally {
       setLoading(false);
     }
-  }, [updateUserProfile]);
+  }, [dashboardData]);
 
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchDashboard();
+    await fetchDashboard(true);
     setRefreshing(false);
   };
 
@@ -287,7 +284,7 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563eb']} />
         }
       >
-        {loading ? (
+        {(!dashboardData && loading) ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2563eb" />
             <Text style={styles.loadingText}>Loading Moderator Portal...</Text>

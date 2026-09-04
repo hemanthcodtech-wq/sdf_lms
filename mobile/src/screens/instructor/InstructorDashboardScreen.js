@@ -85,9 +85,11 @@ export const InstructorDashboardScreen = ({ navigation }) => {
   });
   const [updatingProfile, setUpdatingProfile] = useState(false);
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchDashboard = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent && !dashboardData) {
+        setLoading(true);
+      }
       const res = await instructorService.getDashboardStats();
       if (res?.data) {
         setDashboardData(res.data);
@@ -99,32 +101,25 @@ export const InstructorDashboardScreen = ({ navigation }) => {
             speciality: res.data.profile.speciality || '',
             experience: res.data.profile.experience || '',
           });
-          if (updateUserProfile && res.data.profile.name) {
-            updateUserProfile({
-              name: res.data.profile.name,
-              phone: res.data.profile.phone,
-              bio: res.data.profile.bio,
-              speciality: res.data.profile.speciality,
-              experience: res.data.profile.experience,
-            });
-          }
         }
       }
     } catch (err) {
       console.error('Error fetching instructor dashboard stats:', err);
-      Alert.alert('Error', 'Unable to load instructor dashboard. Please verify your session.');
+      if (!dashboardData) {
+        Alert.alert('Error', 'Unable to load instructor dashboard. Please verify your session.');
+      }
     } finally {
       setLoading(false);
     }
-  }, [updateUserProfile]);
+  }, [dashboardData]);
 
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchDashboard();
+    await fetchDashboard(true);
     setRefreshing(false);
   };
 
@@ -366,7 +361,7 @@ export const InstructorDashboardScreen = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.secondary]} />
         }
       >
-        {loading ? (
+        {(!dashboardData && loading) ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.secondary} />
             <Text style={styles.loadingText}>Loading Instructor Portal...</Text>

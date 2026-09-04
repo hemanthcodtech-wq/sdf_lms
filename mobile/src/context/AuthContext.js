@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/authService';
 
@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await AsyncStorage.multiRemove(['token', 'user']);
       setToken(null);
@@ -106,13 +106,17 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Error logging out', error);
     }
-  };
+  }, []);
 
-  const updateUserProfile = async (updatedData) => {
-    const newUser = { ...user, ...updatedData };
-    await AsyncStorage.setItem('user', JSON.stringify(newUser));
-    setUser(newUser);
-  };
+  const updateUserProfile = useCallback(async (updatedData) => {
+    setUser((currentUser) => {
+      const newUser = { ...(currentUser || {}), ...updatedData };
+      AsyncStorage.setItem('user', JSON.stringify(newUser)).catch(err => {
+        console.error('Error persisting user update:', err);
+      });
+      return newUser;
+    });
+  }, []);
 
   const toggleWishlist = async (course) => {
     let updated;

@@ -29,9 +29,9 @@ const ModeratorDashboard = () => {
     fetchDashboardStats();
   }, []);
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent && !dashboardData) setLoading(true);
       const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/moderator/dashboard-stats`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('moderatorToken')}` }
       });
@@ -548,7 +548,7 @@ const ModeratorDashboard = () => {
           </span>
         </div>
 
-        {loading ? (
+        {(!dashboardData && loading) ? (
           <div className="flex justify-center p-12">
             <div className="w-8 h-8 border-3 border-brand-green border-t-transparent rounded-full animate-spin"></div>
           </div>
