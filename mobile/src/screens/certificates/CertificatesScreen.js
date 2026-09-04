@@ -177,6 +177,8 @@ export const CertificatesScreen = ({ navigation }) => {
                     <Text style={styles.certMetaLabel}>Certificate ID</Text>
                     <Text style={styles.certMetaValue} numberOfLines={1}>{certId}</Text>
                   </View>
+                </View>
+
                 <View style={styles.certActionRow}>
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.viewBtn]}
