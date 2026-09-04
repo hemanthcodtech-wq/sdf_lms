@@ -25,6 +25,10 @@ const Certificates = () => {
 
   useEffect(() => {
     fetchData();
+    window.addEventListener('user-updated', fetchData);
+    return () => {
+      window.removeEventListener('user-updated', fetchData);
+    };
   }, []);
 
   const fetchData = async () => {
@@ -84,8 +88,7 @@ const Certificates = () => {
     setIsEditNameOpen(true);
   };
 
-  const handleSaveName = async (e) => {
-    e.preventDefault();
+  const handleSaveName = async () => {
     const active = completedEnrollments[selectedCertIndex];
     if (!active || !editNameInput.trim()) return;
 
@@ -103,6 +106,19 @@ const Certificates = () => {
         setCompletedEnrollments(prev => prev.map((enr, i) => 
           i === selectedCertIndex ? { ...enr, studentName: editNameInput.trim(), certificateUrl: res.data.enrollment?.certificateUrl || enr.certificateUrl } : enr
         ));
+
+        // Synchronize updated user name to localStorage and everywhere in app
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const parsed = JSON.parse(storedUser);
+            parsed.name = editNameInput.trim();
+            localStorage.setItem('user', JSON.stringify(parsed));
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event('user-updated'));
+          } catch (e) {}
+        }
+
         setToastMessage('Official certificate name updated & regenerated successfully!');
         setIsEditNameOpen(false);
         setTimeout(() => setToastMessage(''), 4000);

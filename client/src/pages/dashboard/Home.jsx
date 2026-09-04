@@ -11,10 +11,17 @@ const Home = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    const loadUser = () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {}
+      }
+    };
+    loadUser();
+    window.addEventListener('storage', loadUser);
+    window.addEventListener('user-updated', loadUser);
 
     const fetchStats = async () => {
       try {
@@ -62,6 +69,11 @@ const Home = () => {
     };
 
     fetchStats();
+
+    return () => {
+      window.removeEventListener('storage', loadUser);
+      window.removeEventListener('user-updated', loadUser);
+    };
   }, []);
 
   const isClassLive = (cls) => {

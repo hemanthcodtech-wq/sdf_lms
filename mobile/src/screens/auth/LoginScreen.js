@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,22 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  Modal,
+  SafeAreaView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
 import { colors, shadows } from '../../theme/colors';
 import { CustomInput } from '../../components/CustomInput';
 import { CustomButton } from '../../components/CustomButton';
 import { useAuth } from '../../context/AuthContext';
 
-WebBrowser.maybeCompleteAuthSession();
+let WebView = null;
+if (Platform.OS !== 'web') {
+  try {
+    WebView = require('react-native-webview').WebView;
+  } catch (e) {}
+}
 
 export const LoginScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -29,6 +35,9 @@ export const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isGoogleModalVisible, setIsGoogleModalVisible] = useState(false);
+  const [isGoogleVerifying, setIsGoogleVerifying] = useState(false);
+  const webViewRef = useRef(null);
 
   // Load Google Identity Services script on Web
   useEffect(() => {
@@ -46,29 +55,21 @@ export const LoginScreen = ({ navigation }) => {
   }, []);
 
   const handleLogin = async () => {
-    const cleanEmail = email.trim();
-    const cleanPassword = password.trim();
-
-    if (!cleanEmail) {
-      setError('Please enter your email address.');
-      return;
-    }
-
-    if (!cleanPassword) {
-      setError('Please enter your password.');
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password.');
       return;
     }
 
     try {
-      setError('');
       setLoading(true);
-
-      await login(cleanEmail, cleanPassword);
+      setError('');
+      await login(email.trim(), password);
       navigation.reset({
         index: 0,
         routes: [{ name: 'Main' }],
       });
     } catch (err) {
+      console.error('Login error:', err);
       setError(
         err?.response?.data?.message ||
           err.message ||
@@ -76,6 +77,39 @@ export const LoginScreen = ({ navigation }) => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleAccessToken = async (token) => {
+    setIsGoogleVerifying(true);
+    try {
+      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const profile = await res.json();
+      if (profile?.email) {
+        await loginWithGoogle({
+          email: profile.email,
+          name: profile.name || profile.given_name || 'Google User',
+          avatar: profile.picture,
+          googleId: profile.sub,
+          accessToken: token,
+        });
+        setIsGoogleModalVisible(false);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        });
+      } else {
+        throw new Error('Failed to retrieve Google profile information');
+      }
+    } catch (authErr) {
+      console.error('Google Sign-In backend sync error:', authErr);
+      setError(authErr?.response?.data?.message || authErr.message || 'Google Sign-In failed');
+      setIsGoogleModalVisible(false);
+    } finally {
+      setIsGoogleVerifying(false);
+      setGoogleLoading(false);
     }
   };
 
@@ -91,78 +125,24 @@ export const LoginScreen = ({ navigation }) => {
           client_id: clientId,
           scope: 'email profile openid',
           callback: async (tokenResponse) => {
-            try {
-              if (tokenResponse?.error) {
-                setError(tokenResponse.error_description || 'Google authorization cancelled');
-                setGoogleLoading(false);
-                return;
-              }
-              if (tokenResponse?.access_token) {
-                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-                });
-                const profile = await res.json();
-                
-                if (profile?.email) {
-                  await loginWithGoogle({
-                    email: profile.email,
-                    name: profile.name || profile.given_name || 'Google User',
-                    avatar: profile.picture,
-                    googleId: profile.sub,
-                  });
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'Main' }],
-                  });
-                } else {
-                  setError('Failed to retrieve Google profile information.');
-                }
-              }
-            } catch (authErr) {
-              console.error('Google Sign-In backend sync error:', authErr);
-              setError(authErr?.response?.data?.message || authErr.message || 'Google Sign-In failed');
-            } finally {
+            if (tokenResponse?.error) {
+              setError(tokenResponse.error_description || 'Google authorization cancelled');
               setGoogleLoading(false);
+              return;
+            }
+            if (tokenResponse?.access_token) {
+              await handleGoogleAccessToken(tokenResponse.access_token);
             }
           },
         });
         tokenClient.requestAccessToken({ prompt: 'select_account' });
       } else {
-        // Native Android APK & iOS: Open In-App Secure OAuth Session
-        const redirectUri = 'https://swamidwijafoundation.com';
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20email%20profile&prompt=select_account`;
-        
-        const authResult = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-        
-        if (authResult.type === 'success' && authResult.url) {
-          const tokenMatch = authResult.url.match(/access_token=([^&]+)/);
-          if (tokenMatch && tokenMatch[1]) {
-            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-              headers: { Authorization: `Bearer ${tokenMatch[1]}` },
-            });
-            const profile = await res.json();
-            if (profile?.email) {
-              await loginWithGoogle({
-                email: profile.email,
-                name: profile.name || profile.given_name || 'Google User',
-                avatar: profile.picture,
-                googleId: profile.sub,
-              });
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Main' }],
-              });
-              return;
-            }
-          }
-        }
-        
-        setGoogleLoading(false);
+        // Native Android & iOS: Open In-App Seamless WebView Modal (never leaves the app, never opens flagged browser)
+        setIsGoogleModalVisible(true);
       }
     } catch (err) {
       console.error('Google Sign-In Error:', err);
       setError(err?.response?.data?.message || err.message || 'Google Sign-In error');
-    } finally {
       setGoogleLoading(false);
     }
   };
@@ -315,6 +295,81 @@ export const LoginScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* In-App Google Sign-In WebView Modal */}
+      <Modal
+        visible={isGoogleModalVisible}
+        animationType="slide"
+        onRequestClose={() => {
+          setIsGoogleModalVisible(false);
+          setGoogleLoading(false);
+        }}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }}>
+          <View style={styles.googleModalHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name="logo-google" size={22} color="#EA4335" />
+              <Text style={styles.googleModalTitle}>Sign in with Google</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                setIsGoogleModalVisible(false);
+                setGoogleLoading(false);
+              }}
+              style={styles.googleModalClose}
+            >
+              <Ionicons name="close" size={24} color="#374151" />
+            </TouchableOpacity>
+          </View>
+
+          {isGoogleVerifying ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textPrimary }}>
+                Signing you into your account...
+              </Text>
+            </View>
+          ) : (
+            WebView && (
+              <WebView
+                ref={webViewRef}
+                source={{
+                  uri: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '473693349273-r3lct54ccv5pfeppqkes57odmni6nvh4.apps.googleusercontent.com'}&response_type=token&redirect_uri=${encodeURIComponent('https://swamidwijafoundation.com')}&scope=openid%20email%20profile&prompt=select_account`,
+                }}
+                userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+                onShouldStartLoadWithRequest={(request) => {
+                  const url = request.url;
+                  if (url.includes('access_token=') || url.includes('swamidwijafoundation.com')) {
+                    const match = url.match(/access_token=([^&]+)/);
+                    if (match && match[1]) {
+                      webViewRef.current?.stopLoading();
+                      handleGoogleAccessToken(match[1]);
+                      return false; // Crucial: Stop loading immediately, never loads the website!
+                    }
+                  }
+                  return true;
+                }}
+                onNavigationStateChange={(navState) => {
+                  const url = navState.url;
+                  if (url.includes('access_token=') || url.includes('swamidwijafoundation.com')) {
+                    const match = url.match(/access_token=([^&]+)/);
+                    if (match && match[1]) {
+                      webViewRef.current?.stopLoading();
+                      handleGoogleAccessToken(match[1]);
+                    }
+                  }
+                }}
+                startInLoadingState
+                renderLoading={() => (
+                  <View style={{ ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                  </View>
+                )}
+              />
+            )
+          )}
+        </SafeAreaView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -496,5 +551,25 @@ const styles = StyleSheet.create({
     color: colors.secondaryDark || '#c25e17',
     fontWeight: '700',
     textDecorationLine: 'underline',
+  },
+  googleModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    backgroundColor: '#ffffff',
+  },
+  googleModalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1e293b',
+  },
+  googleModalClose: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
   },
 });

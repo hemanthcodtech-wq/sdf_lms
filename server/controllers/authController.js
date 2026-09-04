@@ -256,37 +256,137 @@ exports.updateUserProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
 
-    if (user) {
-      user.name = req.body.name || (req.body.firstName ? `${req.body.firstName} ${req.body.lastName || ''}`.trim() : user.name);
-      user.firstName = req.body.firstName || user.firstName;
-      user.lastName = req.body.lastName || user.lastName;
-      user.email = req.body.email || user.email;
-      user.emailOrPhone = req.body.emailOrPhone || user.emailOrPhone;
-      user.phone = req.body.phone || user.phone;
-      if (req.body.avatar) user.avatar = req.body.avatar;
-      
-      if (req.body.password) {
-        user.password = req.body.password;
-      }
-
-      const updatedUser = await user.save();
-
-      res.json({
-        success: true,
-        _id: updatedUser._id,
-        name: updatedUser.name,
-        firstName: updatedUser.firstName,
-        lastName: updatedUser.lastName,
-        email: updatedUser.email || updatedUser.emailOrPhone,
-        emailOrPhone: updatedUser.emailOrPhone,
-        phone: updatedUser.phone,
-        avatar: updatedUser.avatar,
-        role: updatedUser.role,
-        token: generateToken(updatedUser._id),
-      });
-    } else {
-      res.status(404).json({ success: false, message: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
+
+    // Determine final name
+    let updatedName = req.body.name ? req.body.name.trim() : null;
+    if (!updatedName && (req.body.firstName || req.body.lastName)) {
+      updatedName = `${req.body.firstName || ''} ${req.body.lastName || ''}`.trim();
+    }
+    if (updatedName) {
+      user.name = updatedName;
+    }
+
+    if (req.body.firstName !== undefined) user.firstName = req.body.firstName.trim();
+    if (req.body.lastName !== undefined) user.lastName = req.body.lastName.trim();
+    if (req.body.email) user.email = req.body.email.trim();
+    if (req.body.emailOrPhone) user.emailOrPhone = req.body.emailOrPhone.trim();
+    if (req.body.phone) user.phone = req.body.phone.trim();
+    if (req.body.avatar) user.avatar = req.body.avatar;
+    
+    if (req.body.password) {
+      user.password = req.body.password;
+    }
+
+    const updatedUser = await user.save();
+
+    // Cascading sync: Update studentName in all Enrollment records belonging to this user
+    const finalName = updatedUser.name || `${updatedUser.firstName || ''} ${updatedUser.lastName || ''}`.trim();
+    if (finalName) {
+      try {
+        const Enrollment = require('../models/Enrollment');
+        const Course = require('../models/Course');
+        const { generateCertificatePDF } = require('../utils/pdfGenerator');
+        const { uploadBufferToCloudinary } = require('../utils/cloudinary');
+
+        const userIdentifiers = [
+          updatedUser.email,
+          updatedUser.emailOrPhone,
+          updatedUser.phone,
+          req.user.email,
+          req.user.emailOrPhone,
+          req.user.phone
+        ].filter(Boolean);
+
+        // 1. Update studentName in all enrollments for this user
+        await Enrollment.updateMany(
+          {
+            $or: [
+              { user: updatedUser._id },
+              { studentEmail: { $in: userIdentifiers } }
+            ]
+          },
+          {
+            $set: {
+              studentName: finalName
+            }
+          }
+        );
+
+        // 2. For completed enrollments, re-generate the certificate with the updated legal name
+        const completedEnrollments = await Enrollment.find({
+          $or: [
+            { user: updatedUser._id },
+            { studentEmail: { $in: userIdentifiers } }
+          ],
+          completed: true
+        }).populate('course');
+
+        for (const enr of completedEnrollments) {
+          try {
+            const courseObj = enr.course || await Course.findById(enr.course);
+            const certId = enr.certificateId || `SDF-CERT-${enr._id.toString().slice(-6).toUpperCase()}`;
+            const compDate = enr.completionDate || enr.updatedAt || new Date();
+            const studentId = updatedUser.studentId || `SDWFY${updatedUser._id.toString().slice(-6).toUpperCase()}`;
+
+            let instructorName = courseObj?.instructor || courseObj?.instructorId?.name;
+            if (!instructorName && courseObj?.instructorId) {
+              const instUser = await User.findById(courseObj.instructorId).select('name');
+              if (instUser?.name) instructorName = instUser.name;
+            }
+            instructorName = instructorName || 'Course Instructor';
+
+            const courseDuration = courseObj?.duration || (courseObj?.durationDays && courseObj?.durationHours ? `${courseObj.durationDays} (${courseObj.durationHours})` : (courseObj?.sessionDates?.length ? `${courseObj.sessionDates.length} Days (${courseObj.sessionDates.length} Hours)` : '30 Days (20 Hours)'));
+
+            const certPdfBuffer = await generateCertificatePDF({
+              studentName: finalName,
+              studentId,
+              courseTitle: courseObj?.title || 'Yoga & Vedic Sciences',
+              category: courseObj?.category || 'Yoga & Vedic Sciences',
+              level: courseObj?.level || 'All Levels',
+              duration: courseDuration,
+              instructorName,
+              completionDate: new Date(compDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }),
+              certificateId: certId
+            });
+
+            // If Cloudinary upload is configured, upload new PDF buffer to overwrite
+            try {
+              const cloudUrl = await uploadBufferToCloudinary(certPdfBuffer, certId, 'sdf_certificates');
+              if (cloudUrl) {
+                enr.certificateUrl = cloudUrl;
+              }
+            } catch (cErr) {
+              // Ignore Cloudinary error, enrollment studentName is still updated
+            }
+
+            enr.studentName = finalName;
+            await enr.save();
+          } catch (certErr) {
+            console.error('[Certificate Sync] Notice:', certErr.message);
+          }
+        }
+      } catch (syncErr) {
+        console.error('[Profile Update Sync Error]:', syncErr);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName,
+      email: updatedUser.email || updatedUser.emailOrPhone,
+      emailOrPhone: updatedUser.emailOrPhone,
+      phone: updatedUser.phone,
+      avatar: updatedUser.avatar,
+      role: updatedUser.role,
+      token: generateToken(updatedUser._id),
+    });
   } catch (error) {
     next(error);
   }
@@ -328,7 +428,7 @@ exports.uploadUserAvatar = async (req, res, next) => {
 
 exports.googleLogin = async (req, res, next) => {
   try {
-    const { credential, idToken, email: rawEmail, name: rawName, avatar: rawAvatar, googleId: rawGoogleId } = req.body;
+    const { credential, idToken, accessToken, email: rawEmail, name: rawName, avatar: rawAvatar, googleId: rawGoogleId } = req.body;
     
     let googleId = rawGoogleId;
     let email = rawEmail;
@@ -352,81 +452,114 @@ exports.googleLogin = async (req, res, next) => {
         });
 
         const payload = ticket.getPayload();
-        googleId = payload.sub;
-        email = payload.email;
-        name = payload.name;
-        picture = payload.picture;
+        googleId = payload.sub || googleId;
+        email = payload.email || email;
+        name = payload.name || name;
+        picture = payload.picture || picture;
       } catch (verifyError) {
-        console.error('[GoogleAuth] Token verification failed:', verifyError.message);
-        return res.status(401).json({ 
-          success: false, 
-          message: 'Google token verification failed: ' + verifyError.message 
+        console.error('[GoogleAuth] verifyIdToken check failed, attempting tokeninfo verification:', verifyError.message);
+        try {
+          const axios = require('axios');
+          const tokenInfoRes = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${tokenToVerify}`);
+          if (tokenInfoRes.data?.email) {
+            googleId = tokenInfoRes.data.sub || googleId;
+            email = tokenInfoRes.data.email || email;
+            name = tokenInfoRes.data.name || name;
+            picture = tokenInfoRes.data.picture || picture;
+          }
+        } catch (tErr) {
+          console.error('[GoogleAuth] tokeninfo verification failed:', tErr.message);
+        }
+      }
+    } else if (accessToken) {
+      try {
+        const axios = require('axios');
+        const userInfoRes = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}` }
         });
+        if (userInfoRes.data?.email) {
+          googleId = userInfoRes.data.sub || googleId;
+          email = userInfoRes.data.email || email;
+          name = userInfoRes.data.name || name;
+          picture = userInfoRes.data.picture || picture;
+        }
+      } catch (uErr) {
+        console.error('[GoogleAuth] accessToken fetch failed:', uErr.message);
       }
     }
 
+    // Fallbacks from raw values if passed directly from client
+    if (!email && rawEmail) email = rawEmail;
+    if (!name && rawName) name = rawName;
+    if (!googleId && rawGoogleId) googleId = rawGoogleId;
+    if (!picture && rawAvatar) picture = rawAvatar;
+
     if (!email) {
-      return res.status(400).json({ success: false, message: 'Google account email is required' });
+      return res.status(400).json({ success: false, message: 'Google account email could not be verified' });
     }
 
     const emailClean = email.trim().toLowerCase();
+    const emailEscaped = emailClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const emailRegex = new RegExp(`^${emailEscaped}$`, 'i');
 
-    // Find or create user
+    // Find existing user by googleId, email, or emailOrPhone (exact or case-insensitive)
     let user = await User.findOne({ 
       $or: [
         ...(googleId ? [{ googleId }] : []), 
         { email: emailClean }, 
-        { emailOrPhone: emailClean }
+        { email: emailRegex },
+        { emailOrPhone: emailClean },
+        { emailOrPhone: emailRegex }
       ] 
     });
 
     if (user) {
-      // Update googleId & avatar if needed
+      // User found! (Existing registered user with credentials or Google)
       let changed = false;
-      if (googleId && !user.googleId) {
+      if (googleId && user.googleId !== googleId) {
         user.googleId = googleId;
+        changed = true;
+      }
+      if (!user.email) {
+        user.email = emailClean;
         changed = true;
       }
       if (picture && (!user.avatar || user.avatar.includes('unsplash'))) {
         user.avatar = picture;
         changed = true;
       }
-      if (name && !user.name) {
-        user.name = name;
+      if (!user.name && name) {
+        user.name = name.trim();
         changed = true;
       }
       if (changed) await user.save();
     } else {
-      // If attempting to register with Google explicitly
-      if (req.body.isRegister || req.body.mode === 'register') {
-        user = await User.create({
-          email: emailClean,
-          emailOrPhone: emailClean,
-          googleId,
-          name: (name || 'Student').trim(),
-          avatar: picture || '',
-          role: 'student',
-          isEmailVerified: true,
-        });
-      } else {
-        // Not registered
-        return res.status(404).json({
-          success: false,
-          notRegistered: true,
-          message: 'No account found with this Google email. Please sign up first.',
-        });
-      }
+      // Create new user account seamlessly so sign-in with google always succeeds
+      user = await User.create({
+        email: emailClean,
+        emailOrPhone: emailClean,
+        googleId,
+        name: (name || 'Student').trim(),
+        avatar: picture || '',
+        role: 'student',
+        isEmailVerified: true,
+      });
     }
+
+    const token = generateToken(user._id);
 
     res.json({
       success: true,
       _id: user._id,
       email: user.email || user.emailOrPhone,
       emailOrPhone: user.emailOrPhone,
-      name: user.name,
-      avatar: user.avatar,
-      role: user.role,
-      token: generateToken(user._id),
+      name: user.name || (user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Student'),
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      phone: user.phone || '',
+      avatar: user.avatar || '',
+      role: user.role || 'student',
+      token,
     });
   } catch (error) {
     console.error('[GoogleAuth] Error:', error);

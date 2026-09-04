@@ -59,39 +59,6 @@ export const SettingsScreen = ({ navigation }) => {
           })}
         </View>
 
-        {/* Notifications & Preferences */}
-        <View style={[styles.sectionCard, shadows.sm]}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-
-          <View style={styles.switchRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.switchLabel}>Live Class Alerts</Text>
-              <Text style={styles.switchSub}>Receive reminders 15 mins before sessions</Text>
-            </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              trackColor={{ false: colors.border, true: colors.primaryLight }}
-              thumbColor={notificationsEnabled ? colors.primary : '#f4f3f4'}
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.switchRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.switchLabel}>Download Over Wi-Fi Only</Text>
-              <Text style={styles.switchSub}>Save mobile data for offline handbook PDFs</Text>
-            </View>
-            <Switch
-              value={downloadOverWifi}
-              onValueChange={setDownloadOverWifi}
-              trackColor={{ false: colors.border, true: colors.primaryLight }}
-              thumbColor={downloadOverWifi ? colors.primary : '#f4f3f4'}
-            />
-          </View>
-        </View>
-
         {/* Legal & Policy Links */}
         <View style={[styles.sectionCard, shadows.sm]}>
           <Text style={styles.sectionTitle}>About & Legal</Text>

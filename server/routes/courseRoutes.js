@@ -695,8 +695,19 @@ router.post('/certificate/:enrollmentId/update-name', protect, async (req, res) 
 
     await enrollment.save();
 
-    // Also update user profile name if current student
-    const user = await User.findOne({ emailOrPhone: enrollment.studentEmail });
+    // Also update user profile name everywhere for current student
+    let user = null;
+    if (enrollment.user) user = await User.findById(enrollment.user);
+    if (!user && req.user?._id) user = await User.findById(req.user._id);
+    if (!user && enrollment.studentEmail) {
+      user = await User.findOne({
+        $or: [
+          { email: enrollment.studentEmail },
+          { emailOrPhone: enrollment.studentEmail },
+          { phone: enrollment.studentEmail }
+        ]
+      });
+    }
     if (user) {
       user.name = studentName.trim();
       await user.save();
@@ -803,16 +814,23 @@ router.get('/certificate/:enrollmentId/download', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Certificate not found' });
     }
 
-    const user = await User.findById(decoded.id);
-    let studentName = enrollment.studentName;
+    // Always look up the latest updated user name from User collection
+    let user = null;
+    if (enrollment.user) user = await User.findById(enrollment.user);
+    if (!user && decoded.id) user = await User.findById(decoded.id);
+    if (!user && enrollment.studentEmail) {
+      user = await User.findOne({
+        $or: [
+          { email: enrollment.studentEmail },
+          { emailOrPhone: enrollment.studentEmail },
+          { phone: enrollment.studentEmail }
+        ]
+      });
+    }
+
+    let studentName = user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : null) || enrollment.studentName;
     if (!studentName) {
-      if (user?.name) {
-        studentName = user.name;
-      } else if (user?.firstName) {
-        studentName = `${user.firstName} ${user.lastName || ''}`.trim();
-      } else {
-        studentName = enrollment.studentEmail.split('@')[0];
-      }
+      studentName = enrollment.studentEmail ? enrollment.studentEmail.split('@')[0] : 'Student';
     }
 
     const certId = enrollment.certificateId || `SDF-CERT-${enrollment._id.toString().slice(-6).toUpperCase()}`;

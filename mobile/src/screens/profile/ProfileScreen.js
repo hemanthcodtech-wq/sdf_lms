@@ -9,6 +9,9 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,6 +40,71 @@ export const ProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  // Edit Profile Details State
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const handleOpenEditModal = () => {
+    const current = detailedProfile || user;
+    setEditName(current?.name || '');
+    setEditPhone(current?.phone || (current?.emailOrPhone && !current.emailOrPhone.includes('@') ? current.emailOrPhone : ''));
+    setEditEmail(current?.email || (current?.emailOrPhone && current.emailOrPhone.includes('@') ? current.emailOrPhone : ''));
+    setIsEditModalVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      Alert.alert('Name Required', 'Please enter your legal name.');
+      return;
+    }
+
+    try {
+      setSavingProfile(true);
+      const payload = {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        email: editEmail.trim(),
+      };
+
+      const res = await authService.updateProfile(payload);
+      if (res && (res.success || res.name)) {
+        const updatedName = res.name || editName.trim();
+        const updatedPhone = res.phone || editPhone.trim();
+        const updatedEmail = res.email || editEmail.trim();
+
+        if (updateUserProfile) {
+          await updateUserProfile({
+            name: updatedName,
+            phone: updatedPhone,
+            email: updatedEmail,
+          });
+        }
+        setDetailedProfile(prev => ({
+          ...(prev || {}),
+          name: updatedName,
+          phone: updatedPhone,
+          email: updatedEmail,
+        }));
+        setIsEditModalVisible(false);
+        Alert.alert(
+          'Profile Updated',
+          'Your profile details and certificate legal name have been updated successfully!'
+        );
+      } else {
+        throw new Error(res?.message || 'Failed to update profile');
+      }
+    } catch (err) {
+      console.error('Update profile error:', err);
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to update profile. Please try again.';
+      Alert.alert('Update Failed', errMsg);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const loadProfileData = useCallback(async () => {
     try {
@@ -312,6 +380,15 @@ export const ProfileScreen = ({ navigation }) => {
               />
             </View>
 
+            <TouchableOpacity
+              style={styles.cardEditProfileBtn}
+              onPress={handleOpenEditModal}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="create-outline" size={14} color={colors.primary} />
+              <Text style={styles.cardEditProfileText}>Edit Profile Details</Text>
+            </TouchableOpacity>
+
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
                 <Text style={styles.statValue}>{stats.enrolledCount}</Text>
@@ -347,7 +424,17 @@ export const ProfileScreen = ({ navigation }) => {
 
         {user && (
           <View style={[styles.infoCard, shadows.sm]}>
-            <Text style={styles.sectionHeaderTitle}>Student Details</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionHeaderTitle}>Student Details</Text>
+              <TouchableOpacity
+                style={styles.editProfileBtn}
+                onPress={handleOpenEditModal}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="create-outline" size={14} color={colors.primary} />
+                <Text style={styles.editProfileBtnText}>Edit</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Full Name */}
             <View style={styles.infoRow}>
@@ -355,7 +442,7 @@ export const ProfileScreen = ({ navigation }) => {
                 <Ionicons name="person-outline" size={18} color={colors.primary} />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Full Name</Text>
+                <Text style={styles.infoLabel}>Full Legal Name</Text>
                 <Text style={styles.infoValue}>{effectiveUser?.name || 'Not provided'}</Text>
               </View>
             </View>
@@ -442,6 +529,119 @@ export const ProfileScreen = ({ navigation }) => {
           </TouchableOpacity>
         )}
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        visible={isEditModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalContainer, shadows.lg]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={styles.modalIconWrap}>
+                  <Ionicons name="person-circle-outline" size={24} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.modalTitle}>Edit Profile Details</Text>
+                  <Text style={styles.modalSubtitle}>Updates legal name on all certificates</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsEditModalVisible(false)}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={22} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+              {/* Full Legal Name */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  Full Legal Name <Text style={{ color: '#ef4444' }}>*</Text>
+                </Text>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="person-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    value={editName}
+                    onChangeText={setEditName}
+                    placeholder="e.g. Ramesh Kumar"
+                    placeholderTextColor="#9ca3af"
+                    autoCapitalize="words"
+                  />
+                </View>
+                <Text style={styles.inputHelper}>
+                  ✨ This legal name will be automatically printed on all your course certificates.
+                </Text>
+              </View>
+
+              {/* WhatsApp / Phone Number */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Phone / WhatsApp Number</Text>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="call-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    value={editPhone}
+                    onChangeText={setEditPhone}
+                    placeholder="e.g. +91 9876543210"
+                    placeholderTextColor="#9ca3af"
+                    keyboardType="phone-pad"
+                  />
+                </View>
+              </View>
+
+              {/* Email Address */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Email Address</Text>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="mail-outline" size={18} color="#9ca3af" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInput}
+                    value={editEmail}
+                    onChangeText={setEditEmail}
+                    placeholder="student@example.com"
+                    placeholderTextColor="#9ca3af"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setIsEditModalVisible(false)}
+                disabled={savingProfile}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, savingProfile && { opacity: 0.7 }]}
+                onPress={handleSaveProfile}
+                disabled={savingProfile}
+              >
+                {savingProfile ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+                    <Text style={styles.modalSaveBtnText}>Save Changes</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -696,5 +896,166 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontSize: 15,
     fontWeight: '700',
+  },
+  cardEditProfileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  cardEditProfileText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  editProfileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  editProfileBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    marginBottom: 16,
+  },
+  modalIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#ecfdf5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 1,
+  },
+  modalCloseBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+  },
+  inputGroup: {
+    marginBottom: 14,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  inputIcon: {
+    marginRight: 8,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  inputHelper: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 4,
+    lineHeight: 15,
+  },
+  modalActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 18,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
+  },
+  modalCancelBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  modalSaveBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  modalSaveBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#ffffff',
   },
 });

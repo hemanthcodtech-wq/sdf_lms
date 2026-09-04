@@ -13,12 +13,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import * as WebBrowser from 'expo-web-browser';
 import { colors, shadows } from '../../theme/colors';
 import { EmptyState } from '../../components/EmptyState';
 import { Badge } from '../../components/Badge';
+import { InAppPdfViewerModal } from '../../components/InAppPdfViewerModal';
+import { downloadFileToDeviceStorage, shareFile } from '../../utils/fileDownloader';
 import { paymentService } from '../../services/paymentService';
 import { API_BASE_URL } from '../../services/api';
 
@@ -28,6 +27,7 @@ export const PaymentHistoryScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [viewingReceipt, setViewingReceipt] = useState(null);
 
   useEffect(() => {
     fetchPayments();
@@ -41,8 +41,8 @@ export const PaymentHistoryScreen = ({ navigation }) => {
       } else {
         setPayments([]);
       }
-    } catch (e) {
-      console.error('Error fetching payments:', e);
+    } catch (err) {
+      console.error('Error fetching payments:', err);
       setPayments([]);
     } finally {
       setLoading(false);
@@ -55,6 +55,26 @@ export const PaymentHistoryScreen = ({ navigation }) => {
     fetchPayments();
   };
 
+  const getInvoiceDownloadUrl = async (enrollmentId) => {
+    const token = await AsyncStorage.getItem('token');
+    return `${API_BASE_URL}/payments/invoice/${enrollmentId}/download?token=${token || ''}`;
+  };
+
+  const handleViewInvoice = async (item) => {
+    if (!item) return;
+    const enrollmentId = item._id || item.id;
+    const invNumber = item.invoiceNumber || (item._id ? `INV-${String(item._id).slice(-6).toUpperCase()}` : 'RECEIPT');
+    const downloadUrl = await getInvoiceDownloadUrl(enrollmentId);
+
+    setViewingReceipt({
+      title: 'Payment Receipt',
+      documentId: invNumber,
+      pdfUrl: item.invoiceUrl || downloadUrl,
+      downloadUrl,
+      fileName: `Invoice-${invNumber}.pdf`,
+    });
+  };
+
   const handleDownloadInvoice = async (item) => {
     if (!item) return;
     const enrollmentId = item._id || item.id;
@@ -62,48 +82,31 @@ export const PaymentHistoryScreen = ({ navigation }) => {
     setDownloadingId(enrollmentId);
 
     try {
-      const token = await AsyncStorage.getItem('token');
       const fileName = `Invoice-${invNumber}.pdf`;
-      const downloadUrl = `${API_BASE_URL}/payments/invoice/${enrollmentId}/download?token=${token || ''}`;
+      const downloadUrl = await getInvoiceDownloadUrl(enrollmentId);
 
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = fileName;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        try {
-          const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-          const downloadRes = await FileSystem.downloadAsync(downloadUrl, fileUri);
-
-          if (downloadRes.status === 200) {
-            const canShare = await Sharing.isAvailableAsync();
-            if (canShare) {
-              await Sharing.shareAsync(downloadRes.uri, {
-                mimeType: 'application/pdf',
-                dialogTitle: `Payment Invoice - ${invNumber}`,
-                UTI: 'com.adobe.pdf',
-              });
-            } else {
-              await WebBrowser.openBrowserAsync(downloadUrl);
-            }
-          } else {
-            await WebBrowser.openBrowserAsync(downloadUrl);
-          }
-        } catch (fsErr) {
-          console.warn('Invoice download fallback:', fsErr);
-          await WebBrowser.openBrowserAsync(downloadUrl);
-        }
-      }
+      await downloadFileToDeviceStorage(downloadUrl, fileName, 'application/pdf');
     } catch (err) {
       console.error('Download invoice error:', err);
       Alert.alert('Notice', 'Unable to download invoice receipt right now. Please check your internet connection.');
     } finally {
       setDownloadingId(null);
     }
+  };
+
+  const handleShareInvoice = async (item) => {
+    if (!item) return;
+    const enrollmentId = item._id || item.id;
+    const invNumber = item.invoiceNumber || (item._id ? `INV-${String(item._id).slice(-6).toUpperCase()}` : 'RECEIPT');
+    const fileName = `Invoice-${invNumber}.pdf`;
+    const downloadUrl = await getInvoiceDownloadUrl(enrollmentId);
+
+    await shareFile(
+      downloadUrl,
+      fileName,
+      'application/pdf',
+      `Payment Receipt - ${invNumber}`
+    );
   };
 
   return (
@@ -174,26 +177,58 @@ export const PaymentHistoryScreen = ({ navigation }) => {
                   <Text style={styles.amount}>₹{Number(displayAmount).toLocaleString('en-IN')}</Text>
                 </View>
 
-                {/* Download Invoice / Receipt Button */}
-                <TouchableOpacity
-                  style={[styles.invoiceBtn, isDownloading && { opacity: 0.75 }]}
-                  onPress={() => handleDownloadInvoice(item)}
-                  disabled={isDownloading}
-                  activeOpacity={0.8}
-                >
-                  {isDownloading ? (
-                    <ActivityIndicator size="small" color="#166534" />
-                  ) : (
-                    <>
-                      <Ionicons name="document-text-outline" size={15} color="#166534" />
-                      <Text style={styles.invoiceBtnText}>Download Invoice / Receipt</Text>
-                      <Ionicons name="download-outline" size={15} color="#166534" />
-                    </>
-                  )}
-                </TouchableOpacity>
+                {/* Actions: View, Download, Share */}
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.viewBtn]}
+                    onPress={() => handleViewInvoice(item)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="eye-outline" size={15} color="#065f46" />
+                    <Text style={[styles.actionBtnText, { color: '#065f46' }]}>View</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.downloadBtn, isDownloading && { opacity: 0.75 }]}
+                    onPress={() => handleDownloadInvoice(item)}
+                    disabled={isDownloading}
+                    activeOpacity={0.8}
+                  >
+                    {isDownloading ? (
+                      <ActivityIndicator size="small" color="#065f46" />
+                    ) : (
+                      <Ionicons name="download-outline" size={15} color="#065f46" />
+                    )}
+                    <Text style={[styles.actionBtnText, { color: '#065f46' }]}>
+                      {isDownloading ? 'Saving...' : 'Download'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.shareBtn]}
+                    onPress={() => handleShareInvoice(item)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="share-social-outline" size={15} color="#ffffff" />
+                    <Text style={[styles.actionBtnText, { color: '#ffffff' }]}>Share</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             );
           }}
+        />
+      )}
+
+      {/* In-App Invoice / Receipt Viewer Modal */}
+      {viewingReceipt && (
+        <InAppPdfViewerModal
+          visible={Boolean(viewingReceipt)}
+          onClose={() => setViewingReceipt(null)}
+          title={viewingReceipt.title}
+          documentId={viewingReceipt.documentId}
+          pdfUrl={viewingReceipt.pdfUrl}
+          onDownload={() => downloadFileToDeviceStorage(viewingReceipt.downloadUrl, viewingReceipt.fileName, 'application/pdf')}
+          onShare={() => shareFile(viewingReceipt.downloadUrl, viewingReceipt.fileName, 'application/pdf', viewingReceipt.title)}
         />
       )}
     </View>
@@ -291,22 +326,35 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.primary,
   },
-  invoiceBtn: {
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
     marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: '#f0fdf4',
-    borderWidth: 1,
-    borderColor: '#bbf7d0',
+  },
+  actionBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 5,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
   },
-  invoiceBtnText: {
+  viewBtn: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+  },
+  downloadBtn: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#86efac',
+  },
+  shareBtn: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  actionBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#166534',
   },
 });

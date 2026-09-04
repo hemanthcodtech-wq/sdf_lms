@@ -12,11 +12,23 @@ const TopNav = () => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    // Fetch user from localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    const loadUser = () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {}
+      } else {
+        setUser(null);
+      }
+    };
+    loadUser();
+    window.addEventListener('storage', loadUser);
+    window.addEventListener('user-updated', loadUser);
+    return () => {
+      window.removeEventListener('storage', loadUser);
+      window.removeEventListener('user-updated', loadUser);
+    };
   }, []);
 
   const isCourseDetails = location.pathname.startsWith('/courses/') && location.pathname !== '/courses';

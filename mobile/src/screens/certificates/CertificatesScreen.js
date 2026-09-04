@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Share,
   Alert,
   Linking,
   Platform,
@@ -17,12 +16,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../../theme/colors';
 import { EmptyState } from '../../components/EmptyState';
 import { Badge } from '../../components/Badge';
+import { InAppPdfViewerModal } from '../../components/InAppPdfViewerModal';
+import { downloadFileToDeviceStorage, shareFile } from '../../utils/fileDownloader';
 import { useAuth } from '../../context/AuthContext';
 import { courseService } from '../../services/courseService';
 import { API_BASE_URL } from '../../services/api';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import * as WebBrowser from 'expo-web-browser';
 
 export const CertificatesScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -30,6 +28,7 @@ export const CertificatesScreen = ({ navigation }) => {
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [viewingCert, setViewingCert] = useState(null);
 
   useEffect(() => {
     fetchCertificates();
@@ -52,70 +51,59 @@ export const CertificatesScreen = ({ navigation }) => {
     }
   };
 
+  const getCertDownloadUrl = async (item) => {
+    const token = await AsyncStorage.getItem('token');
+    return `${API_BASE_URL}/courses/certificate/${item._id || item.id}/download?token=${token || ''}`;
+  };
+
+  const handleViewCert = async (item) => {
+    if (!item) return;
+    const certId = item.certificateId || `SDF-CERT-${item._id?.slice(-6)?.toUpperCase() || 'OFFICIAL'}`;
+    const courseTitle = item.course?.title || item.courseTitle || 'Course Certificate';
+    const downloadUrl = await getCertDownloadUrl(item);
+
+    setViewingCert({
+      title: `${courseTitle} Certificate`,
+      documentId: certId,
+      pdfUrl: downloadUrl,
+      downloadUrl,
+      fileName: `Certificate-${certId}.pdf`,
+    });
+  };
+
   const handleDownloadCert = async (item) => {
     if (!item) return;
     const certItemId = item._id || item.id || item.certificateId;
     try {
       setDownloadingId(certItemId);
-      const token = await AsyncStorage.getItem('token');
       const certId = item.certificateId || `SDF-CERT-${item._id?.slice(-6)?.toUpperCase() || 'OFFICIAL'}`;
       const fileName = `Certificate-${certId}.pdf`;
-      
-      // Determine download URL with authentication query token
-      const downloadUrl = `${API_BASE_URL}/courses/certificate/${item._id || item.id}/download?token=${token || ''}`;
+      const downloadUrl = await getCertDownloadUrl(item);
 
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        // Direct browser download
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = fileName;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        // Native mobile download directly via expo-file-system
-        try {
-          const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-          const downloadRes = await FileSystem.downloadAsync(downloadUrl, fileUri);
-
-          if (downloadRes.status === 200) {
-            const canShare = await Sharing.isAvailableAsync();
-            if (canShare) {
-              await Sharing.shareAsync(downloadRes.uri, {
-                mimeType: 'application/pdf',
-                dialogTitle: `Download Certificate - ${certId}`,
-                UTI: 'com.adobe.pdf',
-              });
-            } else {
-              await WebBrowser.openBrowserAsync(downloadUrl);
-            }
-          } else {
-            // Fallback to opening authenticated URL directly in browser
-            await WebBrowser.openBrowserAsync(downloadUrl);
-          }
-        } catch (fsErr) {
-          console.warn('FileSystem download fallback:', fsErr);
-          await WebBrowser.openBrowserAsync(downloadUrl);
-        }
-      }
+      await downloadFileToDeviceStorage(downloadUrl, fileName, 'application/pdf');
     } catch (err) {
       console.error('Download certificate error:', err);
       Alert.alert(
         'Download Notice',
-        'Could not complete direct download. Please ensure you are connected to the internet.'
+        'Could not complete download. Please check your internet connection.'
       );
     } finally {
       setDownloadingId(null);
     }
   };
 
-  const handleShareCert = (cert) => {
-    const title = cert.course?.title || cert.courseTitle || 'Yoga Course';
-    const certId = cert.certificateId || 'SDF-CERT';
-    Share.share({
-      message: `🏆 I have successfully earned my verified Certificate of Completion in "${title}" from Swamy Dwija Foundation! Certificate ID: ${certId}`,
-    }).catch(() => {});
+  const handleShareCert = async (item) => {
+    if (!item) return;
+    const certId = item.certificateId || `SDF-CERT-${item._id?.slice(-6)?.toUpperCase() || 'OFFICIAL'}`;
+    const fileName = `Certificate-${certId}.pdf`;
+    const downloadUrl = await getCertDownloadUrl(item);
+
+    await shareFile(
+      downloadUrl,
+      fileName,
+      'application/pdf',
+      `Certificate - ${certId}`
+    );
   };
 
   const studentDisplayName = user?.name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Student');
@@ -189,9 +177,16 @@ export const CertificatesScreen = ({ navigation }) => {
                     <Text style={styles.certMetaLabel}>Certificate ID</Text>
                     <Text style={styles.certMetaValue} numberOfLines={1}>{certId}</Text>
                   </View>
-                </View>
-
                 <View style={styles.certActionRow}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.viewBtn]}
+                    onPress={() => handleViewCert(item)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="eye-outline" size={16} color="#065f46" />
+                    <Text style={[styles.actionBtnText, { color: '#065f46' }]}>View</Text>
+                  </TouchableOpacity>
+
                   <TouchableOpacity
                     style={[styles.actionBtn, isDownloading && { opacity: 0.7 }]}
                     onPress={() => handleDownloadCert(item)}
@@ -201,10 +196,10 @@ export const CertificatesScreen = ({ navigation }) => {
                     {isDownloading ? (
                       <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
-                      <Ionicons name="download-outline" size={18} color={colors.primary} />
+                      <Ionicons name="download-outline" size={16} color={colors.primary} />
                     )}
                     <Text style={styles.actionBtnText}>
-                      {isDownloading ? 'Downloading...' : 'Download PDF'}
+                      {isDownloading ? 'Saving...' : 'Download'}
                     </Text>
                   </TouchableOpacity>
 
@@ -213,13 +208,26 @@ export const CertificatesScreen = ({ navigation }) => {
                     onPress={() => handleShareCert(item)}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="share-social-outline" size={18} color="#fff" />
+                    <Ionicons name="share-social-outline" size={16} color="#fff" />
                     <Text style={[styles.actionBtnText, { color: '#fff' }]}>Share</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             );
           }}
+        />
+      )}
+
+      {/* In-App PDF Viewer Modal */}
+      {viewingCert && (
+        <InAppPdfViewerModal
+          visible={Boolean(viewingCert)}
+          onClose={() => setViewingCert(null)}
+          title={viewingCert.title}
+          documentId={viewingCert.documentId}
+          pdfUrl={viewingCert.pdfUrl}
+          onDownload={() => downloadFileToDeviceStorage(viewingCert.downloadUrl, viewingCert.fileName, 'application/pdf')}
+          onShare={() => shareFile(viewingCert.downloadUrl, viewingCert.fileName, 'application/pdf', viewingCert.title)}
         />
       )}
     </View>
@@ -323,6 +331,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: colors.primary,
+  },
+  viewBtn: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
   },
   shareBtn: {
     backgroundColor: colors.primary,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { FaEye, FaEyeSlash, FaApple } from 'react-icons/fa';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
 import axios from 'axios';
 import { useLanguage } from '../context/LanguageContext';
@@ -21,11 +21,18 @@ const Login = () => {
   const redirectAfterLogin = (data) => {
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify({
+      _id: data._id,
+      email: data.email || data.emailOrPhone,
       emailOrPhone: data.emailOrPhone,
       name: data.name,
-      avatar: data.avatar,
-      role: data.role
+      firstName: data.firstName || '',
+      lastName: data.lastName || '',
+      phone: data.phone || '',
+      avatar: data.avatar || '',
+      role: data.role || 'student'
     }));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('user-updated'));
     const searchParams = new URLSearchParams(location.search);
     const redirectUrl = searchParams.get('redirect') || '/dashboard';
     navigate(redirectUrl);
@@ -55,7 +62,7 @@ const Login = () => {
     }
   };
 
-  // Google Identity Services callback
+  // Google Identity Services callback (One Tap fallback)
   const handleGoogleResponse = async (response) => {
     if (!agreed) {
       setError('Please agree to the Terms & Conditions and Privacy Policy.');
@@ -116,8 +123,67 @@ const Login = () => {
       setError('Google login is not configured yet. Please add your Google Client ID.');
       return;
     }
-    if (window.google) {
+
+    if (window.google?.accounts?.oauth2) {
+      setIsGoogleLoading(true);
+      setError('');
+      try {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: 'email profile openid',
+          callback: async (tokenResponse) => {
+            if (tokenResponse?.error) {
+              setError(tokenResponse.error_description || 'Google sign-in was cancelled');
+              setIsGoogleLoading(false);
+              return;
+            }
+            if (tokenResponse?.access_token) {
+              try {
+                // Fetch profile directly from Google
+                const userinfoRes = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                });
+                const gProfile = userinfoRes.data;
+
+                // Send verified profile to backend (matches existing account by email)
+                const backendRes = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/google`, {
+                  email: gProfile.email,
+                  name: gProfile.name,
+                  avatar: gProfile.picture,
+                  googleId: gProfile.sub,
+                  accessToken: tokenResponse.access_token
+                });
+
+                if (backendRes.data.success) {
+                  redirectAfterLogin(backendRes.data);
+                } else {
+                  setError(backendRes.data.message || 'Google login failed');
+                }
+              } catch (bErr) {
+                console.error('Backend Google Auth error:', bErr);
+                setError(bErr.response?.data?.message || bErr.message || 'Failed to authenticate with server');
+              } finally {
+                setIsGoogleLoading(false);
+              }
+            }
+          },
+          error_callback: (err) => {
+            console.error('Google token client error:', err);
+            setError('Google sign-in popup closed.');
+            setIsGoogleLoading(false);
+          }
+        });
+        client.requestAccessToken({ prompt: 'select_account' });
+      } catch (err) {
+        console.error('Google oauth init error:', err);
+        if (window.google?.accounts?.id) {
+          window.google.accounts.id.prompt();
+        }
+      }
+    } else if (window.google?.accounts?.id) {
       window.google.accounts.id.prompt();
+    } else {
+      setError('Google Sign-In is initializing. Please try again in a moment.');
     }
   };
 
@@ -235,7 +301,7 @@ const Login = () => {
               type="button"
               onClick={handleGoogleButtonClick}
               disabled={isGoogleLoading}
-              className="w-full h-12 rounded-lg bg-white border border-gray-300 flex items-center justify-center gap-3 hover:bg-gray-50 hover:shadow-md transition-all duration-300 disabled:opacity-60"
+              className="w-full h-12 rounded-lg bg-white border border-gray-300 flex items-center justify-center gap-3 hover:bg-gray-50 hover:shadow-md transition-all duration-300 disabled:opacity-60 cursor-pointer"
             >
               {isGoogleLoading ? (
                 <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
@@ -245,10 +311,6 @@ const Login = () => {
               <span className="text-gray-700 font-bold text-[15px]">
                 {isGoogleLoading ? t('login_google_loading') : t('login_google')}
               </span>
-            </button>
-            <button className="w-full h-12 rounded-lg bg-black text-white flex items-center justify-center gap-3 hover:bg-gray-900 transition-all duration-300">
-              <FaApple size={24} />
-              <span className="text-white font-bold text-[15px]">{t('login_apple')}</span>
             </button>
           </div>
         </div>
