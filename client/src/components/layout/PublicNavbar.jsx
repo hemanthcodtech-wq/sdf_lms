@@ -62,7 +62,7 @@ const PublicNavbar = () => {
                 <img 
                   src="/Swamy logo.png" 
                   alt="Swamy Dwija Foundation" 
-                  className="h-10 sm:h-12 md:h-16 w-auto max-h-16 object-contain" 
+                  className="h-13 sm:h-15 md:h-16 w-auto max-h-16 object-contain" 
                 />
                 <span className="font-outfit font-bold text-lg text-brand-green-dark hidden lg:block">
                   Swamy Dwija Foundation

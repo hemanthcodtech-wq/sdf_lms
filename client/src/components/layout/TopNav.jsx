@@ -59,7 +59,7 @@ const TopNav = () => {
         <img 
           src="/logo.png" 
           alt="Logo" 
-          className="h-10 sm:h-12 md:h-16 w-auto max-h-16 object-contain drop-shadow-sm cursor-pointer flex-shrink-0" 
+          className="h-13 sm:h-15 md:h-16 w-auto max-h-16 object-contain drop-shadow-sm cursor-pointer flex-shrink-0" 
           onClick={() => navigate('/')} 
         />
       </div>
