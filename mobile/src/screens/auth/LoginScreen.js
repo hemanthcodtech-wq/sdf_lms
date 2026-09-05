@@ -83,7 +83,7 @@ export const LoginScreen = ({ navigation }) => {
       await login(email.trim(), password);
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Main' }],
+        routes: [{ name: 'Main', params: { screen: 'HomeTab' } }],
       });
     } catch (err) {
       console.error('Login error:', err);
@@ -115,7 +115,7 @@ export const LoginScreen = ({ navigation }) => {
         });
         navigation.reset({
           index: 0,
-          routes: [{ name: 'Main' }],
+          routes: [{ name: 'Main', params: { screen: 'HomeTab' } }],
         });
       } else {
         throw new Error('Failed to retrieve Google profile information');

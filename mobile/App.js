@@ -28,27 +28,6 @@ export default function App() {
 
     notificationService.init();
     notificationService.requestPermissions();
-
-    // Listen for notification clicks when user taps an active notification
-    let responseSubscription = null;
-    try {
-      const Notifications = require('expo-notifications');
-      if (Notifications?.addNotificationResponseReceivedListener) {
-        responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
-          if (response?.notification && navigationRef.isReady()) {
-            navigationRef.navigate('Notifications');
-          }
-        });
-      }
-    } catch (e) {
-      console.warn('Error setting notification click listener:', e);
-    }
-
-    return () => {
-      if (responseSubscription) {
-        responseSubscription.remove();
-      }
-    };
   }, []);
 
   const handleNavReady = () => {
