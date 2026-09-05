@@ -266,17 +266,6 @@ export const MyLearningScreen = ({ navigation }) => {
                     })
                   }
                 />
-                {(item.completed || item.certificateId || progressVal >= 1) && (
-                  <TouchableOpacity
-                    style={styles.myLearningCertBtn}
-                    onPress={() => navigation.navigate('Certificates')}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="ribbon-outline" size={16} color="#d97706" />
-                    <Text style={styles.myLearningCertText}>Certificate Ready • Tap to View & Download</Text>
-                    <Ionicons name="chevron-forward" size={14} color="#d97706" />
-                  </TouchableOpacity>
-                )}
               </View>
             );
           }}
@@ -341,26 +330,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  myLearningCertBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fffbeb',
-    borderWidth: 1,
-    borderColor: '#fcd34d',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginTop: 4,
-    marginHorizontal: 2,
-  },
-  myLearningCertText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#92400e',
-    flex: 1,
-    marginLeft: 8,
   },
   validityBadgeContainer: {
     flexDirection: 'row',
