@@ -45,6 +45,24 @@ export const HomeScreen = ({ navigation }) => {
   const [myCourses, setMyCourses] = useState(() => cacheService.getMyCourses());
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [currentTick, setCurrentTick] = useState(Date.now());
+  const [hasUnreadNotifs, setHasUnreadNotifs] = useState(false);
+
+  const checkNotifications = useCallback(async () => {
+    try {
+      const list = await notificationService.getNotifications(user, liveClasses, myCourses);
+      setHasUnreadNotifs(list.some((n) => n.unread || n.urgent));
+    } catch (e) {
+      setHasUnreadNotifs(false);
+    }
+  }, [user, liveClasses, myCourses]);
+
+  useEffect(() => {
+    checkNotifications();
+    const unsubscribe = navigation.addListener('focus', () => {
+      checkNotifications();
+    });
+    return unsubscribe;
+  }, [checkNotifications, navigation]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -330,7 +348,7 @@ export const HomeScreen = ({ navigation }) => {
                 activeOpacity={0.7}
               >
                 <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
-                {liveClasses.length > 0 && (
+                {hasUnreadNotifs && (
                   <View style={styles.badgeDot} />
                 )}
               </TouchableOpacity>

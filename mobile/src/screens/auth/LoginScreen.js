@@ -30,6 +30,7 @@ export const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const isProcessingGoogle = React.useRef(false);
 
   // Load Google Identity Services script on Web
   useEffect(() => {
@@ -97,6 +98,8 @@ export const LoginScreen = ({ navigation }) => {
   };
 
   const handleGoogleAccessToken = async (token) => {
+    if (isProcessingGoogle.current) return;
+    isProcessingGoogle.current = true;
     try {
       const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: { Authorization: `Bearer ${token}` },
@@ -122,6 +125,7 @@ export const LoginScreen = ({ navigation }) => {
       setError(authErr?.response?.data?.message || authErr.message || 'Google Sign-In failed');
     } finally {
       setGoogleLoading(false);
+      isProcessingGoogle.current = false;
     }
   };
 

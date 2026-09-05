@@ -29,13 +29,13 @@ export default function App() {
     notificationService.init();
     notificationService.requestPermissions();
 
-    // Listen for notification clicks when app is in foreground or background
+    // Listen for notification clicks when user taps an active notification
     let responseSubscription = null;
     try {
       const Notifications = require('expo-notifications');
       if (Notifications?.addNotificationResponseReceivedListener) {
-        responseSubscription = Notifications.addNotificationResponseReceivedListener(() => {
-          if (navigationRef.isReady()) {
+        responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+          if (response?.notification && navigationRef.isReady()) {
             navigationRef.navigate('Notifications');
           }
         });
@@ -52,17 +52,7 @@ export default function App() {
   }, []);
 
   const handleNavReady = () => {
-    // If the app was launched by tapping an external notification from killed state
-    try {
-      const Notifications = require('expo-notifications');
-      if (Notifications?.getLastNotificationResponseAsync) {
-        Notifications.getLastNotificationResponseAsync().then((response) => {
-          if (response && navigationRef.isReady()) {
-            navigationRef.navigate('Notifications');
-          }
-        });
-      }
-    } catch (e) {}
+    // Navigation container ready - do not auto-redirect
   };
 
   return (

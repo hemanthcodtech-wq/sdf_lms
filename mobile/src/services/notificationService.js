@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 const NOTIFICATIONS_STORAGE_KEY = '@sdf_app_notifications_v1';
 const DISMISSED_STORAGE_KEY = '@sdf_dismissed_notifications_v1';
+const LAST_CLEARED_TIMESTAMP_KEY = '@sdf_last_cleared_notifications_v1';
 
 export const notificationService = {
   /**
@@ -209,70 +210,84 @@ export const notificationService = {
    */
   getNotifications: async (user, liveClasses = [], myCourses = []) => {
     try {
-      const [raw, dismissedRaw] = await Promise.all([
+      const [raw, dismissedRaw, lastClearedRaw] = await Promise.all([
         AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY),
         AsyncStorage.getItem(DISMISSED_STORAGE_KEY),
+        AsyncStorage.getItem(LAST_CLEARED_TIMESTAMP_KEY),
       ]);
 
+      const lastClearedTime = lastClearedRaw ? parseInt(lastClearedRaw, 10) : 0;
       let list = raw ? JSON.parse(raw) : [];
       const dismissedIds = new Set(dismissedRaw ? JSON.parse(dismissedRaw) : []);
+
+      // Filter stored notifications: must be created AFTER lastClearedTime and not dismissed
+      list = list.filter((item) => {
+        if (!item || !item.id || dismissedIds.has(item.id)) return false;
+        if (item.createdAt) {
+          const itemTime = new Date(item.createdAt).getTime();
+          if (itemTime <= lastClearedTime) return false;
+        }
+        return true;
+      });
 
       const dynamicLiveNotifications = [];
       const now = new Date();
 
       if (Array.isArray(liveClasses)) {
         liveClasses.forEach((cls) => {
-          if (cls.date) {
-            let sessionStart = new Date(cls.date);
-            let sessionEnd = new Date(sessionStart.getTime() + (cls.durationMinutes || 60) * 60 * 1000);
+          if (!cls || !cls.date) return;
 
-            if (cls.time) {
-              const parts = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
-              if (parts) {
-                let hour = parseInt(parts[1], 10);
-                const min = parseInt(parts[2], 10);
-                const ampm = parts[3] ? parts[3].toUpperCase() : null;
-                if (ampm === 'PM' && hour < 12) hour += 12;
-                if (ampm === 'AM' && hour === 12) hour = 0;
+          let sessionStart = new Date(cls.date);
+          let sessionEnd = new Date(sessionStart.getTime() + (cls.durationMinutes || 60) * 60 * 1000);
 
-                const rawDate = typeof cls.date === 'string'
-                  ? (cls.date.includes('T') ? cls.date.split('T')[0] : cls.date)
-                  : new Date(cls.date).toISOString().split('T')[0];
-                const [y, m, d] = rawDate.split('-').map(Number);
-                if (y && m && d) {
-                  sessionStart = new Date(y, m - 1, d, hour, min, 0, 0);
-                  sessionEnd = new Date(sessionStart.getTime() + (cls.durationMinutes || 60) * 60 * 1000);
-                }
+          if (cls.time) {
+            const parts = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+            if (parts) {
+              let hour = parseInt(parts[1], 10);
+              const min = parseInt(parts[2], 10);
+              const ampm = parts[3] ? parts[3].toUpperCase() : null;
+              if (ampm === 'PM' && hour < 12) hour += 12;
+              if (ampm === 'AM' && hour === 12) hour = 0;
+
+              const rawDate = typeof cls.date === 'string'
+                ? (cls.date.includes('T') ? cls.date.split('T')[0] : cls.date)
+                : new Date(cls.date).toISOString().split('T')[0];
+              const [y, m, d] = rawDate.split('-').map(Number);
+              if (y && m && d) {
+                sessionStart = new Date(y, m - 1, d, hour, min, 0, 0);
+                sessionEnd = new Date(sessionStart.getTime() + (cls.durationMinutes || 60) * 60 * 1000);
               }
             }
+          }
 
-            // Do not show notification for completed sessions
-            if (now > sessionEnd) {
-              return;
-            }
+          // Do not show notification for completed sessions
+          if (now > sessionEnd) return;
 
-            const diffMinutes = Math.round((sessionStart - now) / (1000 * 60));
+          // If the session was scheduled before the user cleared all notifications, do NOT show
+          if (sessionStart.getTime() <= lastClearedTime) return;
 
-            if (diffMinutes >= -60 && diffMinutes <= 1440) {
-              const isUrgent = diffMinutes <= 15 && diffMinutes >= -15;
-              const notifId = `live_${cls._id || cls.id}_${cls.date}`;
+          const diffMinutes = Math.round((sessionStart - now) / (1000 * 60));
 
-              if (!dismissedIds.has(notifId)) {
-                dynamicLiveNotifications.push({
-                  id: notifId,
-                  type: 'live_class',
-                  title: isUrgent ? '🔴 Live Session Starting Now!' : '⏰ Upcoming Live Class',
-                  message: isUrgent
-                    ? `"${cls.title}" is starting in less than 5 minutes! Tap to join the live Zoom session.`
-                    : `"${cls.title}" is scheduled for ${cls.time || 'today'}. Get ready!`,
-                  time: cls.time || 'Today',
-                  date: cls.date,
-                  zoomLink: cls.zoomLink || cls.zoomJoinUrl,
-                  unread: isUrgent,
-                  urgent: isUrgent,
-                  createdAt: new Date().toISOString(),
-                });
-              }
+          // Only show for upcoming sessions within 24 hours or ongoing up to 60 mins
+          if (diffMinutes >= -60 && diffMinutes <= 1440) {
+            const isUrgent = diffMinutes <= 15 && diffMinutes >= -15;
+            const notifId = `live_${cls._id || cls.id}`;
+
+            if (!dismissedIds.has(notifId)) {
+              dynamicLiveNotifications.push({
+                id: notifId,
+                type: 'live_class',
+                title: isUrgent ? '🔴 Live Session Starting Now!' : '⏰ Upcoming Live Class',
+                message: isUrgent
+                  ? `"${cls.title}" is starting in less than 5 minutes! Tap to join the live Zoom session.`
+                  : `"${cls.title}" is scheduled for ${cls.time || 'today'}. Get ready!`,
+                time: cls.time || 'Today',
+                date: cls.date,
+                zoomLink: cls.zoomLink || cls.zoomJoinUrl,
+                unread: isUrgent,
+                urgent: isUrgent,
+                createdAt: sessionStart.toISOString(),
+              });
             }
           }
         });
@@ -280,13 +295,18 @@ export const notificationService = {
 
       if (Array.isArray(myCourses) && myCourses.length > 0) {
         myCourses.forEach((enroll) => {
+          if (!enroll) return;
           const courseTitle = enroll.course?.title || enroll.title || 'Your Course';
           const courseId = enroll.course?._id || enroll._id;
+          if (!courseId) return;
 
           // Certificate notification if course is completed
           if (enroll.completed || enroll.certificateId) {
             const certNotifId = `cert_${courseId}`;
-            if (!dismissedIds.has(certNotifId)) {
+            const certDate = enroll.completedAt || enroll.updatedAt;
+            const certTime = certDate ? new Date(certDate).getTime() : 0;
+
+            if (certTime > lastClearedTime && !dismissedIds.has(certNotifId)) {
               dynamicLiveNotifications.push({
                 id: certNotifId,
                 type: 'certificate',
@@ -295,22 +315,29 @@ export const notificationService = {
                 time: 'Certificate Ready',
                 unread: true,
                 urgent: false,
-                createdAt: enroll.completedAt || enroll.updatedAt || new Date().toISOString(),
+                createdAt: certDate || new Date().toISOString(),
               });
             }
           }
 
-          const notifId = `enroll_${courseId}`;
-          if (!dismissedIds.has(notifId)) {
-            dynamicLiveNotifications.push({
-              id: notifId,
-              type: 'course_enrolled',
-              title: '🎓 Course Access Active',
-              message: `You are enrolled in "${courseTitle}". All daily live classes & recordings are unlocked.`,
-              time: 'Enrolled',
-              unread: false,
-              createdAt: enroll.createdAt || new Date().toISOString(),
-            });
+          // Enrollment notification: ONLY if enrolled freshly (after lastClearedTime AND within last 48 hours)
+          const enrollDate = enroll.createdAt;
+          const enrollTime = enrollDate ? new Date(enrollDate).getTime() : 0;
+          const isRecentEnrollment = enrollTime > 0 && (Date.now() - enrollTime) < 48 * 60 * 60 * 1000;
+
+          if (isRecentEnrollment && enrollTime > lastClearedTime) {
+            const notifId = `enroll_${courseId}`;
+            if (!dismissedIds.has(notifId)) {
+              dynamicLiveNotifications.push({
+                id: notifId,
+                type: 'course_enrolled',
+                title: '🎓 Course Access Active',
+                message: `You are enrolled in "${courseTitle}". All daily live classes & recordings are unlocked.`,
+                time: 'Enrolled',
+                unread: false,
+                createdAt: enrollDate,
+              });
+            }
           }
         });
       }
@@ -318,7 +345,7 @@ export const notificationService = {
       // Merge and deduplicate
       const map = new Map();
       [...dynamicLiveNotifications, ...list].forEach((item) => {
-        if (!dismissedIds.has(item.id) && !map.has(item.id)) {
+        if (item && item.id && !dismissedIds.has(item.id) && !map.has(item.id)) {
           map.set(item.id, item);
         }
       });
@@ -350,7 +377,9 @@ export const notificationService = {
         dismissedList.push(id);
         await AsyncStorage.setItem(DISMISSED_STORAGE_KEY, JSON.stringify(dismissedList));
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Error in removeNotification:', e);
+    }
   },
 
   /**
@@ -358,12 +387,16 @@ export const notificationService = {
    */
   clearAll: async (currentIds = []) => {
     try {
+      const now = Date.now();
+      await AsyncStorage.setItem(LAST_CLEARED_TIMESTAMP_KEY, String(now));
       await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify([]));
       const dismissedRaw = await AsyncStorage.getItem(DISMISSED_STORAGE_KEY);
       const dismissedList = dismissedRaw ? JSON.parse(dismissedRaw) : [];
       const updated = Array.from(new Set([...dismissedList, ...currentIds]));
       await AsyncStorage.setItem(DISMISSED_STORAGE_KEY, JSON.stringify(updated));
-    } catch (e) {}
+    } catch (e) {
+      console.error('Error in clearAll notifications:', e);
+    }
   },
 
   /**

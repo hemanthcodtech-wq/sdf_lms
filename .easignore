@@ -1,12 +1,14 @@
+# Root EAS Ignore for Mobile Builds
 client/
-../client/
 server/
-../server/
+.git/
 node_modules/
 .expo/
 dist/
 dist-test/
-npm-debug.*
+*.pem
+*.bundle
+*.log
 *.jks
 *.p8
 *.p12
