@@ -23,9 +23,6 @@ const RefundPolicy = () => {
           animate={{ opacity: 1, y: 0 }}
           className="bg-white/70 backdrop-blur-2xl rounded-3xl p-8 md:p-10 border border-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.03)] relative overflow-hidden"
         >
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-green/10 text-brand-green-dark text-xs font-bold uppercase tracking-wider mb-3">
-            <FaUndoAlt size={12} /> Payment & Cancellation Terms
-          </div>
           <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">Refund & Cancellation Policy</h1>
           <p className="text-gray-500 text-sm md:text-base mt-2">
             Last Updated: August 20, 2026 • Swamy Dwija Foundation (SDF)

@@ -101,10 +101,6 @@ export const PolicyViewerScreen = ({ navigation, route }) => {
           {/* Main Policy Document Card */}
           <View style={[styles.card, shadows.sm]}>
             <View style={styles.badgeRow}>
-              <View style={styles.badge}>
-                <Ionicons name="shield-checkmark" size={14} color="#0D5C31" />
-                <Text style={styles.badgeText}>Official SDF LMS Policy</Text>
-              </View>
               <Text style={styles.dateText}>Swamy Dwija Foundation</Text>
             </View>
 
