@@ -8,6 +8,8 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { DeviceFrame } from './src/components/DeviceFrame';
 import { SplashScreen } from './src/screens/splash/SplashScreen';
 import { notificationService } from './src/services/notificationService';
+import { cacheService } from './src/services/cacheService';
+import { courseService } from './src/services/courseService';
 
 export const navigationRef = createNavigationContainerRef();
 
@@ -15,6 +17,15 @@ export default function App() {
   const [isSplashActive, setIsSplashActive] = useState(true);
 
   useEffect(() => {
+    // Pre-warm cache and images immediately at app startup
+    cacheService.initCache().then(() => {
+      courseService.getPublicCourses().then((res) => {
+        if (res?.data) {
+          cacheService.setCourses(res.data);
+        }
+      }).catch(() => {});
+    });
+
     notificationService.init();
     notificationService.requestPermissions();
 

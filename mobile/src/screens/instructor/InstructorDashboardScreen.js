@@ -494,7 +494,10 @@ export const InstructorDashboardScreen = ({ navigation }) => {
                   >
                     <View style={styles.courseCardTop}>
                       <Image
-                        source={{ uri: getCourseImageUrl(c.thumbnailUrl) }}
+                        source={{
+                          uri: getCourseImageUrl(c.thumbnail || c.thumbnailUrl || c.image),
+                          cache: 'force-cache',
+                        }}
                         style={styles.courseThumb}
                       />
                       <View style={{ flex: 1 }}>
@@ -1457,6 +1460,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginTop: 2,
     marginBottom: 10,
+  },
   whatsappCardContainer: {
     backgroundColor: '#f0fdf4',
     borderWidth: 1,

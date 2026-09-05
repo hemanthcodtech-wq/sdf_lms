@@ -25,32 +25,39 @@ import { EmptyState } from '../../components/EmptyState';
 import { courseService } from '../../services/courseService';
 import { notificationService } from '../../services/notificationService';
 import { getCourseImageUrl } from '../../utils/imageHelper';
+import { cacheService } from '../../services/cacheService';
 
 export const StudentClassesScreen = ({ route, navigation }) => {
   const { course } = route.params;
+  const courseId = course?._id || course?.id;
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 600;
   const horizontalSafe = Math.max(insets.left, insets.right, isTablet ? 24 : 16);
   const bottomSafe = Math.max(insets.bottom, Platform.OS === 'android' ? 24 : 16);
 
-  const [classes, setClasses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cachedClasses = courseId ? cacheService.getCourseClasses(courseId) : [];
+  const cachedMaterials = courseId ? cacheService.getCourseMaterials(courseId) : [];
+  const hasPredefinedContent = (course?.topics && course.topics.length > 0) || (course?.sessionDates && course.sessionDates.length > 0);
+
+  const [classes, setClasses] = useState(cachedClasses);
+  const [loading, setLoading] = useState(cachedClasses.length === 0 && !hasPredefinedContent);
   const [downloadingMaterial, setDownloadingMaterial] = useState(false);
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('lessons'); // 'lessons', 'materials', 'community'
-  const [materials, setMaterials] = useState([]);
+  const [materials, setMaterials] = useState(cachedMaterials);
   const [claimingCert, setClaimingCert] = useState(false);
   const [certIssued, setCertIssued] = useState(Boolean(route.params?.enrollment?.completed || route.params?.enrollment?.certificateId));
 
   useEffect(() => {
     fetchCourseClasses();
-  }, [course?._id]);
+  }, [courseId]);
 
   const fetchCourseClasses = async () => {
     try {
-      setLoading(true);
-      const courseId = course?._id || course?.id;
+      if (classes.length === 0 && !hasPredefinedContent) {
+        setLoading(true);
+      }
       
       const [classesRes, materialsRes] = await Promise.all([
         courseService.getStudentClasses().catch(() => ({ data: [] })),
@@ -62,19 +69,19 @@ export const StudentClassesScreen = ({ route, navigation }) => {
           (c) => (c.courseId?._id || c.courseId?.id || c.courseId) === courseId
         );
         setClasses(matchingClasses);
+        if (courseId) cacheService.setCourseClasses(courseId, matchingClasses);
       } else {
         setClasses([]);
       }
 
       if (materialsRes?.data && Array.isArray(materialsRes.data)) {
         setMaterials(materialsRes.data);
+        if (courseId) cacheService.setCourseMaterials(courseId, materialsRes.data);
       } else {
         setMaterials([]);
       }
     } catch (err) {
       console.error('Error fetching classes and materials:', err);
-      setClasses([]);
-      setMaterials([]);
     } finally {
       setLoading(false);
     }
@@ -381,7 +388,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       <View style={[styles.playerContainer, isTablet && { maxWidth: 880, height: 360, alignSelf: 'center', borderRadius: 20, marginTop: 10, overflow: 'hidden' }]}>
         <Image
           source={{
-            uri: getCourseImageUrl(course?.thumbnailUrl),
+            uri: getCourseImageUrl(course?.thumbnail || course?.thumbnailUrl || course?.image),
             cache: 'force-cache',
           }}
           style={styles.playerThumbnail}

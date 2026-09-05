@@ -55,33 +55,33 @@ export const SplashScreen = ({ onFinish }) => {
       ),
     ]).start();
 
-    // 2. Text Reveal at 0.8s
+    // 2. Text Reveal at 0.4s
     setTimeout(() => {
       Animated.parallel([
         Animated.timing(textOpacity, {
           toValue: 1,
-          duration: 700,
+          duration: 500,
           useNativeDriver: true,
         }),
         Animated.timing(textTranslateY, {
           toValue: 0,
-          duration: 700,
+          duration: 500,
           easing: Easing.out(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(progressWidth, {
           toValue: 140,
-          duration: 2200,
+          duration: 1200,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: false,
         }),
       ]).start();
-    }, 800);
+    }, 400);
 
-    // 3. Transition to main / portal screen after 3.5s
+    // 3. Transition to main / portal screen after 1.8s
     const timer = setTimeout(() => {
       onFinish?.();
-    }, 3500);
+    }, 1800);
 
     return () => clearTimeout(timer);
   }, []);

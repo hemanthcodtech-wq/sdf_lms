@@ -44,7 +44,7 @@ export const CourseCard = ({
       {/* Thumbnail Container */}
       <View style={horizontal ? styles.horizontalImageWrap : styles.verticalImageWrap}>
         <Image
-          source={{ uri: imgError ? fallbackUrl : imageUrl }}
+          source={{ uri: imgError ? fallbackUrl : imageUrl, cache: 'force-cache' }}
           style={styles.image}
           resizeMode="cover"
           onError={() => setImgError(true)}

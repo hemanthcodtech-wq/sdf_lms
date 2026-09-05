@@ -25,18 +25,15 @@ import { courseService } from '../../services/courseService';
 import { paymentService } from '../../services/paymentService';
 import { authService } from '../../services/authService';
 import { getAvatarUrl } from '../../utils/imageHelper';
+import { cacheService } from '../../services/cacheService';
 
 export const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, logout, wishlist, updateUserProfile } = useAuth();
   const { t } = useLanguage();
 
-  const [stats, setStats] = useState({
-    enrolledCount: 0,
-    certificatesCount: 0,
-    paymentsCount: 0,
-  });
-  const [detailedProfile, setDetailedProfile] = useState(null);
+  const [stats, setStats] = useState(() => cacheService.getUserStats());
+  const [detailedProfile, setDetailedProfile] = useState(() => cacheService.getUserProfile());
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -108,39 +105,39 @@ export const ProfileScreen = ({ navigation }) => {
 
   const loadProfileData = useCallback(async () => {
     try {
-      setLoading(true);
+      // Only show spinner if we don't have any cached profile yet
+      if (!cacheService.getUserProfile()) {
+        setLoading(true);
+      }
 
-      const [profRes, enrollRes, certRes, payRes] = await Promise.allSettled([
+      // Single payment history call provides enrollments, certificates & payment count
+      const [profRes, payRes] = await Promise.allSettled([
         authService.getProfile(),
-        courseService.getEnrolledCourses(),
-        courseService.getMyCertificates(),
         paymentService.getPaymentHistory(),
       ]);
 
       if (profRes.status === 'fulfilled' && profRes.value?.data) {
         setDetailedProfile(profRes.value.data);
+        cacheService.setUserProfile(profRes.value.data);
       }
 
-      const enrolledCount = enrollRes.status === 'fulfilled' && Array.isArray(enrollRes.value?.data)
-        ? enrollRes.value.data.length
-        : 0;
-
-      let certificatesCount = 0;
-      if (certRes.status === 'fulfilled' && Array.isArray(certRes.value?.data)) {
-        certificatesCount = certRes.value.data.length;
-      } else if (enrollRes.status === 'fulfilled' && Array.isArray(enrollRes.value?.data)) {
-        certificatesCount = enrollRes.value.data.filter((e) => e.completed || e.certificateId).length;
+      let paymentsList = [];
+      if (payRes.status === 'fulfilled' && Array.isArray(payRes.value?.data)) {
+        paymentsList = payRes.value.data;
       }
 
-      const paymentsCount = payRes.status === 'fulfilled' && Array.isArray(payRes.value?.data)
-        ? payRes.value.data.length
-        : 0;
+      const enrolledCount = paymentsList.length;
+      const certificatesCount = paymentsList.filter((e) => e.completed || e.certificateId).length;
+      const paymentsCount = paymentsList.length;
 
-      setStats({
+      const newStats = {
         enrolledCount,
         certificatesCount,
         paymentsCount,
-      });
+      };
+
+      setStats(newStats);
+      cacheService.setUserStats(newStats);
     } catch (error) {
       console.error('Error loading profile data:', error);
     } finally {
@@ -339,7 +336,7 @@ export const ProfileScreen = ({ navigation }) => {
                 style={styles.avatarContainer}
               >
                 {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+                  <Image source={{ uri: avatarUri, cache: 'force-cache' }} style={styles.avatarImg} />
                 ) : (
                   <View style={styles.avatarLarge}>
                     <Text style={styles.avatarLargeText}>

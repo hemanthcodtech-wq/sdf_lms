@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/authService';
+import { cacheService } from '../services/cacheService';
+import { getAvatarUrl } from '../utils/imageHelper';
 
 const AuthContext = createContext();
 
@@ -22,8 +24,14 @@ export const AuthProvider = ({ children }) => {
       const storedWishlist = await AsyncStorage.getItem('wishlist');
 
       if (storedToken && storedUser) {
+        const parsedUser = JSON.parse(storedUser);
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        setUser(parsedUser);
+        // Instant prefetch of avatar image into native cache
+        const avatarUri = getAvatarUrl(parsedUser?.avatar || parsedUser?.profileImage || parsedUser?.photoURL);
+        if (avatarUri) {
+          cacheService.prefetchImages([avatarUri]);
+        }
       }
       if (storedWishlist) {
         setWishlist(JSON.parse(storedWishlist));
@@ -52,6 +60,8 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setToken(data.token);
       setUser(userData);
+      const avatarUri = getAvatarUrl(userData.avatar);
+      if (avatarUri) cacheService.prefetchImages([avatarUri]);
       return data;
     }
     throw new Error(data?.message || 'Login failed');
@@ -72,6 +82,8 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setToken(data.token);
       setUser(userData);
+      const avatarUri = getAvatarUrl(userData.avatar);
+      if (avatarUri) cacheService.prefetchImages([avatarUri]);
       return data;
     }
     throw new Error(data?.message || 'Google login failed');
@@ -101,6 +113,7 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       await AsyncStorage.multiRemove(['token', 'user']);
+      await cacheService.clearUserCache();
       setToken(null);
       setUser(null);
     } catch (error) {

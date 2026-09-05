@@ -27,6 +27,7 @@ import { notificationService } from '../../services/notificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../services/api';
 import { getAvatarUrl, getCourseImageUrl } from '../../utils/imageHelper';
+import { cacheService } from '../../services/cacheService';
 
 export const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -39,9 +40,9 @@ export const HomeScreen = ({ navigation }) => {
   const { t, language, changeLanguage } = useLanguage();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [courses, setCourses] = useState([]);
-  const [liveClasses, setLiveClasses] = useState([]);
-  const [myCourses, setMyCourses] = useState([]);
+  const [courses, setCourses] = useState(() => cacheService.getCourses());
+  const [liveClasses, setLiveClasses] = useState(() => cacheService.getStudentClasses());
+  const [myCourses, setMyCourses] = useState(() => cacheService.getMyCourses());
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   const userAvatarUri = getAvatarUrl(user?.avatar || user?.profileImage || user?.photoURL || user?.image);
@@ -110,18 +111,7 @@ export const HomeScreen = ({ navigation }) => {
       if (results[0].status === 'fulfilled' && results[0].value?.data) {
         const freshCourses = results[0].value.data;
         setCourses(freshCourses);
-        // Save to cache for instant 0ms cold start
-        AsyncStorage.setItem('@sdf_cached_public_courses', JSON.stringify(freshCourses)).catch(() => {});
-
-        // Prefetch course images in parallel
-        if (Platform.OS !== 'web') {
-          freshCourses.forEach((c) => {
-            const img = getCourseImageUrl(c.thumbnail || c.thumbnailUrl || c.image);
-            if (img) {
-              Image.prefetch(img).catch(() => {});
-            }
-          });
-        }
+        cacheService.setCourses(freshCourses);
       }
 
       // Handle User Specific Data
@@ -132,6 +122,7 @@ export const HomeScreen = ({ navigation }) => {
         if (results[2]?.status === 'fulfilled' && results[2].value?.data) {
           const myCourseList = results[2].value.data;
           setMyCourses(myCourseList);
+          cacheService.setMyCourses(myCourseList);
 
           myCourseList.forEach((mc) => {
             const cId = (mc.course?._id || mc.courseId?._id || mc.course || mc.courseId || mc._id || '').toString();
@@ -194,6 +185,7 @@ export const HomeScreen = ({ navigation }) => {
             });
 
           setLiveClasses(enrolledUpcoming);
+          cacheService.setStudentClasses(enrolledUpcoming);
           if (enrolledUpcoming.length > 0) {
             notificationService.syncUpcomingClassReminders(enrolledUpcoming);
           }
@@ -280,7 +272,7 @@ export const HomeScreen = ({ navigation }) => {
             >
               <View style={styles.avatarCircle}>
                 {userAvatarUri ? (
-                  <Image source={{ uri: userAvatarUri }} style={styles.avatarImg} />
+                  <Image source={{ uri: userAvatarUri, cache: 'force-cache' }} style={styles.avatarImg} />
                 ) : (
                   <Text style={styles.avatarText}>
                     {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}

@@ -18,6 +18,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { courseService } from '../../services/courseService';
+import { cacheService } from '../../services/cacheService';
 
 export const MyLearningScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -25,37 +26,40 @@ export const MyLearningScreen = ({ navigation }) => {
   const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState('ongoing'); // 'ongoing', 'completed'
-  const [enrollments, setEnrollments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [enrollments, setEnrollments] = useState(() => cacheService.getMyCourses());
+  const [loading, setLoading] = useState(() => cacheService.getMyCourses().length === 0);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchEnrollments = useCallback(async () => {
+  const fetchEnrollments = useCallback(async (isSilent = false) => {
     if (!user) {
       setLoading(false);
       return;
     }
     try {
-      setLoading(true);
+      if (!isSilent && enrollments.length === 0) {
+        setLoading(true);
+      }
       const res = await courseService.getMyCourses();
       if (res?.data) {
         setEnrollments(res.data);
+        cacheService.setMyCourses(res.data);
       }
     } catch (error) {
       console.error('Error fetching enrolled courses:', error);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, enrollments.length]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchEnrollments();
+      fetchEnrollments(true);
     }, [fetchEnrollments])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchEnrollments();
+    await fetchEnrollments(true);
     setRefreshing(false);
   };
 

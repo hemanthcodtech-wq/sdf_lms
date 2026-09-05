@@ -21,13 +21,14 @@ import { EmptyState } from '../../components/EmptyState';
 import { courseService } from '../../services/courseService';
 import { useLanguage } from '../../context/LanguageContext';
 import { getCourseImageUrl } from '../../utils/imageHelper';
+import { cacheService } from '../../services/cacheService';
 
 export const CourseListScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
 
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [courses, setCourses] = useState(() => cacheService.getCourses());
+  const [loading, setLoading] = useState(() => cacheService.getCourses().length === 0);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('All');
@@ -44,14 +45,7 @@ export const CourseListScreen = ({ navigation }) => {
       const res = await courseService.getPublicCourses();
       if (res?.data) {
         setCourses(res.data);
-        AsyncStorage.setItem('@sdf_cached_public_courses', JSON.stringify(res.data)).catch(() => {});
-        
-        if (Platform.OS !== 'web') {
-          res.data.forEach((c) => {
-            const img = getCourseImageUrl(c.thumbnail || c.thumbnailUrl || c.image);
-            if (img) Image.prefetch(img).catch(() => {});
-          });
-        }
+        cacheService.setCourses(res.data);
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
@@ -63,17 +57,12 @@ export const CourseListScreen = ({ navigation }) => {
 
   // Load from cache on cold start (0ms)
   useEffect(() => {
-    AsyncStorage.getItem('@sdf_cached_public_courses').then((raw) => {
-      if (raw) {
-        try {
-          const cached = JSON.parse(raw);
-          if (Array.isArray(cached) && cached.length > 0) {
-            setCourses(cached);
-          }
-        } catch (e) {}
-      }
-    });
-    fetchCourses(true);
+    const cached = cacheService.getCourses();
+    if (cached && cached.length > 0) {
+      setCourses(cached);
+      setLoading(false);
+    }
+    fetchCourses(cached.length === 0);
   }, [fetchCourses]);
 
   // Refetch every time the user taps or navigates to the Explore Courses screen

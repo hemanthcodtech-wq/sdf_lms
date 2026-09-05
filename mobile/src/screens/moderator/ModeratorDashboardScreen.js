@@ -312,7 +312,10 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
                 >
                   <View style={styles.courseCardTop}>
                     <Image
-                      source={{ uri: getCourseImageUrl(c.thumbnailUrl) }}
+                      source={{
+                        uri: getCourseImageUrl(c.thumbnail || c.thumbnailUrl || c.image),
+                        cache: 'force-cache',
+                      }}
                       style={styles.courseThumb}
                     />
                     <View style={{ flex: 1 }}>

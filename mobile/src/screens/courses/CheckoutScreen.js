@@ -486,8 +486,14 @@ export const CheckoutScreen = ({ route, navigation }) => {
         {/* Course Summary Card */}
         <View style={[styles.card, shadows.sm]}>
           <View style={styles.courseRow}>
-            {course.thumbnailUrl ? (
-              <Image source={{ uri: getCourseImageUrl(course.thumbnailUrl) }} style={styles.courseThumb} />
+            {course?.thumbnail || course?.thumbnailUrl || course?.image ? (
+              <Image
+                source={{
+                  uri: getCourseImageUrl(course.thumbnail || course.thumbnailUrl || course.image),
+                  cache: 'force-cache',
+                }}
+                style={styles.courseThumb}
+              />
             ) : (
               <View style={[styles.courseThumb, styles.courseThumbFallback]}>
                 <Ionicons name="book" size={24} color={colors.primary} />

@@ -19,6 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { courseService } from '../../services/courseService';
 import { getCourseImageUrl } from '../../utils/imageHelper';
+import { cacheService } from '../../services/cacheService';
 
 export const CourseDetailsScreen = ({ route, navigation }) => {
   const { slug, course: initialCourse } = route.params;
@@ -26,10 +27,18 @@ export const CourseDetailsScreen = ({ route, navigation }) => {
   const { user, isInWishlist, toggleWishlist } = useAuth();
   const { t } = useLanguage();
 
+  const targetId = (initialCourse?._id || slug)?.toString();
+  const initialEnrolled = Boolean(
+    user &&
+    cacheService.getMyCourses().some(
+      (e) => (e.course?._id || e.course || e._id || '').toString() === targetId
+    )
+  );
+
   const [course, setCourse] = useState(initialCourse || null);
   const [loading, setLoading] = useState(!initialCourse);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'curriculum', 'instructor'
-  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isEnrolled, setIsEnrolled] = useState(initialEnrolled);
 
   useEffect(() => {
     fetchCourseDetails();
@@ -44,12 +53,21 @@ export const CourseDetailsScreen = ({ route, navigation }) => {
       }
       // Check enrollment
       if (user) {
-        const enrollRes = await courseService.getMyCourses();
-        if (enrollRes?.data) {
-          const found = enrollRes.data.some(
-            (e) => (e.course?._id || e.course) === (res?.data?._id || initialCourse?._id)
+        const cached = cacheService.getMyCourses();
+        if (cached && cached.length > 0) {
+          const found = cached.some(
+            (e) => (e.course?._id || e.course || e._id || '').toString() === (res?.data?._id || targetId)
           );
           setIsEnrolled(found);
+        } else {
+          const enrollRes = await courseService.getMyCourses();
+          if (enrollRes?.data) {
+            cacheService.setMyCourses(enrollRes.data);
+            const found = enrollRes.data.some(
+              (e) => (e.course?._id || e.course || e._id || '').toString() === (res?.data?._id || targetId)
+            );
+            setIsEnrolled(found);
+          }
         }
       }
     } catch (error) {
