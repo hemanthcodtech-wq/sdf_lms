@@ -48,6 +48,14 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   const [materials, setMaterials] = useState(cachedMaterials);
   const [claimingCert, setClaimingCert] = useState(false);
   const [certIssued, setCertIssued] = useState(Boolean(route.params?.enrollment?.completed || route.params?.enrollment?.certificateId));
+  const [currentTick, setCurrentTick] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTick(Date.now());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     fetchCourseClasses();
@@ -121,7 +129,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   }
 
   const getSessionStatus = (lesson, idx) => {
-    const now = new Date();
+    const now = new Date(currentTick);
     const dateStr = lesson.date || (course?.sessionDates && course.sessionDates[idx]) || course?.startDate;
     const timeStr = lesson.time || course?.startTime || (course?.timings ? course.timings.split(' to ')[0] : '06:00');
     const endTimeStr = course?.endTime || (course?.timings && course.timings.includes(' to ') ? course.timings.split(' to ')[1] : null);
@@ -281,6 +289,22 @@ export const StudentClassesScreen = ({ route, navigation }) => {
     }
 
     const target = lessonItem || currentLesson;
+    if (target) {
+      const targetIdx = lessonItem ? realSessions.findIndex((s) => (s._id || s.id) === (lessonItem._id || lessonItem.id)) : activeLessonIndex;
+      const status = getSessionStatus(target, targetIdx >= 0 ? targetIdx : activeLessonIndex);
+      if (!status.canJoin) {
+        if (status.isCompleted) {
+          Alert.alert('Session Concluded', 'This live session has already concluded.');
+          return;
+        }
+        Alert.alert(
+          'Live Session Scheduled',
+          `This session is scheduled for ${status.displayDate} at ${status.displayTime}.\n\nThe "Join Class" button will be activated 2 minutes before class starts.`
+        );
+        return;
+      }
+    }
+
     const link =
       target?.zoomLink ||
       course?.zoomMeetingLink ||
@@ -395,11 +419,14 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         />
         <View style={styles.playerOverlay}>
           <TouchableOpacity
-            style={styles.playCenterButton}
+            style={[
+              styles.playCenterButton,
+              !currentStatus?.canJoin && { backgroundColor: 'rgba(30, 41, 59, 0.75)' },
+            ]}
             onPress={() => handleJoinZoom(currentLesson)}
             activeOpacity={0.8}
           >
-            <Ionicons name="videocam" size={32} color="#fff" />
+            <Ionicons name={currentStatus?.canJoin ? "videocam" : "lock-closed"} size={currentStatus?.canJoin ? 32 : 26} color="#fff" />
           </TouchableOpacity>
           <View style={styles.playerBottomInfo}>
             <Text style={styles.playerLessonTitle} numberOfLines={1}>

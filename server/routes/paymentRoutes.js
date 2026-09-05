@@ -31,7 +31,11 @@ router.get(['/history', '/my-enrollments', '/my-payments'], protect, async (req,
       .sort('-createdAt');
 
     // Compute dynamic session progress and ensure completed courses have certificateId
-    for (const enr of enrollments) {
+    const activeEnrollments = enrollments.filter(
+      (enr) => enr && enr.course && typeof enr.course === 'object' && Boolean(enr.course.title)
+    );
+
+    for (const enr of activeEnrollments) {
       if (enr.course) {
         const dates = enr.course.sessionDates || [];
         if (dates.length > 0) {
@@ -58,7 +62,7 @@ router.get(['/history', '/my-enrollments', '/my-payments'], protect, async (req,
       }
     }
 
-    const formattedEnrollments = enrollments.map((enr) => {
+    const formattedEnrollments = activeEnrollments.map((enr) => {
       const obj = enr.toObject ? enr.toObject() : enr;
       const amount = (typeof obj.amountPaid === 'number' && !isNaN(obj.amountPaid))
         ? obj.amountPaid 

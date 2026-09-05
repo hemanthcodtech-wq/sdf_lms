@@ -21,26 +21,47 @@ const StudentClasses = () => {
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [certSuccessMessage, setCertSuccessMessage] = useState('');
   const [enrollment, setEnrollment] = useState(null);
+  const [currentTick, setCurrentTick] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTick(Date.now());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const parseClassDateTime = (dateVal, timeVal) => {
+    if (!dateVal) return null;
+    try {
+      const rawDate = typeof dateVal === 'string' 
+        ? (dateVal.includes('T') ? dateVal.split('T')[0] : dateVal)
+        : new Date(dateVal).toISOString().split('T')[0];
+      const [y, m, d] = rawDate.split('-').map(Number);
+      if (!y || !m || !d) return null;
+
+      let startH = 6, startM = 0;
+      if (timeVal) {
+        const match = String(timeVal).match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+          startH = parseInt(match[1], 10);
+          startM = parseInt(match[2], 10);
+          const isPM = /pm/i.test(timeVal);
+          const isAM = /am/i.test(timeVal);
+          if (isPM && startH < 12) startH += 12;
+          if (isAM && startH === 12) startH = 0;
+        }
+      }
+      return new Date(y, m - 1, d, startH, startM, 0, 0);
+    } catch (e) {
+      return null;
+    }
+  };
 
   const completedCount = allClasses.filter((cls) => {
     try {
-      const now = new Date();
-      const classDate = new Date(cls.date);
-      let startHour = 6, startMin = 0;
-      if (cls.time) {
-        const parts = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
-        if (parts) {
-          let h = parseInt(parts[1], 10);
-          const m = parseInt(parts[2], 10);
-          const ampm = parts[3] ? parts[3].toUpperCase() : null;
-          if (ampm === 'PM' && h < 12) h += 12;
-          if (ampm === 'AM' && h === 12) h = 0;
-          startHour = h;
-          startMin = m;
-        }
-      }
-      const sessionStart = new Date(classDate);
-      sessionStart.setHours(startHour, startMin, 0, 0);
+      const now = new Date(currentTick);
+      const sessionStart = parseClassDateTime(cls.date, cls.time);
+      if (!sessionStart) return false;
       const duration = cls.durationMinutes || 60;
       const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
       return now > sessionEnd;
@@ -374,31 +395,14 @@ const StudentClasses = () => {
                     
                     {activeTab === 'classes' && (
                       allClasses.length > 0 ? allClasses.map((cls, index) => {
-                        const now = new Date();
-                        const classDate = new Date(cls.date);
-
-                        let startHour = 6, startMin = 0;
-                        if (cls.time) {
-                          const parts = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
-                          if (parts) {
-                            let h = parseInt(parts[1], 10);
-                            const m = parseInt(parts[2], 10);
-                            const ampm = parts[3] ? parts[3].toUpperCase() : null;
-                            if (ampm === 'PM' && h < 12) h += 12;
-                            if (ampm === 'AM' && h === 12) h = 0;
-                            startHour = h;
-                            startMin = m;
-                          }
-                        }
-
-                        const sessionStart = new Date(classDate);
-                        sessionStart.setHours(startHour, startMin, 0, 0);
+                        const now = new Date(currentTick);
+                        const sessionStart = parseClassDateTime(cls.date, cls.time);
                         const duration = cls.durationMinutes || 60;
-                        const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+                        const sessionEnd = sessionStart ? new Date(sessionStart.getTime() + duration * 60 * 1000) : new Date();
 
-                        const isPast = now > sessionEnd;
-                        const isLiveNow = now >= new Date(sessionStart.getTime() - 2 * 60 * 1000) && now <= sessionEnd;
-                        const isUpcoming = now < new Date(sessionStart.getTime() - 2 * 60 * 1000);
+                        const isPast = sessionStart ? now > sessionEnd : false;
+                        const isLiveNow = sessionStart ? (now >= new Date(sessionStart.getTime() - 2 * 60 * 1000) && now <= sessionEnd) : false;
+                        const isUpcoming = sessionStart ? (now < new Date(sessionStart.getTime() - 2 * 60 * 1000)) : true;
                         
                         return (
                           <motion.div 

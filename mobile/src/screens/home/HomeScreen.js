@@ -44,6 +44,14 @@ export const HomeScreen = ({ navigation }) => {
   const [liveClasses, setLiveClasses] = useState(() => cacheService.getStudentClasses());
   const [myCourses, setMyCourses] = useState(() => cacheService.getMyCourses());
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [currentTick, setCurrentTick] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTick(Date.now());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const userAvatarUri = getAvatarUrl(user?.avatar || user?.profileImage || user?.photoURL || user?.image);
 
@@ -218,6 +226,23 @@ export const HomeScreen = ({ navigation }) => {
   };
 
   const handleJoinClass = (liveClass) => {
+    const times = getClassSessionTimes(liveClass);
+    const now = new Date();
+    if (times) {
+      const joinWindowStart = new Date(times.sessionStart.getTime() - 2 * 60 * 1000);
+      if (now < joinWindowStart) {
+        Alert.alert(
+          'Live Session Scheduled',
+          `This class is scheduled for ${liveClass.time || 'later'}.\n\nThe "Join Live Class" button will become clickable 2 minutes before the session starts.`
+        );
+        return;
+      }
+      if (now > times.sessionEnd) {
+        Alert.alert('Session Concluded', 'This live class session has already ended.');
+        return;
+      }
+    }
+
     const link =
       liveClass?.zoomLink ||
       liveClass?.zoomJoinUrl ||
@@ -411,6 +436,9 @@ export const HomeScreen = ({ navigation }) => {
 
               const displayDate = formatLiveDate(item.date);
               const displayTime = formatLiveTime(item.time || item.courseId?.startTime || item.courseId?.timings);
+              const times = getClassSessionTimes(item);
+              const now = new Date(currentTick);
+              const canJoin = times ? (now >= new Date(times.sessionStart.getTime() - 2 * 60 * 1000) && now <= times.sessionEnd) : false;
 
               return (
                 <View key={item._id || idx} style={[styles.liveClassCard, shadows.md]}>
@@ -423,18 +451,38 @@ export const HomeScreen = ({ navigation }) => {
                         📅 {displayDate} • ⏰ {displayTime}
                       </Text>
                     </View>
-                    <Badge text="LIVE ZOOM" variant="warning" />
+                    <Badge
+                      text={canJoin ? 'LIVE NOW' : 'SCHEDULED'}
+                      variant={canJoin ? 'success' : 'default'}
+                    />
                   </View>
 
                   <View style={styles.liveActionsRow}>
-                    <CustomButton
-                      title={t('joinClass')}
-                      onPress={() => handleJoinClass(item)}
-                      variant="primary"
-                      size="sm"
-                      icon={<Ionicons name="videocam" size={16} color="#fff" />}
-                      style={{ flex: 1 }}
-                    />
+                    {canJoin ? (
+                      <CustomButton
+                        title={t('joinClass')}
+                        onPress={() => handleJoinClass(item)}
+                        variant="primary"
+                        size="sm"
+                        icon={<Ionicons name="videocam" size={16} color="#fff" />}
+                        style={{ flex: 1 }}
+                      />
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.scheduledLiveBtn}
+                        onPress={() =>
+                          Alert.alert(
+                            'Live Session Scheduled',
+                            `This session is scheduled for ${displayDate} at ${displayTime}.\n\nThe "Join Live Class" button will become clickable 2 minutes before the session starts.`
+                          )
+                        }
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="time-outline" size={15} color={colors.textMuted} />
+                        <Text style={styles.scheduledLiveBtnText}>Starts 2m Before</Text>
+                        <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    )}
                     {item.courseId?.whatsappGroupLink ? (
                       <TouchableOpacity
                         style={styles.whatsappBtn}
@@ -783,6 +831,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#86efac',
+  },
+  scheduledLiveBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  scheduledLiveBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
   },
   categoryScroll: {
     gap: 8,

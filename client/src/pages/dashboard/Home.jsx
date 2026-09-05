@@ -10,13 +10,49 @@ const Home = () => {
   const [upcomingClass, setUpcomingClass] = useState(null);
   const navigate = useNavigate();
 
+  const [currentTick, setCurrentTick] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTick(Date.now());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const parseClassDateTime = (dateVal, timeVal) => {
+    if (!dateVal) return null;
+    try {
+      const rawDate = typeof dateVal === 'string' 
+        ? (dateVal.includes('T') ? dateVal.split('T')[0] : dateVal)
+        : new Date(dateVal).toISOString().split('T')[0];
+      const [y, m, d] = rawDate.split('-').map(Number);
+      if (!y || !m || !d) return null;
+
+      let startH = 6, startM = 0;
+      if (timeVal) {
+        const match = String(timeVal).match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+          startH = parseInt(match[1], 10);
+          startM = parseInt(match[2], 10);
+          const isPM = /pm/i.test(timeVal);
+          const isAM = /am/i.test(timeVal);
+          if (isPM && startH < 12) startH += 12;
+          if (isAM && startH === 12) startH = 0;
+        }
+      }
+      return new Date(y, m - 1, d, startH, startM, 0, 0);
+    } catch (e) {
+      return null;
+    }
+  };
+
   useEffect(() => {
     const loadUser = () => {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (e) {}
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) setUser(JSON.parse(stored));
+      } catch (e) {
+        console.error("Error loading user:", e);
       }
     };
     loadUser();
@@ -45,20 +81,15 @@ const Home = () => {
             const now = new Date();
             const futureClasses = classesRes.data.data.filter(cls => {
               if (!cls || !cls.date) return false;
-              try {
-                const classTime = new Date(`${String(cls.date).split('T')[0]}T${cls.time || '00:00'}:00`);
-                return classTime > now;
-              } catch (e) {
-                return false;
-              }
+              const sessionStart = parseClassDateTime(cls.date, cls.time);
+              if (!sessionStart) return false;
+              const duration = cls.durationMinutes || 60;
+              const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+              return sessionEnd >= now;
             }).sort((a, b) => {
-              try {
-                const aTime = new Date(`${String(a.date).split('T')[0]}T${a.time || '00:00'}:00`);
-                const bTime = new Date(`${String(b.date).split('T')[0]}T${b.time || '00:00'}:00`);
-                return aTime - bTime;
-              } catch (e) {
-                return 0;
-              }
+              const aTime = parseClassDateTime(a?.date, a?.time)?.getTime() || 0;
+              const bTime = parseClassDateTime(b?.date, b?.time)?.getTime() || 0;
+              return aTime - bTime;
             });
             if (futureClasses.length > 0) setUpcomingClass(futureClasses[0]);
           }
@@ -79,21 +110,9 @@ const Home = () => {
   const isClassLive = (cls) => {
     if (!cls || !cls.date) return false;
     try {
-      const now = new Date();
-      const rawDate = String(cls.date).split('T')[0];
-      let startH = 6, startM = 0;
-      if (cls.time) {
-        const match = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
-        if (match) {
-          startH = parseInt(match[1], 10);
-          startM = parseInt(match[2], 10);
-          const ampm = match[3] ? match[3].toUpperCase() : null;
-          if (ampm === 'PM' && startH < 12) startH += 12;
-          if (ampm === 'AM' && startH === 12) startH = 0;
-        }
-      }
-      const [y, m, d] = rawDate.split('-').map(Number);
-      const sessionStart = new Date(y, m - 1, d, startH, startM, 0, 0);
+      const sessionStart = parseClassDateTime(cls.date, cls.time);
+      if (!sessionStart) return false;
+      const now = new Date(currentTick);
       const joinWindowStart = new Date(sessionStart.getTime() - 2 * 60 * 1000);
       const duration = cls.durationMinutes || 60;
       const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);

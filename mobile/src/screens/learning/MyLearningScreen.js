@@ -141,8 +141,11 @@ export const MyLearningScreen = ({ navigation }) => {
     return 0;
   };
 
-  const ongoingEnrollments = enrollments.filter((item) => !isCourseCompleted(item));
-  const completedEnrollments = enrollments.filter((item) => isCourseCompleted(item));
+  const validEnrollments = enrollments.filter(
+    (item) => item && item.course && typeof item.course === 'object' && Boolean(item.course.title)
+  );
+  const ongoingEnrollments = validEnrollments.filter((item) => !isCourseCompleted(item));
+  const completedEnrollments = validEnrollments.filter((item) => isCourseCompleted(item));
   const filteredEnrollments = activeTab === 'completed' ? completedEnrollments : ongoingEnrollments;
 
   if (!user) {
