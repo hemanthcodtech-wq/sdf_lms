@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,100 @@ import {
   TouchableOpacity,
   Platform,
   Image,
+  ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { colors, shadows } from '../../theme/colors';
+import { useAuth } from '../../context/AuthContext';
 
 export const PortalSelectionScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { loginWithGoogle } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Catch deep link if returned to PortalSelectionScreen
+  useEffect(() => {
+    const handleDeepLink = async (event) => {
+      const url = event?.url;
+      if (url && (url.includes('access_token=') || url.includes('token='))) {
+        const match = url.match(/access_token=([^&]+)/) || url.match(/token=([^&]+)/);
+        if (match && match[1]) {
+          try {
+            await WebBrowser.dismissAuthSession();
+          } catch (e) {}
+          setGoogleLoading(true);
+          await handleGoogleAccessToken(match[1]);
+        }
+      }
+    };
+
+    const sub = Linking.addEventListener('url', handleDeepLink);
+    return () => sub.remove();
+  }, []);
+
+  const handleGoogleAccessToken = async (token) => {
+    try {
+      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const profile = await res.json();
+      if (profile?.email) {
+        await loginWithGoogle({
+          email: profile.email,
+          name: profile.name || profile.given_name || 'Google User',
+          avatar: profile.picture,
+          googleId: profile.sub,
+          accessToken: token,
+        });
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main', params: { screen: 'HomeTab' } }],
+        });
+      }
+    } catch (e) {
+      console.error('Portal Google Login Error:', e);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '473693349273-r3lct54ccv5pfeppqkes57odmni6nvh4.apps.googleusercontent.com';
+    try {
+      setGoogleLoading(true);
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.google?.accounts?.oauth2) {
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'email profile openid',
+          callback: async (tokenResponse) => {
+            if (tokenResponse?.access_token) {
+              await handleGoogleAccessToken(tokenResponse.access_token);
+            } else {
+              setGoogleLoading(false);
+            }
+          },
+        });
+        tokenClient.requestAccessToken({ prompt: 'select_account' });
+      } else {
+        const redirectUri = 'https://swamidwijafoundation.com';
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20email%20profile&prompt=select_account`;
+        const authResult = await WebBrowser.openAuthSessionAsync(authUrl, 'sdflms://oauth');
+        if (authResult.type === 'success' && authResult.url) {
+          const tokenMatch = authResult.url.match(/access_token=([^&]+)/) || authResult.url.match(/token=([^&]+)/);
+          if (tokenMatch && tokenMatch[1]) {
+            await handleGoogleAccessToken(tokenMatch[1]);
+            return;
+          }
+        }
+        setTimeout(() => setGoogleLoading(false), 2000);
+      }
+    } catch (err) {
+      setGoogleLoading(false);
+    }
+  };
 
   const portals = [
     {
@@ -41,6 +128,25 @@ export const PortalSelectionScreen = ({ navigation }) => {
       onPress: () => navigation.navigate('InstructorLogin'),
     },
   ];
+
+  if (googleLoading) {
+    return (
+      <View style={[styles.container, styles.googleLoadingScreen]}>
+        <View style={styles.googleLoadingCenter}>
+          <View style={[styles.logoBadge, shadows.brandGlow, { borderColor: '#ffffff', marginBottom: 20 }]}>
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+          <ActivityIndicator size="large" color="#ffffff" style={{ marginVertical: 18 }} />
+          <Text style={styles.googleLoadingTitle}>Signing In with Google...</Text>
+          <Text style={styles.googleLoadingSub}>Opening your learning dashboard</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -107,6 +213,19 @@ export const PortalSelectionScreen = ({ navigation }) => {
               </View>
             </TouchableOpacity>
           ))}
+        </View>
+
+        {/* Instant Google Login Option */}
+        <View style={styles.googleSection}>
+          <TouchableOpacity
+            style={[styles.portalGoogleBtn, shadows.sm]}
+            onPress={handleGoogleLogin}
+            disabled={googleLoading}
+            activeOpacity={0.82}
+          >
+            <Ionicons name="logo-google" size={20} color="#EA4335" style={{ marginRight: 10 }} />
+            <Text style={styles.portalGoogleBtnText}>Sign In with Google</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Guest Exploration Option */}
@@ -239,5 +358,49 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
+  },
+  googleSection: {
+    marginTop: 4,
+    marginBottom: 12,
+    width: '100%',
+  },
+  portalGoogleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  portalGoogleBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  googleLoadingScreen: {
+    backgroundColor: '#0d5c31',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleLoadingCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  googleLoadingTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#ffffff',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  googleLoadingSub: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 6,
+    textAlign: 'center',
   },
 });

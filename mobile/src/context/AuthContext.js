@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/authService';
 import { cacheService } from '../services/cacheService';
@@ -11,10 +12,45 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [wishlist, setWishlist] = useState([]);
+  const isHandlingOAuthRef = useRef(false);
 
-  // Check saved session on app load
+  // Check saved session on app load and catch incoming OAuth deep links
   useEffect(() => {
     loadStoredAuth();
+
+    const processOAuthUrl = async (url) => {
+      if (!url || isHandlingOAuthRef.current) return;
+      if (url.includes('access_token=') || url.includes('token=')) {
+        const match = url.match(/access_token=([^&]+)/) || url.match(/token=([^&]+)/);
+        if (match && match[1]) {
+          isHandlingOAuthRef.current = true;
+          try {
+            const tokenVal = match[1];
+            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${tokenVal}` },
+            });
+            const profile = await res.json();
+            if (profile?.email) {
+              await loginWithGoogle({
+                email: profile.email,
+                name: profile.name || profile.given_name || 'Google User',
+                avatar: profile.picture,
+                googleId: profile.sub,
+                accessToken: tokenVal,
+              });
+            }
+          } catch (err) {
+            console.error('AuthContext deep link login error:', err);
+          } finally {
+            isHandlingOAuthRef.current = false;
+          }
+        }
+      }
+    };
+
+    Linking.getInitialURL().then(processOAuthUrl);
+    const sub = Linking.addEventListener('url', (e) => processOAuthUrl(e?.url));
+    return () => sub.remove();
   }, []);
 
   const loadStoredAuth = async () => {

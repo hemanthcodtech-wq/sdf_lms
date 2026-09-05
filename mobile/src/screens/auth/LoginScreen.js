@@ -175,6 +175,25 @@ export const LoginScreen = ({ navigation }) => {
     }
   };
 
+  if (googleLoading) {
+    return (
+      <View style={[styles.container, styles.googleLoadingScreen]}>
+        <View style={styles.googleLoadingCenter}>
+          <View style={[styles.logoBadge, shadows.brandGlow, { borderColor: '#ffffff', marginBottom: 20 }]}>
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+            />
+          </View>
+          <ActivityIndicator size="large" color="#ffffff" style={{ marginVertical: 18 }} />
+          <Text style={styles.googleLoadingTitle}>Signing In with Google...</Text>
+          <Text style={styles.googleLoadingSub}>Opening your learning dashboard</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -504,5 +523,28 @@ const styles = StyleSheet.create({
     color: colors.secondaryDark || '#c25e17',
     fontWeight: '700',
     textDecorationLine: 'underline',
+  },
+  googleLoadingScreen: {
+    backgroundColor: '#0d5c31',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleLoadingCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  googleLoadingTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#ffffff',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  googleLoadingSub: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 6,
+    textAlign: 'center',
   },
 });

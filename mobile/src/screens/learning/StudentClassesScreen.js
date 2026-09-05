@@ -260,6 +260,12 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         '🏆 Certificate of Completion Issued!',
         `Congratulations on completing "${course?.title || 'your course'}"! Your official certificate has been issued, sent to your email, and saved to your account.`
       );
+      await notificationService.addNotification({
+        type: 'certificate',
+        title: '🏆 Certificate of Completion Issued!',
+        message: `Congratulations! Your official certificate for "${course?.title || 'your course'}" has been issued and is available in your account.`,
+        time: 'Certificate Ready',
+      });
       Alert.alert(
         '🏆 Certificate Generated!',
         res?.message || 'Your official Certificate of Completion has been generated and saved to your profile. You can view and download it now.',

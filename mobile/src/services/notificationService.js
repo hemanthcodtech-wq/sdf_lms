@@ -293,54 +293,8 @@ export const notificationService = {
         });
       }
 
-      if (Array.isArray(myCourses) && myCourses.length > 0) {
-        myCourses.forEach((enroll) => {
-          if (!enroll) return;
-          const courseTitle = enroll.course?.title || enroll.title || 'Your Course';
-          const courseId = enroll.course?._id || enroll._id;
-          if (!courseId) return;
-
-          // Certificate notification if course is completed
-          if (enroll.completed || enroll.certificateId) {
-            const certNotifId = `cert_${courseId}`;
-            const certDate = enroll.completedAt || enroll.updatedAt;
-            const certTime = certDate ? new Date(certDate).getTime() : 0;
-
-            if (certTime > lastClearedTime && !dismissedIds.has(certNotifId)) {
-              dynamicLiveNotifications.push({
-                id: certNotifId,
-                type: 'certificate',
-                title: '🏆 Certificate of Completion Issued!',
-                message: `Congratulations! Your official certificate for "${courseTitle}" has been issued and is available in your account.`,
-                time: 'Certificate Ready',
-                unread: true,
-                urgent: false,
-                createdAt: certDate || new Date().toISOString(),
-              });
-            }
-          }
-
-          // Enrollment notification: ONLY if enrolled freshly (after lastClearedTime AND within last 48 hours)
-          const enrollDate = enroll.createdAt;
-          const enrollTime = enrollDate ? new Date(enrollDate).getTime() : 0;
-          const isRecentEnrollment = enrollTime > 0 && (Date.now() - enrollTime) < 48 * 60 * 60 * 1000;
-
-          if (isRecentEnrollment && enrollTime > lastClearedTime) {
-            const notifId = `enroll_${courseId}`;
-            if (!dismissedIds.has(notifId)) {
-              dynamicLiveNotifications.push({
-                id: notifId,
-                type: 'course_enrolled',
-                title: '🎓 Course Access Active',
-                message: `You are enrolled in "${courseTitle}". All daily live classes & recordings are unlocked.`,
-                time: 'Enrolled',
-                unread: false,
-                createdAt: enrollDate,
-              });
-            }
-          }
-        });
-      }
+      // myCourses is not looped for synthetic notifications: genuine certificate and enrollment
+      // events are saved once via addNotification() and permanently removed when cleared.
 
       // Merge and deduplicate
       const map = new Map();
