@@ -30,4 +30,9 @@ export const instructorService = {
     const response = await api.put('/instructor/profile', profileData);
     return response.data;
   },
+
+  updateCourseWhatsappLink: async (courseId, whatsappGroupLink) => {
+    const response = await api.put(`/instructor/courses/${courseId}/whatsapp`, { whatsappGroupLink });
+    return response.data;
+  },
 };

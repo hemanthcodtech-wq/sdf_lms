@@ -7,7 +7,7 @@ import {
   FaPhone, FaEnvelope, FaBookOpen, FaExternalLinkAlt, FaTimes,
   FaShieldAlt, FaLayerGroup, FaPlayCircle, FaPlus, FaTrash,
   FaFilePdf, FaCloudUploadAlt, FaChevronRight, FaArrowLeft, FaBook,
-  FaGraduationCap, FaLink, FaCheck
+  FaGraduationCap, FaLink, FaCheck, FaWhatsapp, FaSearch
 } from 'react-icons/fa';
 import ZoomLiveClassroom from '../../components/classroom/ZoomLiveClassroom';
 import { getCourseImageUrl } from '../../utils/imageHelper';
@@ -23,6 +23,7 @@ const InstructorDashboard = () => {
   const [courseActiveTab, setCourseActiveTab] = useState('classes'); // 'classes', 'materials', 'students'
   const [loadingCourseDetails, setLoadingCourseDetails] = useState(false);
   const [selectedCourseData, setSelectedCourseData] = useState(null);
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
 
   // Add Material Modal State
   const [isAddMaterialOpen, setIsAddMaterialOpen] = useState(false);
@@ -34,6 +35,13 @@ const InstructorDashboard = () => {
   });
   const [materialSubmitting, setMaterialSubmitting] = useState(false);
   const [materialMsg, setMaterialMsg] = useState('');
+
+  // Update WhatsApp Link Modal State
+  const [isWhatsappModalOpen, setIsWhatsappModalOpen] = useState(false);
+  const [whatsappModalCourse, setWhatsappModalCourse] = useState(null);
+  const [whatsappInput, setWhatsappInput] = useState('');
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
+  const [whatsappMsg, setWhatsappMsg] = useState('');
 
   // Material Viewer Modal
   const [viewingMaterial, setViewingMaterial] = useState(null);
@@ -92,9 +100,9 @@ const InstructorDashboard = () => {
     }
   };
 
-  const handleOpenCourseDetails = async (course) => {
+  const handleOpenCourseDetails = async (course, defaultTab = 'classes') => {
     setSelectedCourse(course);
-    setCourseActiveTab('classes');
+    setCourseActiveTab(defaultTab);
     setLoadingCourseDetails(true);
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/instructor/courses/${course._id}/details`, {
@@ -205,6 +213,135 @@ const InstructorDashboard = () => {
     }
   };
 
+  const handleOpenWhatsappModal = (course) => {
+    setWhatsappModalCourse(course);
+    setWhatsappInput(course?.whatsappGroupLink || '');
+    setWhatsappMsg('');
+    setIsWhatsappModalOpen(true);
+  };
+
+  const handleSaveWhatsappLink = async (e) => {
+    e.preventDefault();
+    if (!whatsappModalCourse?._id) return;
+    setSavingWhatsapp(true);
+    setWhatsappMsg('');
+    try {
+      const token = localStorage.getItem('instructorToken') || localStorage.getItem('token');
+      const res = await axios.put(
+        `${import.meta.env.VITE_API_BASE_URL}/instructor/courses/${whatsappModalCourse._id}/whatsapp`,
+        { whatsappGroupLink: whatsappInput },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.success) {
+        setWhatsappMsg('WhatsApp link updated successfully!');
+        if (selectedCourse?._id === whatsappModalCourse._id) {
+          setSelectedCourse(prev => ({ ...prev, whatsappGroupLink: whatsappInput.trim() }));
+        }
+        if (selectedCourseData?.course?._id === whatsappModalCourse._id) {
+          setSelectedCourseData(prev => ({
+            ...prev,
+            course: { ...prev.course, whatsappGroupLink: whatsappInput.trim() }
+          }));
+        }
+        fetchDashboardStats(true);
+        setTimeout(() => {
+          setIsWhatsappModalOpen(false);
+          setWhatsappMsg('');
+        }, 1200);
+      }
+    } catch (err) {
+      setWhatsappMsg(err.response?.data?.message || 'Failed to update WhatsApp link');
+    } finally {
+      setSavingWhatsapp(false);
+    }
+  };
+
+  const renderWhatsappModal = () => (
+    <AnimatePresence>
+      {isWhatsappModalOpen && whatsappModalCourse && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsWhatsappModalOpen(false)}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-w-lg w-full relative z-10 space-y-5"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#25D366] flex items-center justify-center text-xl">
+                  <FaWhatsapp />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg text-gray-900">Batch WhatsApp Community</h3>
+                  <p className="text-xs text-gray-500 truncate max-w-[280px]">{whatsappModalCourse.title}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsWhatsappModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 cursor-pointer"
+              >
+                <FaTimes size={16} />
+              </button>
+            </div>
+
+            {whatsappMsg && (
+              <div className={`p-3 rounded-2xl text-xs font-bold ${whatsappMsg.includes('success') ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                {whatsappMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveWhatsappLink} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-extrabold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <FaWhatsapp className="text-[#25D366]" size={14} />
+                  <span>Official WhatsApp Group / Channel URL *</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://chat.whatsapp.com/... or channel link"
+                    value={whatsappInput}
+                    onChange={(e) => setWhatsappInput(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-green/20 outline-none"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Enrolled students will see this WhatsApp link in their classroom portal & confirmation email to join the batch community.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsWhatsappModalOpen(false)}
+                  className="px-5 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingWhatsapp}
+                  className="px-7 py-3 rounded-2xl bg-brand-green hover:bg-brand-green-dark text-white font-extrabold text-xs shadow-md disabled:opacity-60 flex items-center gap-2 cursor-pointer"
+                >
+                  <FaWhatsapp size={14} />
+                  <span>{savingWhatsapp ? 'Saving...' : 'Save WhatsApp Link'}</span>
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+
   const getEmbedUrl = (url) => {
     if (!url) return '';
     if (url.includes('drive.google.com')) {
@@ -229,7 +366,7 @@ const InstructorDashboard = () => {
     const course = selectedCourseData?.course || selectedCourse;
     const classes = selectedCourseData?.classes || selectedCourse.classes || [];
     const materials = selectedCourseData?.materials || selectedCourse.materials || [];
-    const enrollments = selectedCourseData?.enrollments || [];
+    const enrollments = selectedCourseData?.enrollments || selectedCourseData?.students || selectedCourse.students || [];
 
     return (
       <div className="space-y-8 pb-20 font-inter max-w-7xl mx-auto px-2 sm:px-4">
@@ -265,6 +402,13 @@ const InstructorDashboard = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <button
+                onClick={() => handleOpenWhatsappModal(selectedCourseData?.course || selectedCourse)}
+                className="px-5 py-3 rounded-2xl bg-[#25D366]/20 hover:bg-[#25D366]/30 border border-[#25D366]/50 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <FaWhatsapp className="text-[#25D366]" size={15} />
+                <span>{(selectedCourseData?.course?.whatsappGroupLink || selectedCourse?.whatsappGroupLink) ? 'Update WhatsApp Channel' : '+ Set WhatsApp Channel'}</span>
+              </button>
               <button
                 onClick={() => setIsAddMaterialOpen(true)}
                 className="px-5 py-3 rounded-2xl bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900 font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -304,6 +448,45 @@ const InstructorDashboard = () => {
                   <span className="text-base font-black text-emerald-400">{materials.length} Uploaded</span>
                 </div>
               </div>
+            </div>
+
+            {/* Official Batch WhatsApp Community Card */}
+            <div className="bg-white/85 backdrop-blur-md rounded-3xl p-5 border border-emerald-100 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#25D366] flex items-center justify-center text-lg">
+                    <FaWhatsapp />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-xs text-gray-900">Batch WhatsApp Community</h4>
+                    <span className="text-[10px] text-gray-400">For student announcements</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleOpenWhatsappModal(selectedCourseData?.course || selectedCourse)}
+                  className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <FaEdit size={10} />
+                  <span>{(selectedCourseData?.course?.whatsappGroupLink || selectedCourse?.whatsappGroupLink) ? 'Change' : '+ Add'}</span>
+                </button>
+              </div>
+              {(selectedCourseData?.course?.whatsappGroupLink || selectedCourse?.whatsappGroupLink) ? (
+                <a
+                  href={selectedCourseData?.course?.whatsappGroupLink || selectedCourse?.whatsappGroupLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-between bg-emerald-50/70 hover:bg-emerald-50 p-2.5 rounded-xl text-xs text-emerald-900 border border-emerald-200/60 transition-colors"
+                >
+                  <span className="truncate flex-1 mr-2 font-semibold">
+                    {selectedCourseData?.course?.whatsappGroupLink || selectedCourse?.whatsappGroupLink}
+                  </span>
+                  <FaExternalLinkAlt size={10} className="text-emerald-600 shrink-0" />
+                </a>
+              ) : (
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200/60 p-2 rounded-xl font-medium">
+                  No WhatsApp link set yet. Tap "+ Add" to link your batch channel.
+                </p>
+              )}
             </div>
 
             {/* Navigation Tabs */}
@@ -557,45 +740,159 @@ const InstructorDashboard = () => {
             )}
 
             {/* STUDENTS TAB */}
-            {courseActiveTab === 'students' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between pb-2">
-                  <h2 className="text-lg font-black text-gray-900">Enrolled Student Roster</h2>
-                  <span className="text-xs text-gray-500 font-bold">{enrollments.length} Active Learners</span>
+            {courseActiveTab === 'students' && (() => {
+              const filteredStudents = enrollments.filter(enr => {
+                if (!studentSearchQuery.trim()) return true;
+                const q = studentSearchQuery.toLowerCase();
+                const name = (enr.studentName || '').toLowerCase();
+                const email = (enr.studentEmail || '').toLowerCase();
+                const phone = (enr.studentPhone || '').toLowerCase();
+                return name.includes(q) || email.includes(q) || phone.includes(q);
+              });
+
+              return (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
+                    <div>
+                      <h2 className="text-lg font-black text-gray-900">Enrolled Student Roster</h2>
+                      <p className="text-xs text-gray-400">Complete list of registered students with contact details & progress</p>
+                    </div>
+                    <span className="text-xs font-bold px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200/70 rounded-full w-max">
+                      {enrollments.length} Active Learner{enrollments.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {/* Search Bar */}
+                  {enrollments.length > 0 && (
+                    <div className="relative">
+                      <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
+                      <input
+                        type="text"
+                        placeholder="Search student by name, email, or phone number..."
+                        value={studentSearchQuery}
+                        onChange={(e) => setStudentSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-16 py-3 bg-white rounded-2xl border border-gray-200 text-xs font-semibold text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green transition-all shadow-xs"
+                      />
+                      {studentSearchQuery ? (
+                        <button
+                          onClick={() => setStudentSearchQuery('')}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold px-1 cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {filteredStudents.length > 0 ? (
+                    <div className="space-y-3">
+                      {filteredStudents.map((enr, i) => {
+                        const initials = (enr.studentName || 'Learner')
+                          .split(' ')
+                          .map(p => p[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase() || 'ST';
+                        const cleanPhone = (enr.studentPhone || '').replace(/\D/g, '');
+                        const waNumber = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+
+                        return (
+                          <div
+                            key={enr._id || i}
+                            className="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-xs hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                          >
+                            <div className="flex items-start sm:items-center gap-4 min-w-0">
+                              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0A4F2A] to-emerald-600 text-white font-black text-base flex items-center justify-center shadow-xs shrink-0">
+                                {initials}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                  <h4 className="font-extrabold text-sm text-gray-900 truncate">
+                                    {enr.studentName || 'Enrolled Student'}
+                                  </h4>
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/60 uppercase">
+                                    Learner #{i + 1}
+                                  </span>
+                                  {enr.amountPaid > 0 && (
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/60">
+                                      ₹{enr.amountPaid} Paid
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 font-medium">
+                                  <a
+                                    href={`mailto:${enr.studentEmail}`}
+                                    className="flex items-center gap-1.5 text-gray-600 hover:text-brand-green transition-colors truncate"
+                                    title="Send Email"
+                                  >
+                                    <FaEnvelope size={11} className="text-gray-400 shrink-0" />
+                                    <span>{enr.studentEmail}</span>
+                                  </a>
+
+                                  {enr.studentPhone ? (
+                                    <div className="flex items-center gap-2">
+                                      <a
+                                        href={`tel:${enr.studentPhone}`}
+                                        className="flex items-center gap-1 text-gray-600 hover:text-brand-green transition-colors"
+                                        title="Call Student"
+                                      >
+                                        <FaPhone size={10} className="text-gray-400 shrink-0" />
+                                        <span>{enr.studentPhone}</span>
+                                      </a>
+                                      <a
+                                        href={`https://wa.me/${waNumber}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-[10px] border border-emerald-200/60 transition-colors"
+                                        title="Chat on WhatsApp"
+                                      >
+                                        <FaWhatsapp size={11} className="text-[#25D366]" />
+                                        <span>WhatsApp</span>
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400 text-[11px] italic">No phone number</span>
+                                  )}
+
+                                  <span className="text-gray-400 text-[11px]">
+                                    📅 {new Date(enr.createdAt || enr.enrolledAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Progress bar and metric */}
+                            <div className="md:w-48 shrink-0 flex flex-col items-end justify-center border-t md:border-t-0 pt-3 md:pt-0 border-gray-100">
+                              <div className="flex items-center justify-between w-full mb-1.5">
+                                <span className="text-[11px] font-bold text-gray-500">Course Progress</span>
+                                <span className="font-black text-xs text-brand-green bg-brand-green/10 px-2 py-0.5 rounded-md">
+                                  {enr.progress || 0}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="bg-gradient-to-r from-brand-green to-emerald-500 h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.min(100, Math.max(0, enr.progress || 0))}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : enrollments.length > 0 ? (
+                    <div className="p-8 text-center bg-white/70 rounded-3xl border border-dashed border-gray-300 text-gray-500 text-xs">
+                      No enrolled learners found matching "<strong>{studentSearchQuery}</strong>".
+                    </div>
+                  ) : (
+                    <div className="p-12 text-center bg-white/70 rounded-3xl border border-dashed border-gray-300 text-gray-400 text-xs font-medium">
+                      No students currently enrolled in this batch.
+                    </div>
+                  )}
                 </div>
-
-                {enrollments.length > 0 ? (
-                  <div className="space-y-2.5">
-                    {enrollments.map((enr, i) => (
-                      <div
-                        key={enr._id || i}
-                        className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between text-xs"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-brand-green/10 text-brand-green-dark font-black flex items-center justify-center">
-                            {i + 1}
-                          </div>
-                          <div>
-                            <span className="font-bold text-gray-900 block text-sm">{enr.studentEmail}</span>
-                            <span className="text-gray-400 text-[11px]">Enrolled on {new Date(enr.createdAt).toLocaleDateString('en-IN')}</span>
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <span className="font-bold text-brand-green bg-brand-green/10 px-2.5 py-1 rounded-lg text-[11px]">
-                            Progress: {enr.progress || 0}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-12 text-center bg-white/70 rounded-3xl border border-dashed border-gray-300 text-gray-400 text-xs font-medium">
-                    No students currently enrolled in this batch.
-                  </div>
-                )}
-              </div>
-            )}
+              );
+            })()}
 
           </div>
         </div>
@@ -757,6 +1054,9 @@ const InstructorDashboard = () => {
           course={selectedCourseData?.course || selectedCourse}
           userRole="instructor"
         />
+
+        {/* WhatsApp Channel Link Modal */}
+        {renderWhatsappModal()}
 
       </div>
     );
@@ -952,12 +1252,28 @@ const InstructorDashboard = () => {
                   {/* Actions */}
                   <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
                     <button
-                      onClick={() => handleOpenCourseDetails(course)}
-                      className="w-full py-3 bg-brand-green hover:bg-brand-green-dark text-white rounded-xl font-extrabold text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      onClick={() => handleOpenWhatsappModal(course)}
+                      className="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5 border border-emerald-200/50 cursor-pointer"
                     >
-                      <FaBookOpen size={13} />
-                      <span>Open Course & Materials Manager ↗</span>
+                      <FaWhatsapp className="text-[#25D366]" size={15} />
+                      <span>{course.whatsappGroupLink ? 'Change WhatsApp Channel Link' : '+ Set WhatsApp Channel Link'}</span>
                     </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleOpenCourseDetails(course, 'students')}
+                        className="py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5 border border-blue-200/50 cursor-pointer"
+                      >
+                        <FaUsers size={12} className="text-blue-600" />
+                        <span>Students ({course.enrolledStudentsCount || course.students?.length || 0})</span>
+                      </button>
+                      <button
+                        onClick={() => handleOpenCourseDetails(course, 'classes')}
+                        className="py-2.5 bg-brand-green hover:bg-brand-green-dark text-white rounded-xl font-extrabold text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <FaBookOpen size={12} />
+                        <span>Manage Class ↗</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1210,6 +1526,9 @@ const InstructorDashboard = () => {
         course={activeLiveClass?.courseId}
         userRole="instructor"
       />
+
+      {/* WhatsApp Channel Link Modal */}
+      {renderWhatsappModal()}
 
     </div>
   );

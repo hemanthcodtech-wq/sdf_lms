@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Linking,
   ActivityIndicator,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,13 +58,22 @@ const getClassStatus = (cls) => {
 
 export const InstructorDashboardScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const isTablet = width >= 600;
+  const horizontalSafe = Math.max(insets.left, insets.right, isTablet ? 24 : 16);
+  const bottomSafe = Math.max(insets.bottom, Platform.OS === 'android' ? 24 : 20);
+
   const { user, logout, updateUserProfile } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
-  const [activeTab, setActiveTab] = useState('batches'); // 'batches', 'classes', 'materials', 'profile'
+  const [activeTab, setActiveTab] = useState('batches'); // 'batches', 'students', 'classes', 'materials', 'profile'
   const [selectedCourse, setSelectedCourse] = useState(null);
+
+  // Student search & filter state
+  const [studentSearch, setStudentSearch] = useState('');
+  const [selectedBatchFilter, setSelectedBatchFilter] = useState('ALL');
 
   // Material Upload Modal State
   const [isMaterialModalVisible, setIsMaterialModalVisible] = useState(false);
@@ -84,6 +94,12 @@ export const InstructorDashboardScreen = ({ navigation }) => {
     experience: '',
   });
   const [updatingProfile, setUpdatingProfile] = useState(false);
+
+  // Edit WhatsApp Link Modal State
+  const [isWhatsappModalVisible, setIsWhatsappModalVisible] = useState(false);
+  const [whatsappCourse, setWhatsappCourse] = useState(null);
+  const [whatsappInput, setWhatsappInput] = useState('');
+  const [savingWhatsapp, setSavingWhatsapp] = useState(false);
 
   const fetchDashboard = useCallback(async (isSilent = false) => {
     try {
@@ -252,6 +268,32 @@ export const InstructorDashboardScreen = ({ navigation }) => {
     }
   };
 
+  const handleOpenWhatsappModal = (course) => {
+    setWhatsappCourse(course);
+    setWhatsappInput(course?.whatsappGroupLink || '');
+    setIsWhatsappModalVisible(true);
+  };
+
+  const handleSaveWhatsappLink = async () => {
+    if (!whatsappCourse?._id) return;
+    try {
+      setSavingWhatsapp(true);
+      const res = await instructorService.updateCourseWhatsappLink(whatsappCourse._id, whatsappInput);
+      if (res?.success) {
+        Alert.alert('Success', 'Official WhatsApp group/channel link updated successfully! Enrolled students will now see this link to join.');
+        setIsWhatsappModalVisible(false);
+        if (selectedCourse?._id === whatsappCourse._id) {
+          setSelectedCourse({ ...selectedCourse, whatsappGroupLink: whatsappInput.trim() });
+        }
+        await fetchDashboard(true);
+      }
+    } catch (err) {
+      Alert.alert('Error', err?.response?.data?.message || err.message || 'Failed to update WhatsApp link');
+    } finally {
+      setSavingWhatsapp(false);
+    }
+  };
+
   const stats = dashboardData?.stats || {
     totalCourses: 0,
     totalClasses: 0,
@@ -267,189 +309,572 @@ export const InstructorDashboardScreen = ({ navigation }) => {
     : (upcomingClasses || []);
   const realUpcomingCount = displayClasses.filter((c) => getClassStatus(c) !== 'COMPLETED').length;
 
+  const allEnrolledStudents = useMemo(() => {
+    if (dashboardData?.allStudents && dashboardData.allStudents.length > 0) {
+      return dashboardData.allStudents;
+    }
+    const list = [];
+    assignedCourses.forEach(c => {
+      if (c.students && Array.isArray(c.students)) {
+        c.students.forEach(s => {
+          list.push({ ...s, courseTitle: c.title, courseCategory: c.category });
+        });
+      }
+    });
+    return list;
+  }, [dashboardData, assignedCourses]);
+
+  const filteredStudents = useMemo(() => {
+    let list = allEnrolledStudents;
+    if (selectedBatchFilter !== 'ALL') {
+      list = list.filter(s => {
+        const cId = s.course?._id || s.course;
+        return cId?.toString() === selectedBatchFilter.toString();
+      });
+    }
+    if (studentSearch.trim()) {
+      const q = studentSearch.trim().toLowerCase();
+      list = list.filter(s => {
+        const name = (s.studentName || '').toLowerCase();
+        const email = (s.studentEmail || '').toLowerCase();
+        const phone = (s.studentPhone || '').toLowerCase();
+        return name.includes(q) || email.includes(q) || phone.includes(q);
+      });
+    }
+    return list;
+  }, [allEnrolledStudents, selectedBatchFilter, studentSearch]);
+
   return (
     <View style={styles.container}>
       {/* Top Header */}
-      <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 14 : Math.max(insets.top, 20) }]}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <View style={styles.brandIconWrap}>
-              <Ionicons name="easel" size={22} color="#ffffff" />
-            </View>
-            <View>
-              <View style={styles.badgeRow}>
-                <Text style={styles.badgeText}>FACULTY & INSTRUCTOR</Text>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: Platform.OS === 'web' ? 14 : Math.max(insets.top, 20),
+            paddingLeft: horizontalSafe,
+            paddingRight: horizontalSafe,
+          },
+        ]}
+      >
+        <View style={styles.responsiveContainer}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft}>
+              <View style={styles.brandIconWrap}>
+                <Ionicons name="easel" size={22} color="#ffffff" />
               </View>
-              <Text style={styles.instructorName} numberOfLines={1}>
-                {dashboardData?.profile?.name || user?.name || profileForm.name || 'Faculty Member'}
+              <View>
+                <View style={styles.badgeRow}>
+                  <Text style={styles.badgeText}>FACULTY & INSTRUCTOR</Text>
+                </View>
+                <Text style={styles.instructorName} numberOfLines={1}>
+                  {dashboardData?.profile?.name || user?.name || profileForm.name || 'Faculty Member'}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.logoutBtn}
+              onPress={handleLogout}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="log-out-outline" size={20} color={colors.error} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Top Metric Stats */}
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{stats.totalCourses}</Text>
+              <Text style={styles.statLabel}>Batches</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={[styles.statNumber, { color: colors.secondary }]}>
+                {stats.upcomingClassesCount !== undefined ? stats.upcomingClassesCount : realUpcomingCount}
               </Text>
+              <Text style={styles.statLabel}>Upcoming</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.statCard}
+              onPress={() => setActiveTab('students')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.statNumber, { color: '#2563eb' }]}>
+                {stats.totalStudents || allEnrolledStudents.length}
+              </Text>
+              <Text style={styles.statLabel}>Students</Text>
+            </TouchableOpacity>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{stats.totalClasses || displayClasses.length}</Text>
+              <Text style={styles.statLabel}>Sessions</Text>
             </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.logoutBtn}
-            onPress={handleLogout}
-            activeOpacity={0.8}
+          {/* Tab Navigation */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabScroll}
           >
-            <Ionicons name="log-out-outline" size={20} color={colors.error} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Top Metric Stats */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.totalCourses}</Text>
-            <Text style={styles.statLabel}>Batches</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: colors.secondary }]}>
-              {stats.upcomingClassesCount !== undefined ? stats.upcomingClassesCount : realUpcomingCount}
-            </Text>
-            <Text style={styles.statLabel}>Upcoming</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#2563eb' }]}>{stats.totalStudents}</Text>
-            <Text style={styles.statLabel}>Students</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.totalClasses || displayClasses.length}</Text>
-            <Text style={styles.statLabel}>Sessions</Text>
-          </View>
-        </View>
-
-        {/* Tab Navigation */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabScroll}
-        >
-          {[
-            { id: 'batches', label: 'My Batches', icon: 'book-outline' },
-            { id: 'classes', label: 'Live Sessions', icon: 'videocam-outline' },
-            { id: 'materials', label: 'Upload Materials', icon: 'document-text-outline' },
-            { id: 'profile', label: 'Profile', icon: 'person-outline' },
-          ].map((t) => (
-            <TouchableOpacity
-              key={t.id}
-              style={[styles.tabChip, activeTab === t.id && styles.tabChipActive]}
-              onPress={() => setActiveTab(t.id)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={t.icon}
-                size={16}
-                color={activeTab === t.id ? '#ffffff' : colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.tabChipText,
-                  activeTab === t.id && styles.tabChipTextActive,
-                ]}
+            {[
+              { id: 'batches', label: 'My Batches', icon: 'book-outline' },
+              { id: 'students', label: `Students (${stats.totalStudents || allEnrolledStudents.length})`, icon: 'people-outline' },
+              { id: 'classes', label: 'Live Sessions', icon: 'videocam-outline' },
+              { id: 'materials', label: 'Upload Materials', icon: 'document-text-outline' },
+              { id: 'profile', label: 'Profile', icon: 'person-outline' },
+            ].map((t) => (
+              <TouchableOpacity
+                key={t.id}
+                style={[styles.tabChip, activeTab === t.id && styles.tabChipActive]}
+                onPress={() => setActiveTab(t.id)}
+                activeOpacity={0.7}
               >
-                {t.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+                <Ionicons
+                  name={t.icon}
+                  size={16}
+                  color={activeTab === t.id ? '#ffffff' : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.tabChipText,
+                    activeTab === t.id && styles.tabChipTextActive,
+                  ]}
+                >
+                  {t.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
       </View>
 
       {/* Main Content Area */}
       <ScrollView
-        contentContainerStyle={[styles.contentArea, { paddingBottom: insets.bottom + 30 }]}
+        contentContainerStyle={[
+          styles.contentArea,
+          {
+            paddingBottom: bottomSafe + 30,
+            paddingLeft: horizontalSafe,
+            paddingRight: horizontalSafe,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.secondary]} />
         }
       >
-        {(!dashboardData && loading) ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.secondary} />
-            <Text style={styles.loadingText}>Loading Instructor Portal...</Text>
-          </View>
-        ) : activeTab === 'batches' ? (
-          /* Tab 1: Assigned Batches */
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Assigned Batches & Courses ({assignedCourses.length})</Text>
+        <View style={styles.responsiveContainer}>
+          {(!dashboardData && loading) ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.secondary} />
+              <Text style={styles.loadingText}>Loading Instructor Portal...</Text>
             </View>
-
-            {assignedCourses.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Ionicons name="folder-open-outline" size={44} color={colors.textMuted} />
-                <Text style={styles.emptyTitle}>No Assigned Batches Yet</Text>
-                <Text style={styles.emptySubtitle}>
-                  You have not been assigned to any course batch yet. Check with admin.
-                </Text>
+          ) : activeTab === 'batches' ? (
+            /* Tab 1: Assigned Batches */
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Assigned Batches & Courses ({assignedCourses.length})</Text>
               </View>
-            ) : (
-              assignedCourses.map((c) => (
-                <TouchableOpacity
-                  key={c._id}
-                  style={[styles.courseCard, shadows.sm]}
-                  activeOpacity={0.9}
-                  onPress={() => setSelectedCourse(selectedCourse?._id === c._id ? null : c)}
+
+              {assignedCourses.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Ionicons name="folder-open-outline" size={44} color={colors.textMuted} />
+                  <Text style={styles.emptyTitle}>No Assigned Batches Yet</Text>
+                  <Text style={styles.emptySubtitle}>
+                    You have not been assigned to any course batch yet. Check with admin.
+                  </Text>
+                </View>
+              ) : (
+                assignedCourses.map((c) => (
+                  <TouchableOpacity
+                    key={c._id}
+                    style={[styles.courseCard, shadows.sm]}
+                    activeOpacity={0.9}
+                    onPress={() => setSelectedCourse(selectedCourse?._id === c._id ? null : c)}
+                  >
+                    <View style={styles.courseCardTop}>
+                      <Image
+                        source={{ uri: getCourseImageUrl(c.thumbnailUrl) }}
+                        style={styles.courseThumb}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.courseTitle} numberOfLines={2}>{c.title}</Text>
+                        <Text style={styles.courseCategory}>{c.category || 'Yoga / Wellness'}</Text>
+                        <Text style={styles.courseTimings}>⏰ {c.timings || 'Schedule in details'}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.courseMetricsRow}>
+                      <TouchableOpacity
+                        style={[styles.metricPill, { backgroundColor: '#eff6ff' }]}
+                        onPress={() => {
+                          setSelectedBatchFilter(c._id);
+                          setActiveTab('students');
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="people" size={14} color="#2563eb" />
+                        <Text style={[styles.metricPillText, { color: '#1d4ed8', fontWeight: '800' }]}>
+                          {c.students?.length || c.enrolledStudentsCount || 0} Students ↗
+                        </Text>
+                      </TouchableOpacity>
+                      <View style={styles.metricPill}>
+                        <Ionicons name="calendar" size={14} color={colors.secondary} />
+                        <Text style={styles.metricPillText}>{c.totalSessionsCount} Sessions</Text>
+                      </View>
+                      <View style={styles.metricPill}>
+                        <Ionicons name="document-text" size={14} color="#16a34a" />
+                        <Text style={styles.metricPillText}>{c.materials?.length || 0} Materials</Text>
+                      </View>
+                    </View>
+
+                    {/* Expanded Course Details */}
+                    {selectedCourse?._id === c._id && (
+                      <View style={styles.expandedDetails}>
+                        <View style={styles.divider} />
+                        <Text style={styles.expandedHeading}>Moderator Information:</Text>
+                        <Text style={styles.expandedText}>
+                          {c.moderatorId?.name ? `${c.moderatorId.name} (${c.moderatorId.emailOrPhone || c.moderatorId.phone})` : 'Not assigned specifically'}
+                        </Text>
+
+                        {/* Official Batch WhatsApp Group / Channel Link */}
+                        <View style={styles.whatsappCardContainer}>
+                          <View style={styles.whatsappHeaderRow}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                              <Ionicons name="logo-whatsapp" size={16} color="#16a34a" />
+                              <Text style={styles.whatsappCardTitle}>Batch WhatsApp Community:</Text>
+                            </View>
+                            <TouchableOpacity
+                              style={styles.editWhatsappChip}
+                              onPress={() => handleOpenWhatsappModal(c)}
+                              activeOpacity={0.8}
+                            >
+                              <Ionicons name="create-outline" size={13} color="#0d5c31" />
+                              <Text style={styles.editWhatsappChipText}>
+                                {c.whatsappGroupLink ? 'Change' : '+ Add'}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {c.whatsappGroupLink ? (
+                            <TouchableOpacity
+                              style={styles.whatsappBtn}
+                              onPress={() => Linking.openURL(c.whatsappGroupLink)}
+                              activeOpacity={0.85}
+                            >
+                              <Ionicons name="logo-whatsapp" size={16} color="#ffffff" />
+                              <Text style={styles.whatsappBtnText} numberOfLines={1}>Open Batch WhatsApp Group</Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <TouchableOpacity
+                              style={styles.addWhatsappBtn}
+                              onPress={() => handleOpenWhatsappModal(c)}
+                              activeOpacity={0.8}
+                            >
+                              <Ionicons name="add-circle-outline" size={15} color="#0d5c31" />
+                              <Text style={styles.addWhatsappBtnText}>Set WhatsApp Channel / Group Link</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+
+                        {/* Enrolled Students Preview for this batch */}
+                        <View style={styles.studentsBatchSection}>
+                          <View style={styles.studentsBatchHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Ionicons name="people" size={16} color="#2563eb" />
+                              <Text style={styles.studentsBatchTitle}>
+                                Enrolled Students ({c.students?.length || c.enrolledStudentsCount || 0})
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setSelectedBatchFilter(c._id);
+                                setActiveTab('students');
+                              }}
+                              style={styles.viewAllStudentsChip}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={styles.viewAllStudentsChipText}>View Roster ↗</Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {c.students && c.students.length > 0 ? (
+                            <View style={{ gap: 8, marginTop: 8 }}>
+                              {c.students.slice(0, 4).map((st, sIdx) => {
+                                const initials = (st.studentName || 'Student')
+                                  .split(' ')
+                                  .map(p => p[0])
+                                  .slice(0, 2)
+                                  .join('')
+                                  .toUpperCase() || 'ST';
+                                const cleanPhone = (st.studentPhone || '').replace(/\D/g, '');
+                                const waNumber = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+
+                                return (
+                                  <View key={st._id || sIdx} style={styles.miniStudentCard}>
+                                    <View style={styles.miniStudentAvatar}>
+                                      <Text style={styles.miniStudentAvatarText}>{initials}</Text>
+                                    </View>
+                                    <View style={{ flex: 1, minWidth: 0 }}>
+                                      <Text style={styles.miniStudentName} numberOfLines={1}>
+                                        {st.studentName || 'Student Learner'}
+                                      </Text>
+                                      <Text style={styles.miniStudentEmail} numberOfLines={1}>
+                                        {st.studentEmail}
+                                      </Text>
+                                      {st.studentPhone ? (
+                                        <Text style={styles.miniStudentPhone}>
+                                          📞 {st.studentPhone}
+                                        </Text>
+                                      ) : null}
+                                      <View style={styles.miniProgressBarTrack}>
+                                        <View style={[styles.miniProgressBarFill, { width: `${Math.min(100, Math.max(0, st.progress || 0))}%` }]} />
+                                      </View>
+                                    </View>
+                                    <View style={styles.miniStudentActions}>
+                                      {st.studentPhone ? (
+                                        <>
+                                          <TouchableOpacity
+                                            style={styles.miniActionBtnCall}
+                                            onPress={() => Linking.openURL(`tel:${st.studentPhone}`)}
+                                            activeOpacity={0.8}
+                                          >
+                                            <Ionicons name="call" size={12} color="#ffffff" />
+                                          </TouchableOpacity>
+                                          <TouchableOpacity
+                                            style={styles.miniActionBtnWa}
+                                            onPress={() => Linking.openURL(`https://wa.me/${waNumber}`)}
+                                            activeOpacity={0.8}
+                                          >
+                                            <Ionicons name="logo-whatsapp" size={13} color="#ffffff" />
+                                          </TouchableOpacity>
+                                        </>
+                                      ) : (
+                                        <TouchableOpacity
+                                          style={styles.miniActionBtnMail}
+                                          onPress={() => Linking.openURL(`mailto:${st.studentEmail}`)}
+                                          activeOpacity={0.8}
+                                        >
+                                          <Ionicons name="mail" size={12} color="#ffffff" />
+                                        </TouchableOpacity>
+                                      )}
+                                    </View>
+                                  </View>
+                                );
+                              })}
+                              {c.students.length > 4 && (
+                                <TouchableOpacity
+                                  style={styles.seeMoreStudentsBtn}
+                                  onPress={() => {
+                                    setSelectedBatchFilter(c._id);
+                                    setActiveTab('students');
+                                  }}
+                                  activeOpacity={0.8}
+                                >
+                                  <Text style={styles.seeMoreStudentsText}>
+                                    + {c.students.length - 4} more learners (Tap to view full roster)
+                                  </Text>
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          ) : (
+                            <Text style={styles.noStudentsText}>
+                              No student details loaded yet for this batch.
+                            </Text>
+                          )}
+                        </View>
+
+                        {c.zoomMeetingLink ? (
+                          <TouchableOpacity
+                            style={styles.zoomLaunchBtn}
+                            onPress={() => handleStartZoom(c.zoomMeetingLink)}
+                          >
+                            <Ionicons name="videocam" size={18} color="#ffffff" />
+                            <Text style={styles.zoomLaunchBtnText}>Launch Live Zoom Room</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          ) : activeTab === 'students' ? (
+            /* Tab: Dedicated Enrolled Student Roster */
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle}>Enrolled Student Roster</Text>
+                  <Text style={styles.sectionSubtitle}>
+                    Learner profiles, course progress, and quick Call / WhatsApp actions
+                  </Text>
+                </View>
+                <View style={styles.studentCountBadge}>
+                  <Text style={styles.studentCountBadgeText}>
+                    {filteredStudents.length} Students
+                  </Text>
+                </View>
+              </View>
+
+              {/* Batch Filter Chips */}
+              {assignedCourses.length > 1 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.filterChipScroll}
                 >
-                  <View style={styles.courseCardTop}>
-                    <Image
-                      source={{ uri: getCourseImageUrl(c.thumbnailUrl) }}
-                      style={styles.courseThumb}
-                    />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.courseTitle} numberOfLines={2}>{c.title}</Text>
-                      <Text style={styles.courseCategory}>{c.category || 'Yoga / Wellness'}</Text>
-                      <Text style={styles.courseTimings}>⏰ {c.timings || 'Schedule in details'}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.courseMetricsRow}>
-                    <View style={styles.metricPill}>
-                      <Ionicons name="people" size={14} color="#2563eb" />
-                      <Text style={styles.metricPillText}>{c.enrolledStudentsCount} Students</Text>
-                    </View>
-                    <View style={styles.metricPill}>
-                      <Ionicons name="calendar" size={14} color={colors.secondary} />
-                      <Text style={styles.metricPillText}>{c.totalSessionsCount} Sessions</Text>
-                    </View>
-                    <View style={styles.metricPill}>
-                      <Ionicons name="document-text" size={14} color="#16a34a" />
-                      <Text style={styles.metricPillText}>{c.materials?.length || 0} Materials</Text>
-                    </View>
-                  </View>
-
-                  {/* Expanded Course Details */}
-                  {selectedCourse?._id === c._id && (
-                    <View style={styles.expandedDetails}>
-                      <View style={styles.divider} />
-                      <Text style={styles.expandedHeading}>Moderator Information:</Text>
-                      <Text style={styles.expandedText}>
-                        {c.moderatorId?.name ? `${c.moderatorId.name} (${c.moderatorId.emailOrPhone || c.moderatorId.phone})` : 'Not assigned specifically'}
+                  <TouchableOpacity
+                    style={[styles.filterChip, selectedBatchFilter === 'ALL' && styles.filterChipActive]}
+                    onPress={() => setSelectedBatchFilter('ALL')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.filterChipText, selectedBatchFilter === 'ALL' && styles.filterChipTextActive]}>
+                      All Batches ({allEnrolledStudents.length})
+                    </Text>
+                  </TouchableOpacity>
+                  {assignedCourses.map((c) => (
+                    <TouchableOpacity
+                      key={c._id}
+                      style={[styles.filterChip, selectedBatchFilter === c._id && styles.filterChipActive]}
+                      onPress={() => setSelectedBatchFilter(c._id)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.filterChipText, selectedBatchFilter === c._id && styles.filterChipTextActive]} numberOfLines={1}>
+                        {c.title} ({c.students?.length || c.enrolledStudentsCount || 0})
                       </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
 
-                      {c.whatsappGroupLink ? (
-                        <TouchableOpacity
-                          style={styles.whatsappBtn}
-                          onPress={() => Linking.openURL(c.whatsappGroupLink)}
-                        >
-                          <Ionicons name="logo-whatsapp" size={18} color="#ffffff" />
-                          <Text style={styles.whatsappBtnText}>Open Batch WhatsApp Group</Text>
-                        </TouchableOpacity>
-                      ) : null}
+              {/* Search Bar */}
+              <View style={styles.searchBarContainer}>
+                <Ionicons name="search" size={16} color={colors.textMuted} style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search student by name, email, or phone..."
+                  placeholderTextColor={colors.textMuted}
+                  value={studentSearch}
+                  onChangeText={setStudentSearch}
+                  returnKeyType="search"
+                />
+                {studentSearch ? (
+                  <TouchableOpacity onPress={() => setStudentSearch('')} style={styles.clearSearchBtn}>
+                    <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
 
-                      {c.zoomMeetingLink ? (
-                        <TouchableOpacity
-                          style={styles.zoomLaunchBtn}
-                          onPress={() => handleStartZoom(c.zoomMeetingLink)}
-                        >
-                          <Ionicons name="videocam" size={18} color="#ffffff" />
-                          <Text style={styles.zoomLaunchBtnText}>Launch Live Zoom Room</Text>
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
+              {/* Students List */}
+              {filteredStudents.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Ionicons name="people-outline" size={44} color={colors.textMuted} />
+                  <Text style={styles.emptyTitle}>No Students Found</Text>
+                  <Text style={styles.emptySubtitle}>
+                    {studentSearch ? `No student matches "${studentSearch}"` : 'No learners enrolled in this batch yet.'}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.studentGrid}>
+                  {filteredStudents.map((st, idx) => {
+                    const initials = (st.studentName || 'Student')
+                      .split(' ')
+                      .map(p => p[0])
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase() || 'ST';
+                    const cleanPhone = (st.studentPhone || '').replace(/\D/g, '');
+                    const waNumber = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                    const enrolledDate = st.createdAt || st.enrolledAt;
+
+                    return (
+                      <View key={st._id || idx} style={[styles.fullStudentCard, shadows.sm]}>
+                        <View style={styles.fullStudentTopRow}>
+                          <View style={styles.fullStudentAvatar}>
+                            <Text style={styles.fullStudentAvatarText}>{initials}</Text>
+                          </View>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <Text style={styles.fullStudentName} numberOfLines={1}>
+                                {st.studentName || 'Enrolled Student'}
+                              </Text>
+                              <View style={styles.learnerNumBadge}>
+                                <Text style={styles.learnerNumText}>Learner #{idx + 1}</Text>
+                              </View>
+                              {st.amountPaid > 0 && (
+                                <View style={styles.paidBadge}>
+                                  <Text style={styles.paidBadgeText}>₹{st.amountPaid} Paid</Text>
+                                </View>
+                              )}
+                            </View>
+                            {st.courseTitle ? (
+                              <Text style={styles.fullStudentBatch} numberOfLines={1}>
+                                📚 {st.courseTitle}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </View>
+
+                        {/* Contact Info Row */}
+                        <View style={styles.fullStudentContactRow}>
+                          <TouchableOpacity
+                            style={styles.contactChip}
+                            onPress={() => Linking.openURL(`mailto:${st.studentEmail}`)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="mail" size={13} color={colors.textSecondary} />
+                            <Text style={styles.contactChipText} numberOfLines={1}>{st.studentEmail}</Text>
+                          </TouchableOpacity>
+
+                          {st.studentPhone ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <TouchableOpacity
+                                style={styles.contactChip}
+                                onPress={() => Linking.openURL(`tel:${st.studentPhone}`)}
+                                activeOpacity={0.8}
+                              >
+                                <Ionicons name="call" size={13} color={colors.textSecondary} />
+                                <Text style={styles.contactChipText}>{st.studentPhone}</Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={styles.whatsappActionChip}
+                                onPress={() => Linking.openURL(`https://wa.me/${waNumber}`)}
+                                activeOpacity={0.85}
+                              >
+                                <Ionicons name="logo-whatsapp" size={14} color="#ffffff" />
+                                <Text style={styles.whatsappActionText}>WhatsApp</Text>
+                              </TouchableOpacity>
+                            </View>
+                          ) : (
+                            <Text style={styles.noPhoneNotice}>No phone number registered</Text>
+                          )}
+                        </View>
+
+                        {/* Progress and Date Footer */}
+                        <View style={styles.fullStudentFooter}>
+                          <View style={{ flex: 1, marginRight: 12 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <Text style={styles.progressLabel}>Course Progress</Text>
+                              <Text style={styles.progressPercentText}>{st.progress || 0}%</Text>
+                            </View>
+                            <View style={styles.fullProgressBarTrack}>
+                              <View style={[styles.fullProgressBarFill, { width: `${Math.min(100, Math.max(0, st.progress || 0))}%` }]} />
+                            </View>
+                          </View>
+
+                          {enrolledDate ? (
+                            <Text style={styles.enrolledDateText}>
+                              📅 {new Date(enrolledDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
         ) : activeTab === 'classes' ? (
           /* Tab 2: Live Sessions */
           <View style={styles.section}>
@@ -678,6 +1103,7 @@ export const InstructorDashboardScreen = ({ navigation }) => {
             </View>
           </View>
         )}
+        </View>
       </ScrollView>
 
       {/* Upload Material Modal */}
@@ -765,6 +1191,64 @@ export const InstructorDashboardScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Update WhatsApp Channel Link Modal */}
+      <Modal visible={isWhatsappModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, shadows.lg]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="logo-whatsapp" size={22} color="#16a34a" />
+                <Text style={styles.modalTitle}>Batch WhatsApp Link</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsWhatsappModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>Course</Text>
+            <Text style={[styles.courseTimings, { marginBottom: 12, fontWeight: '700', color: colors.textPrimary }]}>
+              {whatsappCourse?.title}
+            </Text>
+
+            <Text style={styles.inputLabel}>Official WhatsApp Group / Channel URL *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="https://chat.whatsapp.com/... or channel link"
+              value={whatsappInput}
+              onChangeText={setWhatsappInput}
+              autoCapitalize="none"
+              keyboardType="url"
+            />
+            <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 4, marginBottom: 16 }}>
+              Enrolled students will see this WhatsApp link in their classroom portal & confirmation email to join the batch community.
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center' }}
+                onPress={() => setIsWhatsappModalVisible(false)}
+              >
+                <Text style={{ color: '#4b5563', fontWeight: '700' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 2, paddingVertical: 12, borderRadius: 12, backgroundColor: '#16a34a', alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+                onPress={handleSaveWhatsappLink}
+                disabled={savingWhatsapp}
+              >
+                {savingWhatsapp ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>Save WhatsApp Link</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -773,6 +1257,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  responsiveContainer: {
+    width: '100%',
+    maxWidth: 1080,
+    alignSelf: 'center',
   },
   header: {
     backgroundColor: colors.surface,
@@ -968,6 +1457,59 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginTop: 2,
     marginBottom: 10,
+  whatsappCardContainer: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 4,
+    marginBottom: 10,
+    gap: 10,
+  },
+  whatsappHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  whatsappCardTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  editWhatsappChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#86efac',
+  },
+  editWhatsappChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0d5c31',
+  },
+  addWhatsappBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#16a34a',
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+  },
+  addWhatsappBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0d5c31',
   },
   whatsappBtn: {
     flexDirection: 'row',
@@ -977,7 +1519,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#16a34a',
     paddingVertical: 9,
     borderRadius: 10,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   whatsappBtnText: {
     color: '#ffffff',
@@ -1303,5 +1845,339 @@ const styles = StyleSheet.create({
   typeChipTextActive: {
     color: '#ffffff',
     fontWeight: '700',
+  },
+
+  // Batch enrolled students preview styles
+  studentsBatchSection: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  studentsBatchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  studentsBatchTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  viewAllStudentsChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#eff6ff',
+  },
+  viewAllStudentsChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  miniStudentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  miniStudentAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#0d5c31',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniStudentAvatarText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  miniStudentName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  miniStudentEmail: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  miniStudentPhone: {
+    fontSize: 11,
+    color: '#0d5c31',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  miniProgressBarTrack: {
+    height: 4,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 2,
+    marginTop: 4,
+    overflow: 'hidden',
+  },
+  miniProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#16a34a',
+    borderRadius: 2,
+  },
+  miniStudentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  miniActionBtnCall: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniActionBtnWa: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#16a34a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniActionBtnMail: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#64748b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  seeMoreStudentsBtn: {
+    paddingVertical: 8,
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  seeMoreStudentsText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  noStudentsText: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+
+  // Dedicated Students Roster Tab styles
+  sectionSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  studentCountBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#dcfce7',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  studentCountBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#166534',
+  },
+  filterChipScroll: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  filterChipActive: {
+    backgroundColor: '#0d5c31',
+    borderColor: '#0d5c31',
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  filterChipTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    height: 44,
+    marginVertical: 4,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.textPrimary,
+    paddingVertical: 0,
+  },
+  clearSearchBtn: {
+    padding: 4,
+  },
+  studentGrid: {
+    gap: 12,
+  },
+  fullStudentCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    gap: 12,
+  },
+  fullStudentTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  fullStudentAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#0d5c31',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullStudentAvatarText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  fullStudentName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  learnerNumBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#f1f5f9',
+  },
+  learnerNumText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  paidBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#fef3c7',
+  },
+  paidBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#92400e',
+  },
+  fullStudentBatch: {
+    fontSize: 12,
+    color: colors.secondary,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  fullStudentContactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  contactChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  contactChipText: {
+    fontSize: 12,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  whatsappActionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#16a34a',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  whatsappActionText: {
+    fontSize: 12,
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  noPhoneNotice: {
+    fontSize: 11,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+  },
+  fullStudentFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  progressLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  progressPercentText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#16a34a',
+  },
+  fullProgressBarTrack: {
+    height: 6,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  fullProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#16a34a',
+    borderRadius: 3,
+  },
+  enrolledDateText: {
+    fontSize: 11,
+    color: colors.textMuted,
+    fontWeight: '600',
   },
 });

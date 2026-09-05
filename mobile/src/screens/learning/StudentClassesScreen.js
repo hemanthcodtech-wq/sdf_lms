@@ -10,6 +10,7 @@ import {
   Image,
   Platform,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,10 @@ import { getCourseImageUrl } from '../../utils/imageHelper';
 export const StudentClassesScreen = ({ route, navigation }) => {
   const { course } = route.params;
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 600;
+  const horizontalSafe = Math.max(insets.left, insets.right, isTablet ? 24 : 16);
+  const bottomSafe = Math.max(insets.bottom, Platform.OS === 'android' ? 24 : 16);
 
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,6 +114,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   }
 
   const getSessionStatus = (lesson, idx) => {
+    const now = new Date();
     const dateStr = lesson.date || (course?.sessionDates && course.sessionDates[idx]) || course?.startDate;
     const timeStr = lesson.time || course?.startTime || (course?.timings ? course.timings.split(' to ')[0] : '06:00');
     const endTimeStr = course?.endTime || (course?.timings && course.timings.includes(' to ') ? course.timings.split(' to ')[1] : null);
@@ -117,14 +123,14 @@ export const StudentClassesScreen = ({ route, navigation }) => {
     let displayTime = lesson.duration || 'Live Session';
 
     if (!dateStr) {
-      return { isCompleted: false, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
+      return { isCompleted: false, isLiveNow: false, canJoin: false, label: 'Scheduled', displayDate, displayTime };
     }
 
     try {
       const rawDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
       const [y, m, d] = rawDate.split('-').map(Number);
       if (!y || !m || !d) {
-        return { isCompleted: false, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
+        return { isCompleted: false, isLiveNow: false, canJoin: false, label: 'Scheduled', displayDate, displayTime };
       }
 
       // Format Date Cleanly (Today / Tomorrow / 25 Aug)
@@ -199,9 +205,9 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       }
 
       // Upcoming (more than 2 mins before)
-      return { isCompleted: false, isLiveNow: false, canJoin: false, label: 'Join Class', displayDate, displayTime };
+      return { isCompleted: false, isLiveNow: false, canJoin: false, label: 'Starts 2m Before', displayDate, displayTime };
     } catch (e) {
-      return { isCompleted: false, isLiveNow: true, canJoin: true, label: 'Join Class', displayDate, displayTime };
+      return { isCompleted: false, isLiveNow: false, canJoin: false, label: 'Starts 2m Before', displayDate, displayTime };
     }
   };
 
@@ -346,22 +352,33 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {course?.title || 'Classroom'}
-        </Text>
-        <View style={{ width: 40 }} />
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + 8,
+            paddingLeft: horizontalSafe,
+            paddingRight: horizontalSafe,
+          },
+        ]}
+      >
+        <View style={{ width: '100%', maxWidth: 1000, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {course?.title || 'Classroom'}
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
       </View>
 
       {/* Video / Live Player Canvas */}
-      <View style={styles.playerContainer}>
+      <View style={[styles.playerContainer, isTablet && { maxWidth: 880, height: 360, alignSelf: 'center', borderRadius: 20, marginTop: 10, overflow: 'hidden' }]}>
         <Image
           source={{
             uri: getCourseImageUrl(course?.thumbnailUrl),
@@ -418,34 +435,44 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       )}
 
       {/* Navigation Tabs */}
-      <View style={styles.tabNav}>
-        {[
-          { id: 'lessons', label: `Sessions (${realSessions.length})` },
-          { id: 'materials', label: 'Materials & Notes' },
-          { id: 'certificate', label: 'Certificate' },
-          { id: 'community', label: 'Batch Community' },
-        ].map((t) => (
-          <TouchableOpacity
-            key={t.id}
-            style={[styles.tabNavItem, activeTab === t.id && styles.tabNavItemActive]}
-            onPress={() => setActiveTab(t.id)}
-          >
-            <Text
-              style={[
-                styles.tabNavText,
-                activeTab === t.id && styles.tabNavTextActive,
-              ]}
+      <View style={[styles.tabNav, { paddingLeft: horizontalSafe, paddingRight: horizontalSafe }]}>
+        <View style={{ flexDirection: 'row', width: '100%', maxWidth: 1000, alignSelf: 'center', gap: 8 }}>
+          {[
+            { id: 'lessons', label: `Sessions (${realSessions.length})` },
+            { id: 'materials', label: 'Materials & Notes' },
+            { id: 'certificate', label: 'Certificate' },
+            { id: 'community', label: 'Batch Community' },
+          ].map((t) => (
+            <TouchableOpacity
+              key={t.id}
+              style={[styles.tabNavItem, activeTab === t.id && styles.tabNavItemActive]}
+              onPress={() => setActiveTab(t.id)}
             >
-              {t.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[
+                  styles.tabNavText,
+                  activeTab === t.id && styles.tabNavTextActive,
+                ]}
+              >
+                {t.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.contentArea, { paddingBottom: insets.bottom + 30 }]}
+        contentContainerStyle={[
+          styles.contentArea,
+          {
+            paddingBottom: bottomSafe + 30,
+            paddingLeft: horizontalSafe,
+            paddingRight: horizontalSafe,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
+        <View style={{ width: '100%', maxWidth: 1000, alignSelf: 'center' }}>
         {activeTab === 'lessons' && (
           <View style={styles.lessonsList}>
             {loading ? (
@@ -453,38 +480,28 @@ export const StudentClassesScreen = ({ route, navigation }) => {
             ) : realSessions.length > 0 ? (
               realSessions.map((lesson, idx) => {
                 const status = getSessionStatus(lesson, idx);
-                const isActive = activeLessonIndex === idx;
                 const isDone = status.isCompleted;
 
                 return (
-                  <TouchableOpacity
+                  <View
                     key={lesson.id || idx}
                     style={[
                       styles.lessonCard,
-                      isActive && styles.lessonCardActive,
                       isDone && styles.lessonCardDone,
                       shadows.sm,
                     ]}
-                    onPress={() => setActiveLessonIndex(idx)}
-                    activeOpacity={0.85}
                   >
-                    {/* Session Indicator Circle - Static Status Badge */}
+                    {/* Session Indicator Circle */}
                     <View
                       style={[
                         styles.checkCircle,
                         isDone && styles.checkCircleDone,
-                        isActive && !isDone && styles.checkCircleActive,
                       ]}
                     >
                       {isDone ? (
                         <Ionicons name="checkmark" size={13} color="#fff" />
                       ) : (
-                        <Text
-                          style={[
-                            styles.checkCircleNumber,
-                            isActive && styles.checkCircleNumberActive,
-                          ]}
-                        >
+                        <Text style={styles.checkCircleNumber}>
                           {idx + 1}
                         </Text>
                       )}
@@ -495,7 +512,6 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                       <Text
                         style={[
                           styles.lessonTitle,
-                          isActive && styles.lessonTitleActive,
                           isDone && styles.lessonTitleDone,
                         ]}
                         numberOfLines={2}
@@ -509,7 +525,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                       </View>
                     </View>
 
-                    {/* Join Button (Active if within 2-min window, unclickable/disabled if upcoming) or Completed Badge */}
+                    {/* Join Button (Active only 2 minutes before class until class ends) or Status Badge */}
                     {isDone ? (
                       <View style={styles.completedBadge}>
                         <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
@@ -526,20 +542,20 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
-                        style={styles.disabledJoinBtn}
+                        style={styles.scheduledBadge}
                         onPress={() =>
                           Alert.alert(
-                            'Live Class Scheduled',
+                            'Live Session',
                             `This session is scheduled for ${status.displayDate} at ${status.displayTime}.\n\nThe "Join Class" button will be activated 2 minutes before class starts.`
                           )
                         }
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="videocam-outline" size={14} color="#9ca3af" />
-                        <Text style={styles.disabledJoinBtnText}>Join Class</Text>
+                        <Ionicons name="time-outline" size={13} color={colors.textMuted} />
+                        <Text style={styles.scheduledBadgeText}>Starts 2m Before</Text>
                       </TouchableOpacity>
                     )}
-                  </TouchableOpacity>
+                  </View>
                 );
               })
             ) : (
@@ -794,6 +810,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
             )}
           </View>
         )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -934,10 +951,6 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
     gap: 12,
   },
-  lessonCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight + '08',
-  },
   lessonCardDone: {
     borderColor: '#bbf7d0',
     backgroundColor: '#f0fdf4',
@@ -952,10 +965,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.surfaceAlt,
   },
-  checkCircleActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight + '20',
-  },
   checkCircleDone: {
     backgroundColor: '#16a34a',
     borderColor: '#16a34a',
@@ -965,18 +974,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textMuted,
   },
-  checkCircleNumberActive: {
-    color: colors.primary,
-    fontWeight: '800',
-  },
   lessonTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
-  },
-  lessonTitleActive: {
-    color: colors.primary,
-    fontWeight: '700',
   },
   lessonTitleDone: {
     color: '#15803d',

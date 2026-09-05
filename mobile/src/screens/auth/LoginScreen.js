@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,22 +9,16 @@ import {
   Platform,
   Image,
   ActivityIndicator,
-  Modal,
-  SafeAreaView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { colors, shadows } from '../../theme/colors';
 import { CustomInput } from '../../components/CustomInput';
 import { CustomButton } from '../../components/CustomButton';
 import { useAuth } from '../../context/AuthContext';
 
-let WebView = null;
-if (Platform.OS !== 'web') {
-  try {
-    WebView = require('react-native-webview').WebView;
-  } catch (e) {}
-}
+WebBrowser.maybeCompleteAuthSession();
 
 export const LoginScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -35,9 +29,6 @@ export const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isGoogleModalVisible, setIsGoogleModalVisible] = useState(false);
-  const [isGoogleVerifying, setIsGoogleVerifying] = useState(false);
-  const webViewRef = useRef(null);
 
   // Load Google Identity Services script on Web
   useEffect(() => {
@@ -81,7 +72,6 @@ export const LoginScreen = ({ navigation }) => {
   };
 
   const handleGoogleAccessToken = async (token) => {
-    setIsGoogleVerifying(true);
     try {
       const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: { Authorization: `Bearer ${token}` },
@@ -95,7 +85,6 @@ export const LoginScreen = ({ navigation }) => {
           googleId: profile.sub,
           accessToken: token,
         });
-        setIsGoogleModalVisible(false);
         navigation.reset({
           index: 0,
           routes: [{ name: 'Main' }],
@@ -106,9 +95,7 @@ export const LoginScreen = ({ navigation }) => {
     } catch (authErr) {
       console.error('Google Sign-In backend sync error:', authErr);
       setError(authErr?.response?.data?.message || authErr.message || 'Google Sign-In failed');
-      setIsGoogleModalVisible(false);
     } finally {
-      setIsGoogleVerifying(false);
       setGoogleLoading(false);
     }
   };
@@ -137,8 +124,20 @@ export const LoginScreen = ({ navigation }) => {
         });
         tokenClient.requestAccessToken({ prompt: 'select_account' });
       } else {
-        // Native Android & iOS: Open In-App Seamless WebView Modal (never leaves the app, never opens flagged browser)
-        setIsGoogleModalVisible(true);
+        // Native Android APK & iOS: Open System Chrome / Browser OAuth Session (shows all logged in Google accounts)
+        const redirectUri = 'https://swamidwijafoundation.com';
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20email%20profile&prompt=select_account`;
+
+        const authResult = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+        if (authResult.type === 'success' && authResult.url) {
+          const tokenMatch = authResult.url.match(/access_token=([^&]+)/);
+          if (tokenMatch && tokenMatch[1]) {
+            await handleGoogleAccessToken(tokenMatch[1]);
+            return;
+          }
+        }
+        setGoogleLoading(false);
       }
     } catch (err) {
       console.error('Google Sign-In Error:', err);
@@ -295,81 +294,6 @@ export const LoginScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* In-App Google Sign-In WebView Modal */}
-      <Modal
-        visible={isGoogleModalVisible}
-        animationType="slide"
-        onRequestClose={() => {
-          setIsGoogleModalVisible(false);
-          setGoogleLoading(false);
-        }}
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }}>
-          <View style={styles.googleModalHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Ionicons name="logo-google" size={22} color="#EA4335" />
-              <Text style={styles.googleModalTitle}>Sign in with Google</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => {
-                setIsGoogleModalVisible(false);
-                setGoogleLoading(false);
-              }}
-              style={styles.googleModalClose}
-            >
-              <Ionicons name="close" size={24} color="#374151" />
-            </TouchableOpacity>
-          </View>
-
-          {isGoogleVerifying ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 }}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textPrimary }}>
-                Signing you into your account...
-              </Text>
-            </View>
-          ) : (
-            WebView && (
-              <WebView
-                ref={webViewRef}
-                source={{
-                  uri: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '473693349273-r3lct54ccv5pfeppqkes57odmni6nvh4.apps.googleusercontent.com'}&response_type=token&redirect_uri=${encodeURIComponent('https://swamidwijafoundation.com')}&scope=openid%20email%20profile&prompt=select_account`,
-                }}
-                userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-                onShouldStartLoadWithRequest={(request) => {
-                  const url = request.url;
-                  if (url.includes('access_token=') || url.includes('swamidwijafoundation.com')) {
-                    const match = url.match(/access_token=([^&]+)/);
-                    if (match && match[1]) {
-                      webViewRef.current?.stopLoading();
-                      handleGoogleAccessToken(match[1]);
-                      return false; // Crucial: Stop loading immediately, never loads the website!
-                    }
-                  }
-                  return true;
-                }}
-                onNavigationStateChange={(navState) => {
-                  const url = navState.url;
-                  if (url.includes('access_token=') || url.includes('swamidwijafoundation.com')) {
-                    const match = url.match(/access_token=([^&]+)/);
-                    if (match && match[1]) {
-                      webViewRef.current?.stopLoading();
-                      handleGoogleAccessToken(match[1]);
-                    }
-                  }
-                }}
-                startInLoadingState
-                renderLoading={() => (
-                  <View style={{ ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                  </View>
-                )}
-              />
-            )
-          )}
-        </SafeAreaView>
-      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -551,25 +475,5 @@ const styles = StyleSheet.create({
     color: colors.secondaryDark || '#c25e17',
     fontWeight: '700',
     textDecorationLine: 'underline',
-  },
-  googleModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    backgroundColor: '#ffffff',
-  },
-  googleModalTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1e293b',
-  },
-  googleModalClose: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: '#f8fafc',
   },
 });

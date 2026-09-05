@@ -44,11 +44,13 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
     }
   };
 
-  // Ensure safe padding for Android navigation buttons & iOS home gestures
-  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'web' ? 22 : 16);
+  // Ensure safe padding for Android 3-button/gesture bar, tablet landscape, & iOS home gestures
+  const bottomPadding = Math.max(insets.bottom, Platform.OS === 'android' ? 14 : (Platform.OS === 'web' ? 22 : 16));
+  const leftPadding = Math.max(insets.left, 0);
+  const rightPadding = Math.max(insets.right, 0);
 
   return (
-    <View style={[styles.tabBarWrapper, { paddingBottom: bottomPadding }]}>
+    <View style={[styles.tabBarWrapper, { paddingBottom: bottomPadding, paddingLeft: leftPadding, paddingRight: rightPadding }]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

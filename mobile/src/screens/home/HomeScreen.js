@@ -11,6 +11,7 @@ import {
   Linking,
   Alert,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +30,11 @@ import { getAvatarUrl, getCourseImageUrl } from '../../utils/imageHelper';
 
 export const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 600;
+  const horizontalSafe = Math.max(insets.left, insets.right, isTablet ? 24 : 16);
+  const bottomSafe = Math.max(insets.bottom, Platform.OS === 'android' ? 20 : 16);
+
   const { user } = useAuth();
   const { t, language, changeLanguage } = useLanguage();
 
@@ -255,68 +261,86 @@ export const HomeScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 14 : Math.max(insets.top, 20) }]}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            style={styles.userInfo}
-            onPress={() => navigation.navigate('ProfileTab')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.avatarCircle}>
-              {userAvatarUri ? (
-                <Image source={{ uri: userAvatarUri }} style={styles.avatarImg} />
-              ) : (
-                <Text style={styles.avatarText}>
-                  {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                </Text>
-              )}
-            </View>
-            <View>
-              <Text style={styles.greeting}>Welcome back,</Text>
-              <Text style={styles.userName} numberOfLines={1}>
-                {user?.name || 'Guest Learner'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.headerActions}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: Platform.OS === 'web' ? 14 : Math.max(insets.top, 20),
+            paddingLeft: horizontalSafe,
+            paddingRight: horizontalSafe,
+          },
+        ]}
+      >
+        <View style={{ width: '100%', maxWidth: 1080, alignSelf: 'center' }}>
+          <View style={styles.headerRow}>
             <TouchableOpacity
-              style={styles.langBtn}
-              onPress={() => {
-                const langs = ['en', 'te', 'hi'];
-                const next = (langs.indexOf(language) + 1) % langs.length;
-                changeLanguage(langs[next]);
-              }}
-            >
-              <Text style={styles.langBtnText}>{language.toUpperCase()}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.notificationBtn}
-              onPress={() => navigation.navigate('Notifications')}
+              style={styles.userInfo}
+              onPress={() => navigation.navigate('ProfileTab')}
               activeOpacity={0.7}
             >
-              <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
-              {liveClasses.length > 0 && (
-                <View style={styles.badgeDot} />
-              )}
+              <View style={styles.avatarCircle}>
+                {userAvatarUri ? (
+                  <Image source={{ uri: userAvatarUri }} style={styles.avatarImg} />
+                ) : (
+                  <Text style={styles.avatarText}>
+                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </Text>
+                )}
+              </View>
+              <View>
+                <Text style={styles.greeting}>Welcome back,</Text>
+                <Text style={styles.userName} numberOfLines={1}>
+                  {user?.name || 'Guest Learner'}
+                </Text>
+              </View>
             </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* Search Bar Trigger */}
-        <TouchableOpacity
-          style={styles.searchBar}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('CoursesTab')}
-        >
-          <Ionicons name="search-outline" size={20} color={colors.textMuted} />
-          <Text style={styles.searchPlaceholder}>{t('searchCourses')}</Text>
-        </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.langBtn}
+                onPress={() => {
+                  const langs = ['en', 'te', 'hi'];
+                  const next = (langs.indexOf(language) + 1) % langs.length;
+                  changeLanguage(langs[next]);
+                }}
+              >
+                <Text style={styles.langBtnText}>{language.toUpperCase()}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.notificationBtn}
+                onPress={() => navigation.navigate('Notifications')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
+                {liveClasses.length > 0 && (
+                  <View style={styles.badgeDot} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Search Bar Trigger */}
+          <TouchableOpacity
+            style={styles.searchBar}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('CoursesTab')}
+          >
+            <Ionicons name="search-outline" size={20} color={colors.textMuted} />
+            <Text style={styles.searchPlaceholder}>{t('searchCourses')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollBody}
+        contentContainerStyle={[
+          styles.scrollBody,
+          {
+            paddingBottom: bottomSafe + 30,
+            paddingLeft: horizontalSafe,
+            paddingRight: horizontalSafe,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -326,6 +350,7 @@ export const HomeScreen = ({ navigation }) => {
           />
         }
       >
+        <View style={{ width: '100%', maxWidth: 1080, alignSelf: 'center' }}>
         {/* Banner Hero Card */}
         <View style={[styles.heroCard, shadows.brandGlow]}>
           <View style={styles.heroContent}>
@@ -545,6 +570,7 @@ export const HomeScreen = ({ navigation }) => {
               }
             />
           ))}
+        </View>
         </View>
       </ScrollView>
     </View>

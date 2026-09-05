@@ -8,6 +8,57 @@ const Material = require('../models/Material');
 
 const router = express.Router();
 
+// Helper to populate student user details for an array of enrollment records
+const enrichEnrollmentsWithStudentDetails = async (enrollmentList) => {
+  if (!enrollmentList || enrollmentList.length === 0) return [];
+  const emails = [...new Set(enrollmentList.map(e => e.studentEmail).filter(Boolean))];
+  let userMap = {};
+  if (emails.length > 0) {
+    const users = await User.find({
+      $or: [
+        { emailOrPhone: { $in: emails } },
+        { email: { $in: emails } },
+        { phone: { $in: emails } }
+      ]
+    }).select('name firstName lastName email emailOrPhone phone avatar createdAt');
+
+    users.forEach(u => {
+      if (u.emailOrPhone) userMap[u.emailOrPhone.toLowerCase()] = u;
+      if (u.email) userMap[u.email.toLowerCase()] = u;
+      if (u.phone) userMap[u.phone.toLowerCase()] = u;
+    });
+  }
+
+  return enrollmentList.map(enr => {
+    const eObj = enr.toObject ? enr.toObject() : { ...enr };
+    const emailKey = (enr.studentEmail || '').toLowerCase();
+    const user = userMap[emailKey] || {};
+
+    let studentName = user.name;
+    if (!studentName && user.firstName) {
+      studentName = `${user.firstName} ${user.lastName || ''}`.trim();
+    }
+    if (!studentName && enr.studentEmail) {
+      studentName = enr.studentEmail.includes('@') ? enr.studentEmail.split('@')[0] : enr.studentEmail;
+    }
+    if (!studentName) {
+      studentName = 'Learner';
+    }
+
+    const studentPhone = user.phone || (!user.emailOrPhone?.includes('@') ? user.emailOrPhone : '') || '';
+    const studentEmail = user.email || (user.emailOrPhone?.includes('@') ? user.emailOrPhone : enr.studentEmail) || enr.studentEmail;
+
+    return {
+      ...eObj,
+      studentName,
+      studentPhone,
+      studentEmail,
+      studentAvatar: user.avatar || '',
+      enrolledAt: enr.createdAt || user.createdAt
+    };
+  });
+};
+
 // GET /api/instructor/dashboard-stats
 router.get('/dashboard-stats', protect, instructor, async (req, res) => {
   try {
@@ -38,16 +89,18 @@ router.get('/dashboard-stats', protect, instructor, async (req, res) => {
         ]
       }).populate('courseId', 'title category timings startTime endTime thumbnailUrl').sort('date time');
 
-      enrollments = await Enrollment.find({
+      const rawEnrollments = await Enrollment.find({
         course: { $in: courseIds }
-      }).select('studentEmail course amountPaid progress createdAt');
+      }).select('studentEmail course amountPaid paymentStatus progress completed createdAt');
+
+      enrollments = await enrichEnrollmentsWithStudentDetails(rawEnrollments);
 
       materials = await Material.find({
         courseId: { $in: courseIds }
       }).sort('-date');
     }
 
-    // Attach student count, session metrics, and materials to each course
+    // Attach student count, full student details, session metrics, and materials to each course
     const coursesWithStats = assignedCourses.map(c => {
       const cObj = c.toObject();
       const courseEnrollments = enrollments.filter(e => e.course?.toString() === c._id.toString());
@@ -56,6 +109,7 @@ router.get('/dashboard-stats', protect, instructor, async (req, res) => {
       return {
         ...cObj,
         enrolledStudentsCount: courseEnrollments.length,
+        students: courseEnrollments,
         totalSessionsCount: courseClasses.length || (c.sessionDates ? c.sessionDates.length : 0),
         classes: courseClasses,
         materials: courseMaterials
@@ -89,7 +143,10 @@ router.get('/dashboard-stats', protect, instructor, async (req, res) => {
 
       const isPast = now > sessionEnd;
       const isLiveNow = now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd;
-      const status = isPast ? 'COMPLETED' : (isLiveNow ? 'LIVE NOW' : 'UPCOMING');
+      
+      let status = 'UPCOMING';
+      if (isPast) status = 'COMPLETED';
+      else if (isLiveNow) status = 'LIVE NOW';
 
       // Determine Host start URL for launching Zoom directly
       let zoomHostUrl = cl.zoomStartUrl || '';
@@ -126,7 +183,8 @@ router.get('/dashboard-stats', protect, instructor, async (req, res) => {
         },
         upcomingClasses: upcomingClasses.slice(0, 8),
         allClasses: enrichedClasses,
-        assignedCourses: coursesWithStats
+        assignedCourses: coursesWithStats,
+        allStudents: enrollments
       }
     });
   } catch (error) {
@@ -149,7 +207,8 @@ router.get('/courses/:id/details', protect, instructor, async (req, res) => {
 
     const classes = await Class.find({ courseId }).sort('date time');
     const materials = await Material.find({ courseId }).sort('-date');
-    const enrollments = await Enrollment.find({ course: courseId }).select('studentEmail progress createdAt amountPaid');
+    const rawEnrollments = await Enrollment.find({ course: courseId }).select('studentEmail progress createdAt amountPaid paymentStatus completed');
+    const enrollments = await enrichEnrollmentsWithStudentDetails(rawEnrollments);
 
     res.json({
       success: true,
@@ -157,7 +216,8 @@ router.get('/courses/:id/details', protect, instructor, async (req, res) => {
         course,
         classes,
         materials,
-        enrollments
+        enrollments,
+        students: enrollments
       }
     });
   } catch (error) {
@@ -225,6 +285,42 @@ router.delete('/courses/:id/materials/:materialId', protect, instructor, async (
     res.json({ success: true, message: 'Material deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error deleting material', error: error.message });
+  }
+});
+
+// PUT /api/instructor/courses/:id/whatsapp - Update WhatsApp group/channel link
+router.put('/courses/:id/whatsapp', protect, async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    const { whatsappGroupLink } = req.body;
+
+    const isSuperAdmin = req.user.role === 'admin';
+    let query = { _id: courseId };
+    if (!isSuperAdmin) {
+      query.$or = [
+        { instructorId: req.user._id },
+        { instructor: req.user.name },
+        { moderatorId: req.user._id },
+        { _id: { $in: req.user.assignedCourses || [] } }
+      ];
+    }
+
+    const course = await Course.findOne(query);
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or you are not authorized to edit it' });
+    }
+
+    course.whatsappGroupLink = (whatsappGroupLink || '').trim();
+    await course.save();
+
+    res.json({
+      success: true,
+      message: 'WhatsApp group/channel link updated successfully',
+      data: { courseId: course._id, whatsappGroupLink: course.whatsappGroupLink }
+    });
+  } catch (error) {
+    console.error('Error updating course whatsapp link:', error);
+    res.status(500).json({ success: false, message: 'Error updating WhatsApp link', error: error.message });
   }
 });
 
