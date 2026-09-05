@@ -220,9 +220,18 @@ export const notificationService = {
       let list = raw ? JSON.parse(raw) : [];
       const dismissedIds = new Set(dismissedRaw ? JSON.parse(dismissedRaw) : []);
 
+      const isDismissed = (id) => {
+        if (!id) return false;
+        if (dismissedIds.has(id)) return true;
+        for (const dId of dismissedIds) {
+          if (id === dId || id.startsWith(dId) || dId.startsWith(id)) return true;
+        }
+        return false;
+      };
+
       // Filter stored notifications: must be created AFTER lastClearedTime and not dismissed
       list = list.filter((item) => {
-        if (!item || !item.id || dismissedIds.has(item.id)) return false;
+        if (!item || !item.id || isDismissed(item.id)) return false;
         if (item.createdAt) {
           const itemTime = new Date(item.createdAt).getTime();
           if (itemTime <= lastClearedTime) return false;
@@ -273,7 +282,7 @@ export const notificationService = {
             const isUrgent = diffMinutes <= 15 && diffMinutes >= -15;
             const notifId = `live_${cls._id || cls.id}`;
 
-            if (!dismissedIds.has(notifId)) {
+            if (!isDismissed(notifId) && !isDismissed(cls._id) && !isDismissed(cls.id)) {
               dynamicLiveNotifications.push({
                 id: notifId,
                 type: 'live_class',
@@ -299,7 +308,7 @@ export const notificationService = {
       // Merge and deduplicate
       const map = new Map();
       [...dynamicLiveNotifications, ...list].forEach((item) => {
-        if (item && item.id && !dismissedIds.has(item.id) && !map.has(item.id)) {
+        if (item && item.id && !isDismissed(item.id) && !map.has(item.id)) {
           map.set(item.id, item);
         }
       });
