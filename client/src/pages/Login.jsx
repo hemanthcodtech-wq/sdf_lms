@@ -34,7 +34,7 @@ const Login = () => {
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new Event('user-updated'));
     const searchParams = new URLSearchParams(location.search);
-    const redirectUrl = searchParams.get('redirect') || '/dashboard';
+    const redirectUrl = searchParams.get('redirect') || '/';
     navigate(redirectUrl);
   };
 
