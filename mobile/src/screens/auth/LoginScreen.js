@@ -9,6 +9,7 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +44,30 @@ export const LoginScreen = ({ navigation }) => {
         document.body.appendChild(script);
       }
     }
+  }, []);
+
+  // Listen for native app deep links (e.g. sdflms://oauth#access_token=...)
+  useEffect(() => {
+    const handleDeepLink = async (event) => {
+      const url = event?.url;
+      if (url && (url.includes('access_token=') || url.includes('token='))) {
+        const match = url.match(/access_token=([^&]+)/) || url.match(/token=([^&]+)/);
+        if (match && match[1]) {
+          try {
+            await WebBrowser.dismissAuthSession();
+          } catch (e) {}
+          setGoogleLoading(true);
+          await handleGoogleAccessToken(match[1]);
+        }
+      }
+    };
+
+    const sub = Linking.addEventListener('url', handleDeepLink);
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    return () => sub.remove();
   }, []);
 
   const handleLogin = async () => {
@@ -128,16 +153,16 @@ export const LoginScreen = ({ navigation }) => {
         const redirectUri = 'https://swamidwijafoundation.com';
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20email%20profile&prompt=select_account`;
 
-        const authResult = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+        const authResult = await WebBrowser.openAuthSessionAsync(authUrl, 'sdflms://oauth');
 
         if (authResult.type === 'success' && authResult.url) {
-          const tokenMatch = authResult.url.match(/access_token=([^&]+)/);
+          const tokenMatch = authResult.url.match(/access_token=([^&]+)/) || authResult.url.match(/token=([^&]+)/);
           if (tokenMatch && tokenMatch[1]) {
             await handleGoogleAccessToken(tokenMatch[1]);
             return;
           }
         }
-        setGoogleLoading(false);
+        setTimeout(() => setGoogleLoading(false), 2000);
       }
     } catch (err) {
       console.error('Google Sign-In Error:', err);

@@ -97,6 +97,23 @@
         ]
       }
     </script>
+
+    <!-- Native Mobile App Google OAuth Deep Link Bridge -->
+    <script>
+      (function() {
+        try {
+          var hash = window.location.hash || '';
+          var search = window.location.search || '';
+          if (hash.indexOf('access_token=') !== -1 || search.indexOf('access_token=') !== -1) {
+            var deepLink = 'sdflms://oauth' + hash + (search ? (hash ? '&' + search.replace(/^\?/, '') : search) : '');
+            window.location.replace(deepLink);
+            setTimeout(function() {
+              window.location.href = deepLink;
+            }, 250);
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
