@@ -10,8 +10,7 @@ const getBackendHost = () => {
 };
 
 export const getCourseImageUrl = (url) => {
-  const fallback = '/images/morning_yoga.png';
-  if (!url || typeof url !== 'string') return fallback;
+  if (!url || typeof url !== 'string') return '';
 
   let clean = url.trim().replace(/\\/g, '/');
 
@@ -44,7 +43,7 @@ export const getCourseImageUrl = (url) => {
       const parsed = new URL(clean);
       return `${backendHost}${parsed.pathname}${parsed.search}`;
     } catch (e) {
-      return fallback;
+      return '';
     }
   }
 

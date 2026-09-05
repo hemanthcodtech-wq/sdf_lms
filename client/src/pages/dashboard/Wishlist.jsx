@@ -98,7 +98,7 @@ const Wishlist = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     onError={(e) => { 
                       e.currentTarget.onerror = null;
-                      e.currentTarget.src = '/images/morning_yoga.png'; 
+                      e.currentTarget.style.display = 'none'; 
                     }}
                   />
                   <div className="absolute top-3 left-3 bg-brand-green-dark/80 backdrop-blur-md text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">

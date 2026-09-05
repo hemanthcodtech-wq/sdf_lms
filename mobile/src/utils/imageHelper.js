@@ -6,8 +6,7 @@ const getBackendHost = () => {
 };
 
 export const getCourseImageUrl = (url) => {
-  const fallback = 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=800&auto=format&fit=crop&q=80';
-  if (!url || typeof url !== 'string') return fallback;
+  if (!url || typeof url !== 'string') return null;
 
   let clean = url.trim().replace(/\\/g, '/');
 
@@ -40,7 +39,7 @@ export const getCourseImageUrl = (url) => {
       const parsed = new URL(clean);
       return encodeURI(`${backendHost}${parsed.pathname}${parsed.search}`);
     } catch (e) {
-      return fallback;
+      return null;
     }
   }
 

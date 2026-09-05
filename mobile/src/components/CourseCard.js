@@ -17,7 +17,6 @@ export const CourseCard = ({
   const wishlisted = isInWishlist(course._id || course.id);
 
   const [imgError, setImgError] = useState(false);
-  const fallbackUrl = 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=800&auto=format&fit=crop&q=80';
   const rawImage = course.thumbnail || course.thumbnailUrl || course.image;
   const imageUrl = getCourseImageUrl(rawImage);
 
@@ -43,12 +42,21 @@ export const CourseCard = ({
     >
       {/* Thumbnail Container */}
       <View style={horizontal ? styles.horizontalImageWrap : styles.verticalImageWrap}>
-        <Image
-          source={{ uri: imgError ? fallbackUrl : imageUrl, cache: 'force-cache' }}
-          style={styles.image}
-          resizeMode="cover"
-          onError={() => setImgError(true)}
-        />
+        {imageUrl && !imgError ? (
+          <Image
+            source={{ uri: imageUrl, cache: 'force-cache' }}
+            style={styles.image}
+            resizeMode="cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <View style={styles.placeholderContainer}>
+            <Ionicons name="book-outline" size={32} color={colors.primary} />
+            <Text style={styles.placeholderCategory} numberOfLines={1}>
+              {course.category || 'SDF LMS'}
+            </Text>
+          </View>
+        )}
         
         {/* Wishlist Button */}
         <TouchableOpacity
@@ -150,6 +158,21 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  placeholderContainer: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(13, 92, 49, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  placeholderCategory: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   wishlistBtn: {
     position: 'absolute',

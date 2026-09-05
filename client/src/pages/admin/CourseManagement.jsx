@@ -428,7 +428,7 @@ const CourseManagement = () => {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                         onError={(e) => { 
                           e.currentTarget.onerror = null;
-                          e.currentTarget.src = '/images/morning_yoga.png'; 
+                          e.currentTarget.style.display = 'none'; 
                         }}
                       />
                     ) : (

@@ -305,7 +305,7 @@ const Checkout = () => {
                     className="w-full h-full object-cover"
                     onError={(e) => { 
                       e.currentTarget.onerror = null;
-                      e.currentTarget.src = '/images/morning_yoga.png'; 
+                      e.currentTarget.style.display = 'none'; 
                     }}
                   />
                 ) : (
