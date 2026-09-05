@@ -265,8 +265,8 @@ export const ProfileScreen = ({ navigation }) => {
   const menuItems = [
     {
       id: 'wishlist',
-      title: t('myWishlist') || 'My Wishlist',
-      subtitle: `${wishlist?.length || 0} saved courses`,
+      title: t('myWishlist'),
+      subtitle: `${wishlist?.length || 0} ${t('savedCoursesSubtitle')}`,
       icon: 'heart-outline',
       color: '#ef4444',
       badge: wishlist?.length > 0 ? wishlist.length.toString() : null,
@@ -274,8 +274,8 @@ export const ProfileScreen = ({ navigation }) => {
     },
     {
       id: 'learning',
-      title: t('myEnrollments') || 'My Enrollments',
-      subtitle: `${stats.enrolledCount} active courses`,
+      title: t('myEnrollments'),
+      subtitle: `${stats.enrolledCount} ${t('activeCoursesSubtitle')}`,
       icon: 'book-outline',
       color: colors.primary,
       badge: stats.enrolledCount > 0 ? stats.enrolledCount.toString() : null,
@@ -283,16 +283,16 @@ export const ProfileScreen = ({ navigation }) => {
     },
     {
       id: 'payments',
-      title: t('paymentHistory') || 'Payment History',
-      subtitle: `${stats.paymentsCount} transactions`,
+      title: t('paymentHistory'),
+      subtitle: `${stats.paymentsCount} ${t('transactionsSubtitle')}`,
       icon: 'card-outline',
       color: colors.secondary,
       onPress: () => navigation.navigate('PaymentHistory'),
     },
     {
       id: 'certificates',
-      title: t('myCertificates') || 'My Certificates',
-      subtitle: `${stats.certificatesCount} certificates earned`,
+      title: t('myCertificates'),
+      subtitle: `${stats.certificatesCount} ${t('certificatesEarned')}`,
       icon: 'ribbon-outline',
       color: '#f59e0b',
       badge: stats.certificatesCount > 0 ? stats.certificatesCount.toString() : null,
@@ -300,16 +300,16 @@ export const ProfileScreen = ({ navigation }) => {
     },
     {
       id: 'settings',
-      title: t('settings') || 'Settings',
-      subtitle: 'App preferences & language selection',
+      title: t('settings'),
+      subtitle: t('appPreferencesSubtitle'),
       icon: 'settings-outline',
       color: '#6366f1',
       onPress: () => navigation.navigate('Settings'),
     },
     {
       id: 'help',
-      title: t('helpSupport') || 'Help & Support',
-      subtitle: 'FAQ, contact info & direct guidance',
+      title: t('helpSupport'),
+      subtitle: t('helpSupportSubtitle'),
       icon: 'help-circle-outline',
       color: '#0284c7',
       onPress: () => navigation.navigate('HelpSupport'),
@@ -363,7 +363,7 @@ export const ProfileScreen = ({ navigation }) => {
             )}
 
             <TouchableOpacity onPress={handleUploadAvatar} activeOpacity={0.7}>
-              <Text style={styles.changePhotoPrompt}>Tap avatar to change photo</Text>
+              <Text style={styles.changePhotoPrompt}>{t('tapAvatarChange')}</Text>
             </TouchableOpacity>
 
             <Text style={styles.userName}>{effectiveUser?.name || 'Student'}</Text>
@@ -383,23 +383,23 @@ export const ProfileScreen = ({ navigation }) => {
               activeOpacity={0.7}
             >
               <Ionicons name="create-outline" size={14} color={colors.primary} />
-              <Text style={styles.cardEditProfileText}>Edit Profile Details</Text>
+              <Text style={styles.cardEditProfileText}>{t('editProfile')}</Text>
             </TouchableOpacity>
 
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
                 <Text style={styles.statValue}>{stats.enrolledCount}</Text>
-                <Text style={styles.statLabel}>{t('courses') || 'Courses'}</Text>
+                <Text style={styles.statLabel}>{t('courses')}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statBox}>
                 <Text style={styles.statValue}>{stats.certificatesCount}</Text>
-                <Text style={styles.statLabel}>{t('certificates') || 'Certificates'}</Text>
+                <Text style={styles.statLabel}>{t('certificates')}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statBox}>
                 <Text style={styles.statValue}>{stats.paymentsCount}</Text>
-                <Text style={styles.statLabel}>Paid</Text>
+                <Text style={styles.statLabel}>{t('paid')}</Text>
               </View>
             </View>
           </View>
@@ -408,13 +408,13 @@ export const ProfileScreen = ({ navigation }) => {
             <View style={styles.avatarLarge}>
               <Ionicons name="person" size={32} color="#fff" />
             </View>
-            <Text style={styles.userName}>Guest Learner</Text>
-            <Text style={styles.userEmail}>Sign in to access all courses & dashboard</Text>
+            <Text style={styles.userName}>{t('guestLearner')}</Text>
+            <Text style={styles.userEmail}>{t('signInPrompt')}</Text>
             <TouchableOpacity
               style={styles.loginCardBtn}
               onPress={() => navigation.navigate('Auth')}
             >
-              <Text style={styles.loginCardBtnText}>Login / Sign Up</Text>
+              <Text style={styles.loginCardBtnText}>{t('loginSignUp')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -422,14 +422,14 @@ export const ProfileScreen = ({ navigation }) => {
         {user && (
           <View style={[styles.infoCard, shadows.sm]}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionHeaderTitle}>Student Details</Text>
+              <Text style={styles.sectionHeaderTitle}>{t('studentDetails')}</Text>
               <TouchableOpacity
                 style={styles.editProfileBtn}
                 onPress={handleOpenEditModal}
                 activeOpacity={0.7}
               >
                 <Ionicons name="create-outline" size={14} color={colors.primary} />
-                <Text style={styles.editProfileBtnText}>Edit</Text>
+                <Text style={styles.editProfileBtnText}>{t('edit')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -439,7 +439,7 @@ export const ProfileScreen = ({ navigation }) => {
                 <Ionicons name="person-outline" size={18} color={colors.primary} />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Full Legal Name</Text>
+                <Text style={styles.infoLabel}>{t('legalName')}</Text>
                 <Text style={styles.infoValue}>{effectiveUser?.name || 'Not provided'}</Text>
               </View>
             </View>
@@ -450,7 +450,7 @@ export const ProfileScreen = ({ navigation }) => {
                 <Ionicons name="mail-outline" size={18} color={colors.primary} />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Email Address</Text>
+                <Text style={styles.infoLabel}>{t('emailAddress')}</Text>
                 <Text style={styles.infoValue}>
                   {effectiveUser?.email || effectiveUser?.emailOrPhone || 'Not provided'}
                 </Text>
@@ -464,7 +464,7 @@ export const ProfileScreen = ({ navigation }) => {
                 <Ionicons name="call-outline" size={18} color={colors.primary} />
               </View>
               <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>WhatsApp / Phone Number</Text>
+                <Text style={styles.infoLabel}>{t('phoneNumber')}</Text>
                 <Text style={styles.infoValue}>
                   {effectiveUser?.phone || effectiveUser?.emailOrPhone || 'Not provided'}
                 </Text>

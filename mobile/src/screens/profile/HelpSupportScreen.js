@@ -1,20 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../../theme/colors';
+import { policyService } from '../../services/policyService';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const HelpSupportScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
+  const [contactPhone, setContactPhone] = useState('+91 98765 43210');
+  const [contactEmail, setContactEmail] = useState('support@sdflms.org');
+
+  useEffect(() => {
+    policyService.getPolicies().then((res) => {
+      if (res?.contactPhone) setContactPhone(res.contactPhone);
+      if (res?.contactEmail) setContactEmail(res.contactEmail);
+    });
+  }, []);
 
   const handleCall = () => {
-    Linking.openURL('tel:+919876543210').catch(() => {
+    const cleanNumber = contactPhone.replace(/[^0-9+]/g, '');
+    Linking.openURL(`tel:${cleanNumber}`).catch(() => {
       Alert.alert('Notice', 'Phone calling is not supported on this device.');
     });
   };
 
   const handleEmail = () => {
-    Linking.openURL('mailto:support@sdflms.org').catch(() => {
+    Linking.openURL(`mailto:${contactEmail}`).catch(() => {
       Alert.alert('Notice', 'Email client is not configured.');
     });
   };
@@ -45,7 +58,7 @@ export const HelpSupportScreen = ({ navigation }) => {
         >
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Help & Support</Text>
+        <Text style={styles.headerTitle}>{t('helpSupport')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -64,7 +77,7 @@ export const HelpSupportScreen = ({ navigation }) => {
               <Ionicons name="call" size={22} color="#2563eb" />
             </View>
             <Text style={styles.contactTitle}>Call Us</Text>
-            <Text style={styles.contactSub}>Mon-Sat, 9AM-6PM</Text>
+            <Text style={styles.contactSub}>{contactPhone}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -76,7 +89,7 @@ export const HelpSupportScreen = ({ navigation }) => {
               <Ionicons name="mail" size={22} color="#16a34a" />
             </View>
             <Text style={styles.contactTitle}>Email Support</Text>
-            <Text style={styles.contactSub}>24h response time</Text>
+            <Text style={styles.contactSub}>{contactEmail}</Text>
           </TouchableOpacity>
         </View>
 

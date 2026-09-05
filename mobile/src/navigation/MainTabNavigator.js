@@ -26,6 +26,18 @@ const Tab = createBottomTabNavigator();
 const CustomTabBar = ({ state, descriptors, navigation }) => {
   const insets = useSafeAreaInsets();
   const { wishlist } = useAuth();
+  const { t } = useLanguage();
+
+  const getTabLabel = (routeName) => {
+    switch (routeName) {
+      case 'HomeTab': return t('home');
+      case 'CoursesTab': return t('courses');
+      case 'LearningTab': return t('myLearning');
+      case 'WishlistTab': return t('wishlist');
+      case 'ProfileTab': return t('profile');
+      default: return routeName;
+    }
+  };
 
   const getIconName = (routeName, isFocused) => {
     switch (routeName) {
@@ -58,12 +70,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
       >
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
-          const label =
-            options.tabBarLabel !== undefined
-              ? options.tabBarLabel
-              : options.title !== undefined
-              ? options.title
-              : route.name;
+          const label = getTabLabel(route.name);
 
           const isFocused = state.index === index;
           const iconName = getIconName(route.name, isFocused);

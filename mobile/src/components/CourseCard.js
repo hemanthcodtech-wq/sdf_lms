@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../theme/colors';
 import { Badge } from './Badge';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { getCourseImageUrl } from '../utils/imageHelper';
 
 export const CourseCard = ({
@@ -14,6 +15,7 @@ export const CourseCard = ({
   progress = 0,
 }) => {
   const { isInWishlist, toggleWishlist } = useAuth();
+  const { t } = useLanguage();
   const wishlisted = isInWishlist(course._id || course.id);
 
   const [imgError, setImgError] = useState(false);
@@ -26,7 +28,7 @@ export const CourseCard = ({
   };
 
   const formatPrice = (price) => {
-    if (!price || Number(price) === 0) return 'Free';
+    if (!price || Number(price) === 0) return t('free');
     return `₹${Number(price).toLocaleString('en-IN')}`;
   };
 
@@ -82,7 +84,7 @@ export const CourseCard = ({
       {/* Details Container */}
       <View style={styles.contentWrap}>
         {course.level && (
-          <Text style={styles.levelText}>{course.level} • {course.durationMonths ? `${course.durationMonths} Months` : 'Self-Paced'}</Text>
+          <Text style={styles.levelText}>{course.level} • {course.durationMonths ? `${course.durationMonths} ${t('months')}` : t('selfPaced')}</Text>
         )}
 
         <Text style={styles.title} numberOfLines={2}>
@@ -93,7 +95,7 @@ export const CourseCard = ({
         <View style={styles.instructorRow}>
           <Ionicons name="person-circle-outline" size={16} color={colors.textSecondary} />
           <Text style={styles.instructorText} numberOfLines={1}>
-            {course.instructor || course.instructorId?.name || 'Expert Faculty'}
+            {course.instructor || course.instructorId?.name || t('expertFaculty')}
           </Text>
         </View>
 
@@ -101,7 +103,7 @@ export const CourseCard = ({
         {showProgress ? (
           <View style={styles.progressContainer}>
             <View style={styles.progressHeader}>
-              <Text style={styles.progressLabel}>Completed</Text>
+              <Text style={styles.progressLabel}>{t('completed')}</Text>
               <Text style={styles.progressPercent}>{Math.round(progress)}%</Text>
             </View>
             <View style={styles.progressBarTrack}>

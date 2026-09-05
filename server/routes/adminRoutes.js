@@ -560,4 +560,68 @@ router.put('/settings/stats', protect, admin, async (req, res) => {
   }
 });
 
+// Default policy content helper
+const DEFAULT_POLICIES = {
+  termsAndConditions: `1. Acceptance of Terms\nBy accessing Swamy Dwija Foundation (SDF LMS), you agree to be bound by these terms, all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws.\n\n2. Use License\nPermission is granted to temporarily access the materials (information or software) on Swamy Dwija Foundation's LMS for personal, non-commercial transitory viewing only. All course materials, video recordings, PDFs, and live lectures remain the exclusive intellectual property of Swamy Dwija Foundation.\n\n3. Course Access & Validity\nCourse access, daily live sessions, and syllabus materials are granted for the duration specified during enrollment. Account sharing is strictly prohibited.\n\n4. Code of Conduct\nStudents are expected to maintain respect and decorum during all live interactive Zoom sessions. Disruptive behavior may lead to immediate termination of access without refund.\n\n5. Contact & Support\nFor any questions regarding our terms, please contact our support desk via email or phone provided below.`,
+
+  privacyPolicy: `1. Information We Collect\nSwamy Dwija Foundation collects your name, email address, phone number, and basic profile information solely for account authentication, course enrollment, issuing completion certificates, and sending live session reminders.\n\n2. How We Use Your Information\nYour personal data is used exclusively to provide learning services, process payments via secure gateways (Razorpay / PhonePe), and send schedule updates. We never sell, rent, or trade your personal information to third parties.\n\n3. Data Security\nWe implement robust encryption and security protocols to safeguard your personal credentials and educational records against unauthorized access.\n\n4. Third-Party Integrations\nWe use verified services such as Google Identity for authentication and Zoom for live interactive classes. These services operate under their respective security standards.\n\n5. Privacy Questions\nIf you have questions about your personal data or wish to update your records, please reach out via the contact buttons below.`,
+
+  refundPolicy: `1. 100% Digital Delivery\nAll courses, materials, and live lectures offered on Swamy Dwija Foundation are electronic digital goods. Course access is activated immediately upon successful payment verification.\n\n2. Cancellation Window\nYou may request a full refund or course transfer up to 24 hours prior to the start of Session 1 of your batch.\n\n3. Refund Processing\nApproved refunds are credited directly to your original payment method (Credit/Debit Card, Net Banking, or UPI) within 5 to 7 working business days.\n\n4. Exceptions\nOnce a batch has commenced and access to live interactive sessions or digital curriculum has been utilized, refunds cannot be issued. However, students experiencing genuine emergencies may request a transfer to a future batch.\n\n5. Submitting a Request\nTo request a cancellation or refund, please reach out to our team via the Call or Email button below with your registered email and Order ID.`,
+
+  contactPhone: '+91 98765 43210',
+  contactEmail: 'support@sdflms.org',
+  updatedAt: new Date()
+};
+
+// Get Policies & Contact Information (Public)
+router.get('/settings/policies', async (req, res) => {
+  try {
+    let setting = await SiteSetting.findOne({ key: 'platform_stats' });
+    if (!setting) {
+      setting = await SiteSetting.create({
+        key: 'platform_stats',
+        policies: DEFAULT_POLICIES
+      });
+    } else if (!setting.policies || !setting.policies.termsAndConditions) {
+      setting.policies = {
+        ...DEFAULT_POLICIES,
+        ...(setting.policies || {})
+      };
+      await setting.save();
+    }
+    res.json({ success: true, data: setting.policies });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error fetching policies', error: error.message });
+  }
+});
+
+// Update Policies & Contact Information (Admin Only)
+router.put('/settings/policies', protect, admin, async (req, res) => {
+  try {
+    const { termsAndConditions, privacyPolicy, refundPolicy, contactPhone, contactEmail } = req.body;
+    let setting = await SiteSetting.findOne({ key: 'platform_stats' });
+    if (!setting) {
+      setting = new SiteSetting({ key: 'platform_stats', policies: DEFAULT_POLICIES });
+    }
+
+    setting.policies = {
+      termsAndConditions: termsAndConditions !== undefined ? termsAndConditions : (setting.policies?.termsAndConditions || DEFAULT_POLICIES.termsAndConditions),
+      privacyPolicy: privacyPolicy !== undefined ? privacyPolicy : (setting.policies?.privacyPolicy || DEFAULT_POLICIES.privacyPolicy),
+      refundPolicy: refundPolicy !== undefined ? refundPolicy : (setting.policies?.refundPolicy || DEFAULT_POLICIES.refundPolicy),
+      contactPhone: contactPhone || setting.policies?.contactPhone || DEFAULT_POLICIES.contactPhone,
+      contactEmail: contactEmail || setting.policies?.contactEmail || DEFAULT_POLICIES.contactEmail,
+      updatedAt: new Date()
+    };
+
+    await setting.save();
+    res.json({
+      success: true,
+      message: 'Legal policies & contact details updated successfully!',
+      data: setting.policies
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error updating policies', error: error.message });
+  }
+});
+
 module.exports = router;

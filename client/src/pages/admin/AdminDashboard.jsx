@@ -3,7 +3,8 @@ import axios from 'axios';
 import { 
   FaUsers, FaBookOpen, FaGraduationCap, FaVideo, FaRupeeSign, 
   FaUserCircle, FaPlus, FaFolderOpen, FaArrowRight, FaCalendarCheck, 
-  FaClock, FaSlidersH, FaCheckCircle, FaTimes, FaSave, FaGlobe, FaAward
+  FaClock, FaSlidersH, FaCheckCircle, FaTimes, FaSave, FaGlobe, FaAward,
+  FaFileContract, FaPhoneAlt, FaEnvelope
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -46,9 +47,22 @@ const AdminDashboard = () => {
   const [savingStats, setSavingStats] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
+  // Policy & Support Contact State
+  const [policyModalOpen, setPolicyModalOpen] = useState(false);
+  const [activePolicyTab, setActivePolicyTab] = useState('contact'); // 'contact' | 'terms' | 'privacy' | 'refund'
+  const [policyData, setPolicyData] = useState({
+    termsAndConditions: '',
+    privacyPolicy: '',
+    refundPolicy: '',
+    contactPhone: '+91 98765 43210',
+    contactEmail: 'support@sdflms.org'
+  });
+  const [savingPolicy, setSavingPolicy] = useState(false);
+
   useEffect(() => {
     fetchStats();
     fetchPublicStats();
+    fetchPolicies();
   }, []);
 
   const fetchStats = async () => {
@@ -75,6 +89,38 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       console.error("Error fetching public stats", err);
+    }
+  };
+
+  const fetchPolicies = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/settings/policies`);
+      if (res.data.success && res.data.data) {
+        setPolicyData(res.data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching policies", err);
+    }
+  };
+
+  const handleSavePolicies = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setSavingPolicy(true);
+    try {
+      const token = localStorage.getItem('adminToken');
+      const res = await axios.put(
+        `${import.meta.env.VITE_API_BASE_URL}/admin/settings/policies`,
+        policyData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.success) {
+        showToast('Legal policies & support contact updated successfully across Mobile App & Website!');
+        setPolicyModalOpen(false);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error updating policies');
+    } finally {
+      setSavingPolicy(false);
     }
   };
 
@@ -186,6 +232,16 @@ const AdminDashboard = () => {
           >
             <FaSlidersH size={13} />
             <span>Edit Public Stats</span>
+          </button>
+
+          {/* Edit Policies & Support Contact Button */}
+          <button
+            onClick={() => setPolicyModalOpen(true)}
+            className="px-4 py-3 bg-emerald-500/10 hover:bg-brand-green hover:text-white text-emerald-800 border border-emerald-300 rounded-2xl text-xs lg:text-sm font-bold shadow-xs transition-all flex items-center gap-2"
+            title="Edit Terms, Privacy Policy, Refund Policy and Support Contact"
+          >
+            <FaFileContract size={13} />
+            <span>Policies & Support Contact</span>
           </button>
 
           <button
@@ -567,6 +623,197 @@ const AdminDashboard = () => {
 
               </form>
 
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Policies & Support Contact Modal */}
+      <AnimatePresence>
+        {policyModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-6 lg:p-8 max-w-3xl w-full shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-brand-green/10 flex items-center justify-center text-brand-green">
+                    <FaFileContract size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-gray-900">Legal Policies & Support Contact</h2>
+                    <p className="text-xs text-gray-500">Live configuration for Terms, Privacy, Refund, and Phone/Email buttons in Mobile App & Website.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPolicyModalOpen(false)}
+                  className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  <FaTimes size={18} />
+                </button>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex flex-wrap gap-2 pt-4 pb-2 border-b border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setActivePolicyTab('contact')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    activePolicyTab === 'contact'
+                      ? 'bg-brand-green text-white shadow-xs'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <FaPhoneAlt size={11} /> Support Phone & Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivePolicyTab('terms')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    activePolicyTab === 'terms'
+                      ? 'bg-brand-green text-white shadow-xs'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Terms & Conditions
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivePolicyTab('privacy')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    activePolicyTab === 'privacy'
+                      ? 'bg-brand-green text-white shadow-xs'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Privacy Policy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivePolicyTab('refund')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    activePolicyTab === 'refund'
+                      ? 'bg-brand-green text-white shadow-xs'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Refund Policy
+                </button>
+              </div>
+
+              <form onSubmit={handleSavePolicies} className="space-y-4 pt-4">
+                {/* Contact Tab */}
+                {activePolicyTab === 'contact' && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                      <p className="text-xs font-bold text-emerald-900 leading-relaxed">
+                        These contact details are linked directly to the "Call Us" and "Email Us" buttons in the Mobile App and Website policy & help screens.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 block mb-1">
+                          <FaPhoneAlt className="inline mr-1 text-brand-green" /> Support Phone Number
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={policyData.contactPhone}
+                          onChange={(e) => setPolicyData({ ...policyData, contactPhone: e.target.value })}
+                          className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                          placeholder="e.g. +91 98765 43210"
+                        />
+                        <span className="text-[11px] text-gray-400 mt-1 block">Clicking 'Call' opens dialer with this number</span>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 block mb-1">
+                          <FaEnvelope className="inline mr-1 text-brand-green" /> Support Email Address
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={policyData.contactEmail}
+                          onChange={(e) => setPolicyData({ ...policyData, contactEmail: e.target.value })}
+                          className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-900 outline-none focus:border-brand-green"
+                          placeholder="e.g. support@swamydwija.org"
+                        />
+                        <span className="text-[11px] text-gray-400 mt-1 block">Clicking 'Email' opens email compose to this address</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Terms Tab */}
+                {activePolicyTab === 'terms' && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-700 block">Terms & Conditions Content</label>
+                    <textarea
+                      rows={14}
+                      value={policyData.termsAndConditions}
+                      onChange={(e) => setPolicyData({ ...policyData, termsAndConditions: e.target.value })}
+                      className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-mono text-gray-800 outline-none focus:border-brand-green focus:bg-white leading-relaxed"
+                      placeholder="Enter Terms & Conditions..."
+                    />
+                  </div>
+                )}
+
+                {/* Privacy Tab */}
+                {activePolicyTab === 'privacy' && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-700 block">Privacy Policy Content</label>
+                    <textarea
+                      rows={14}
+                      value={policyData.privacyPolicy}
+                      onChange={(e) => setPolicyData({ ...policyData, privacyPolicy: e.target.value })}
+                      className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-mono text-gray-800 outline-none focus:border-brand-green focus:bg-white leading-relaxed"
+                      placeholder="Enter Privacy Policy..."
+                    />
+                  </div>
+                )}
+
+                {/* Refund Tab */}
+                {activePolicyTab === 'refund' && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-700 block">Refund & Cancellation Policy Content</label>
+                    <textarea
+                      rows={14}
+                      value={policyData.refundPolicy}
+                      onChange={(e) => setPolicyData({ ...policyData, refundPolicy: e.target.value })}
+                      className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-mono text-gray-800 outline-none focus:border-brand-green focus:bg-white leading-relaxed"
+                      placeholder="Enter Refund & Cancellation Policy..."
+                    />
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setPolicyModalOpen(false)}
+                    className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-xs transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingPolicy}
+                    className="px-6 py-2.5 bg-brand-green hover:bg-brand-green-dark text-white font-extrabold rounded-xl text-xs shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {savingPolicy ? (
+                      <span>Saving...</span>
+                    ) : (
+                      <>
+                        <FaSave size={12} />
+                        <span>Save & Publish to App and Web</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

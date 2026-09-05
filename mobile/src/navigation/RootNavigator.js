@@ -17,6 +17,7 @@ import { SettingsScreen } from '../screens/profile/SettingsScreen';
 import { PaymentHistoryScreen } from '../screens/profile/PaymentHistoryScreen';
 import { HelpSupportScreen } from '../screens/profile/HelpSupportScreen';
 import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
+import { PolicyViewerScreen } from '../screens/profile/PolicyViewerScreen';
 
 const RootStack = createNativeStackNavigator();
 
@@ -61,6 +62,7 @@ export const RootNavigator = () => {
       <RootStack.Screen name="Settings" component={SettingsScreen} />
       <RootStack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
       <RootStack.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <RootStack.Screen name="PolicyViewer" component={PolicyViewerScreen} />
     </RootStack.Navigator>
   );
 };

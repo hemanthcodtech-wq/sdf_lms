@@ -38,7 +38,7 @@ export const SettingsScreen = ({ navigation }) => {
       >
         {/* Language Selection */}
         <View style={[styles.sectionCard, shadows.sm]}>
-          <Text style={styles.sectionTitle}>App Language</Text>
+          <Text style={styles.sectionTitle}>{t('appLanguage')}</Text>
           {languages.map((lang) => {
             const isSelected = language === lang.code;
             return (
@@ -61,24 +61,36 @@ export const SettingsScreen = ({ navigation }) => {
 
         {/* Legal & Policy Links */}
         <View style={[styles.sectionCard, shadows.sm]}>
-          <Text style={styles.sectionTitle}>About & Legal</Text>
+          <Text style={styles.sectionTitle}>{t('aboutLegal')}</Text>
 
-          <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('HelpSupport')}>
-            <Text style={styles.linkLabel}>Terms & Conditions</Text>
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={() => navigation.navigate('PolicyViewer', { policyType: 'terms' })}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.linkLabel}>{t('termsConditions')}</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
 
           <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('HelpSupport')}>
-            <Text style={styles.linkLabel}>Privacy Policy</Text>
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={() => navigation.navigate('PolicyViewer', { policyType: 'privacy' })}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.linkLabel}>{t('privacyPolicy')}</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
 
           <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('HelpSupport')}>
-            <Text style={styles.linkLabel}>Refund & Cancellation Policy</Text>
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={() => navigation.navigate('PolicyViewer', { policyType: 'refund' })}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.linkLabel}>{t('refundPolicy')}</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>

@@ -18,7 +18,7 @@ export const WishlistScreen = ({ navigation }) => {
       <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 14 : Math.max(insets.top, 20) }]}>
         <Text style={styles.headerTitle}>{t('wishlist')}</Text>
         <Text style={styles.headerSubtitle}>
-          {wishlist.length} {wishlist.length === 1 ? 'course' : 'courses'} saved
+          {wishlist.length} {wishlist.length === 1 ? t('courseSaved') : t('coursesSaved')}
         </Text>
       </View>
 
@@ -30,8 +30,8 @@ export const WishlistScreen = ({ navigation }) => {
         ListEmptyComponent={
           <EmptyState
             icon="heart-outline"
-            title="Your Wishlist is Empty"
-            description="Explore courses and tap the heart icon to save courses you want to learn later."
+            title={t('wishlistEmptyTitle')}
+            description={t('wishlistEmptyDesc')}
             buttonTitle={t('exploreCourses')}
             onButtonPress={() => navigation.navigate('CoursesTab')}
           />

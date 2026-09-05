@@ -323,9 +323,9 @@ export const HomeScreen = ({ navigation }) => {
                 )}
               </View>
               <View>
-                <Text style={styles.greeting}>Welcome back,</Text>
+                <Text style={styles.greeting}>{t('welcomeBack')}</Text>
                 <Text style={styles.userName} numberOfLines={1}>
-                  {user?.name || 'Guest Learner'}
+                  {user?.name || t('guestLearner')}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -389,17 +389,17 @@ export const HomeScreen = ({ navigation }) => {
         {/* Banner Hero Card */}
         <View style={[styles.heroCard, shadows.brandGlow]}>
           <View style={styles.heroContent}>
-            <Badge text="DISCOVER EXCELLENCE" variant="secondary" />
-            <Text style={styles.heroTitle}>Master Ancient Wisdom & Modern Skills</Text>
+            <Badge text={t('discoverExcellence')} variant="secondary" />
+            <Text style={styles.heroTitle}>{t('heroTitle')}</Text>
             <Text style={styles.heroSub}>
-              Join interactive live sessions with verified master mentors.
+              {t('heroSub')}
             </Text>
             <TouchableOpacity
               style={styles.heroActionBtn}
               onPress={() => navigation.navigate('CoursesTab')}
               activeOpacity={0.8}
             >
-              <Text style={styles.heroActionText}>Browse Courses</Text>
+              <Text style={styles.heroActionText}>{t('browseCourses')}</Text>
               <Ionicons name="arrow-forward" size={16} color={colors.primaryDark} />
             </TouchableOpacity>
           </View>
@@ -417,7 +417,7 @@ export const HomeScreen = ({ navigation }) => {
 
             {liveClasses.slice(0, 3).map((item, idx) => {
               const formatLiveDate = (dateVal) => {
-                if (!dateVal) return 'Today';
+                if (!dateVal) return t('today');
                 try {
                   const raw = dateVal.includes('T') ? dateVal.split('T')[0] : dateVal;
                   const parts = raw.split('-').map(Number);
@@ -427,10 +427,10 @@ export const HomeScreen = ({ navigation }) => {
                     today.setHours(0, 0, 0, 0);
                     const comp = new Date(d);
                     comp.setHours(0, 0, 0, 0);
-                    if (comp.getTime() === today.getTime()) return 'Today';
+                    if (comp.getTime() === today.getTime()) return t('today');
                     const tomorrow = new Date(today);
                     tomorrow.setDate(today.getDate() + 1);
-                    if (comp.getTime() === tomorrow.getTime()) return 'Tomorrow';
+                    if (comp.getTime() === tomorrow.getTime()) return t('tomorrow');
                     return d.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' });
                   }
                 } catch (e) {}
@@ -438,7 +438,7 @@ export const HomeScreen = ({ navigation }) => {
               };
 
               const formatLiveTime = (timeVal) => {
-                if (!timeVal) return 'Live Batch';
+                if (!timeVal) return t('liveBatch');
                 if (timeVal.includes('to') || timeVal.includes('AM') || timeVal.includes('PM')) return timeVal;
                 try {
                   const [hStr, mStr] = timeVal.split(':');
@@ -470,7 +470,7 @@ export const HomeScreen = ({ navigation }) => {
                       </Text>
                     </View>
                     <Badge
-                      text={canJoin ? 'LIVE NOW' : 'SCHEDULED'}
+                      text={canJoin ? t('liveNow') : t('scheduled')}
                       variant={canJoin ? 'success' : 'default'}
                     />
                   </View>
@@ -490,14 +490,14 @@ export const HomeScreen = ({ navigation }) => {
                         style={styles.scheduledLiveBtn}
                         onPress={() =>
                           Alert.alert(
-                            'Live Session Scheduled',
+                            t('liveSessionScheduled'),
                             `This session is scheduled for ${displayDate} at ${displayTime}.\n\nThe "Join Live Class" button will become clickable 2 minutes before the session starts.`
                           )
                         }
                         activeOpacity={0.7}
                       >
                         <Ionicons name="time-outline" size={15} color={colors.textMuted} />
-                        <Text style={styles.scheduledLiveBtnText}>Starts 2m Before</Text>
+                        <Text style={styles.scheduledLiveBtnText}>{t('starts2mBefore')}</Text>
                         <Ionicons name="lock-closed-outline" size={13} color={colors.textMuted} />
                       </TouchableOpacity>
                     )}
@@ -522,7 +522,7 @@ export const HomeScreen = ({ navigation }) => {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{t('continueLearning')}</Text>
               <TouchableOpacity onPress={() => navigation.navigate('LearningTab')}>
-                <Text style={styles.seeAllText}>View All</Text>
+                <Text style={styles.seeAllText}>{t('viewAll')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -548,7 +548,7 @@ export const HomeScreen = ({ navigation }) => {
 
         {/* Categories Bar */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Categories</Text>
+          <Text style={styles.sectionTitle}>{t('categories')}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -572,7 +572,7 @@ export const HomeScreen = ({ navigation }) => {
                       isSelected && styles.categoryChipTextActive,
                     ]}
                   >
-                    {cat}
+                    {cat === 'All' ? t('allCategories') : cat}
                   </Text>
                 </TouchableOpacity>
               );
@@ -585,7 +585,7 @@ export const HomeScreen = ({ navigation }) => {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{t('featuredCourses')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('CoursesTab')}>
-              <Text style={styles.seeAllText}>See All</Text>
+              <Text style={styles.seeAllText}>{t('seeAll')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -615,7 +615,7 @@ export const HomeScreen = ({ navigation }) => {
 
         {/* All Courses Vertical List Preview */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Popular Mentorships</Text>
+          <Text style={styles.sectionTitle}>{t('popularMentorships')}</Text>
           {filteredCourses.slice(0, 4).map((course, idx) => (
             <CourseCard
               key={course._id || idx}

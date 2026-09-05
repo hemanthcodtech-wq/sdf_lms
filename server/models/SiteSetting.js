@@ -31,6 +31,14 @@ const siteSettingSchema = new mongoose.Schema({
     lineageRate: { type: Number, default: 100 },
     lineageSuffix: { type: String, default: '%' },
     lineageLabel: { type: String, default: 'Authentic Vedic Lineage' }
+  },
+  policies: {
+    termsAndConditions: { type: String, default: '' },
+    privacyPolicy: { type: String, default: '' },
+    refundPolicy: { type: String, default: '' },
+    contactPhone: { type: String, default: '+91 98765 43210' },
+    contactEmail: { type: String, default: 'support@sdflms.org' },
+    updatedAt: { type: Date, default: Date.now }
   }
 }, { timestamps: true });
 

@@ -183,7 +183,7 @@ export const MyLearningScreen = ({ navigation }) => {
                 activeTab === 'ongoing' && styles.tabBtnTextActive,
               ]}
             >
-              Ongoing Courses {ongoingEnrollments.length > 0 ? `(${ongoingEnrollments.length})` : ''}
+              {t('ongoingCourses')} {ongoingEnrollments.length > 0 ? `(${ongoingEnrollments.length})` : ''}
             </Text>
           </TouchableOpacity>
 
@@ -197,7 +197,7 @@ export const MyLearningScreen = ({ navigation }) => {
                 activeTab === 'completed' && styles.tabBtnTextActive,
               ]}
             >
-              Completed {completedEnrollments.length > 0 ? `(${completedEnrollments.length})` : ''}
+              {t('completedCourses')} {completedEnrollments.length > 0 ? `(${completedEnrollments.length})` : ''}
             </Text>
           </TouchableOpacity>
         </View>
@@ -225,13 +225,13 @@ export const MyLearningScreen = ({ navigation }) => {
               icon="school-outline"
               title={
                 activeTab === 'completed'
-                  ? 'No Completed Courses Yet'
+                  ? t('noCompletedCourses')
                   : t('noEnrolledCourses')
               }
               description={
                 activeTab === 'completed'
-                  ? 'Keep learning to complete your modules and unlock certificates.'
-                  : 'Explore our catalog to start your learning journey with world-class faculty.'
+                  ? t('keepLearningDesc')
+                  : t('exploreCatalogDesc')
               }
               buttonTitle={t('exploreCourses')}
               onButtonPress={() => navigation.navigate('CoursesTab')}
