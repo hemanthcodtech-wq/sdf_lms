@@ -28,7 +28,7 @@ import { getCourseImageUrl } from '../../utils/imageHelper';
 import { cacheService } from '../../services/cacheService';
 
 export const StudentClassesScreen = ({ route, navigation }) => {
-  const { course } = route.params;
+  const course = route?.params?.course || {};
   const courseId = course?._id || course?.id;
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -227,6 +227,9 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   };
 
   const currentLesson = realSessions[activeLessonIndex] || realSessions[0] || null;
+  const currentStatus = currentLesson
+    ? getSessionStatus(currentLesson, activeLessonIndex >= 0 ? activeLessonIndex : 0)
+    : { isCompleted: false, isLiveNow: false, canJoin: false, label: 'Scheduled', displayDate: 'Scheduled', displayTime: 'Live Session' };
   
   const completedCount = realSessions.filter((lesson, idx) => getSessionStatus(lesson, idx).isCompleted).length;
   const calculatedPercent = realSessions.length > 0

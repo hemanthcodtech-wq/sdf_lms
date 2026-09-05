@@ -95,7 +95,12 @@ export const CourseDetailsScreen = ({ route, navigation }) => {
     }
 
     if (isEnrolled) {
-      navigation.navigate('StudentClasses', { course });
+      const cached = cacheService.getMyCourses();
+      const targetId = course?._id || course?.id;
+      const enrollment = cached?.find(
+        (e) => (e.course?._id || e.course || e._id || '').toString() === targetId?.toString()
+      );
+      navigation.navigate('StudentClasses', { course, enrollment });
     } else {
       navigation.navigate('Checkout', { course });
     }
