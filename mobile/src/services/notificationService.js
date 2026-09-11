@@ -371,18 +371,26 @@ export const notificationService = {
       const map = new Map();
       // First, add stored notifications (which may be unread / newly created)
       list.forEach((item) => {
-        if (item && item.id && !isDismissed(item.id) && !map.has(item.id)) {
-          map.set(item.id, item);
-          if (item.courseId) {
-            map.set(`enroll_${item.courseId}`, item);
+        if (item && item.id && !isDismissed(item.id)) {
+          const dedupeKey = (item.type === 'course_enrolled' && item.courseId)
+            ? `enroll_${item.courseId}`
+            : (item.type === 'certificate' && item.courseId)
+            ? `cert_${item.courseId}`
+            : item.id;
+
+          if (!map.has(dedupeKey)) {
+            map.set(dedupeKey, item);
           }
         }
       });
 
       // Then merge dynamic live and dynamic course notifications (if not already present or dismissed)
       [...dynamicLiveNotifications, ...dynamicCourseNotifications].forEach((item) => {
-        if (item && item.id && !isDismissed(item.id) && !map.has(item.id)) {
-          map.set(item.id, item);
+        if (item && item.id && !isDismissed(item.id)) {
+          const dedupeKey = item.id;
+          if (!map.has(dedupeKey)) {
+            map.set(dedupeKey, item);
+          }
         }
       });
 
@@ -404,15 +412,25 @@ export const notificationService = {
       ]);
 
       if (raw) {
-        const list = JSON.parse(raw).filter((n) => n.id !== id);
+        const list = JSON.parse(raw).filter(
+          (n) => n.id !== id && n.courseId !== id && `enroll_${n.courseId}` !== id && `cert_${n.courseId}` !== id
+        );
         await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(list));
       }
 
       const dismissedList = dismissedRaw ? JSON.parse(dismissedRaw) : [];
       if (!dismissedList.includes(id)) {
         dismissedList.push(id);
-        await AsyncStorage.setItem(DISMISSED_STORAGE_KEY, JSON.stringify(dismissedList));
       }
+      if (typeof id === 'string' && id.startsWith('enroll_')) {
+        const cId = id.replace('enroll_', '');
+        if (!dismissedList.includes(cId)) dismissedList.push(cId);
+      }
+      if (typeof id === 'string' && id.startsWith('cert_')) {
+        const cId = id.replace('cert_', '');
+        if (!dismissedList.includes(cId)) dismissedList.push(cId);
+      }
+      await AsyncStorage.setItem(DISMISSED_STORAGE_KEY, JSON.stringify(dismissedList));
     } catch (e) {
       console.error('Error in removeNotification:', e);
     }

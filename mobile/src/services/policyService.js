@@ -12,6 +12,28 @@ const DEFAULT_FALLBACK_POLICIES = {
 
   contactPhone: '+91 98765 43210',
   contactEmail: 'support@sdflms.org',
+  faqs: [
+    {
+      q: 'How do I join my live Zoom classes?',
+      a: 'Navigate to the Home screen under "Upcoming Live Classes" or go to "My Learning" -> tap your enrolled course -> select your active session under "Sessions" to join the live Zoom class.',
+    },
+    {
+      q: 'When do I receive my course certificate?',
+      a: 'Certificates are issued automatically once you finish all required video lessons, assignments, and quizzes with a passing grade.',
+    },
+    {
+      q: 'Can I watch recorded lectures offline?',
+      a: 'Yes, recorded classes and downloadable PDF materials are accessible 24/7 throughout your enrollment validity.',
+    },
+    {
+      q: 'What if I miss a live class session?',
+      a: "Don't worry! Instructors upload the session recording and class practice notes to 'View Materials' inside your course dashboard so you can practice anytime.",
+    },
+    {
+      q: 'How do I download my payment invoice / receipt?',
+      a: 'Visit Payment History from your Profile menu to view full transaction records and download an official PDF receipt for each course purchase.',
+    },
+  ],
 };
 
 export const policyService = {

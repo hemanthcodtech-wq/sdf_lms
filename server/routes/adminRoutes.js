@@ -570,6 +570,28 @@ const DEFAULT_POLICIES = {
 
   contactPhone: '+91 98765 43210',
   contactEmail: 'support@sdflms.org',
+  faqs: [
+    {
+      q: 'How do I join my live Zoom classes?',
+      a: 'Navigate to the Home screen under "Upcoming Live Classes" or go to "My Learning" -> tap your enrolled course -> select your active session under "Sessions" to join the live Zoom class.'
+    },
+    {
+      q: 'When do I receive my course certificate?',
+      a: 'Certificates are issued automatically once you finish all required video lessons, assignments, and quizzes with a passing grade.'
+    },
+    {
+      q: 'Can I watch recorded lectures offline?',
+      a: 'Yes, recorded classes and downloadable PDF materials are accessible 24/7 throughout your enrollment validity.'
+    },
+    {
+      q: 'What if I miss a live class session?',
+      a: "Don't worry! Instructors upload the session recording and notes to 'View Materials' inside your course dashboard so you can practice anytime."
+    },
+    {
+      q: 'How do I download my payment invoice / receipt?',
+      a: 'Visit Payment History from your Profile menu to view full transaction records and download an official receipt for each course purchase.'
+    }
+  ],
   updatedAt: new Date()
 };
 
@@ -588,6 +610,9 @@ router.get('/settings/policies', async (req, res) => {
         ...(setting.policies || {})
       };
       await setting.save();
+    } else if (!setting.policies.faqs || setting.policies.faqs.length === 0) {
+      setting.policies.faqs = DEFAULT_POLICIES.faqs;
+      await setting.save();
     }
     res.json({ success: true, data: setting.policies });
   } catch (error) {
@@ -598,10 +623,18 @@ router.get('/settings/policies', async (req, res) => {
 // Update Policies & Contact Information (Admin Only)
 router.put('/settings/policies', protect, admin, async (req, res) => {
   try {
-    const { termsAndConditions, privacyPolicy, refundPolicy, contactPhone, contactEmail } = req.body;
+    const { termsAndConditions, privacyPolicy, refundPolicy, contactPhone, contactEmail, faqs } = req.body;
     let setting = await SiteSetting.findOne({ key: 'platform_stats' });
     if (!setting) {
       setting = new SiteSetting({ key: 'platform_stats', policies: DEFAULT_POLICIES });
+    }
+
+    let sanitizedFaqs = setting.policies?.faqs || DEFAULT_POLICIES.faqs;
+    if (Array.isArray(faqs)) {
+      sanitizedFaqs = faqs.map((item) => ({
+        q: (item.q || item.question || '').trim(),
+        a: (item.a || item.answer || '').trim()
+      })).filter((item) => item.q || item.a);
     }
 
     setting.policies = {
@@ -610,13 +643,14 @@ router.put('/settings/policies', protect, admin, async (req, res) => {
       refundPolicy: refundPolicy !== undefined ? refundPolicy : (setting.policies?.refundPolicy || DEFAULT_POLICIES.refundPolicy),
       contactPhone: contactPhone || setting.policies?.contactPhone || DEFAULT_POLICIES.contactPhone,
       contactEmail: contactEmail || setting.policies?.contactEmail || DEFAULT_POLICIES.contactEmail,
+      faqs: sanitizedFaqs,
       updatedAt: new Date()
     };
 
     await setting.save();
     res.json({
       success: true,
-      message: 'Legal policies & contact details updated successfully!',
+      message: 'Legal policies, FAQs & contact details updated successfully!',
       data: setting.policies
     });
   } catch (error) {

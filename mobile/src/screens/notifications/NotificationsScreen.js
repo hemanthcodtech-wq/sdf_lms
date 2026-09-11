@@ -126,13 +126,14 @@ const SwipeableNotificationItem = ({ item, onDismiss, onAction }) => {
               <Text style={[styles.cardTitle, isUrgent && { color: '#dc2626' }]}>
                 {item.title}
               </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={styles.cardHeaderRight}>
                 {item.unread && <View style={styles.unreadDot} />}
                 <TouchableOpacity
+                  style={styles.closeBtn}
                   onPress={() => onDismiss(item.id)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="close" size={16} color={colors.textMuted} />
+                  <Ionicons name="close" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -384,6 +385,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
   },
   cardInner: {
     flexDirection: 'row',
@@ -407,17 +409,33 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
+    minWidth: 0,
   },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 6,
+    gap: 8,
   },
   cardTitle: {
-    fontSize: 15,
+    flex: 1,
+    fontSize: 14,
     fontWeight: '700',
     color: colors.textPrimary,
+    lineHeight: 20,
+  },
+  cardHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  closeBtn: {
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   unreadDot: {
     width: 8,

@@ -38,6 +38,12 @@ const siteSettingSchema = new mongoose.Schema({
     refundPolicy: { type: String, default: '' },
     contactPhone: { type: String, default: '+91 98765 43210' },
     contactEmail: { type: String, default: 'support@sdflms.org' },
+    faqs: [
+      {
+        q: { type: String, default: '' },
+        a: { type: String, default: '' }
+      }
+    ],
     updatedAt: { type: Date, default: Date.now }
   }
 }, { timestamps: true });

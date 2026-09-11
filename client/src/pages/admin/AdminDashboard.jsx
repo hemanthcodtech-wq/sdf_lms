@@ -4,7 +4,7 @@ import {
   FaUsers, FaBookOpen, FaGraduationCap, FaVideo, FaRupeeSign, 
   FaUserCircle, FaPlus, FaFolderOpen, FaArrowRight, FaCalendarCheck, 
   FaClock, FaSlidersH, FaCheckCircle, FaTimes, FaSave, FaGlobe, FaAward,
-  FaFileContract, FaPhoneAlt, FaEnvelope
+  FaFileContract, FaPhoneAlt, FaEnvelope, FaQuestionCircle, FaTrash, FaArrowUp, FaArrowDown
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -49,13 +49,14 @@ const AdminDashboard = () => {
 
   // Policy & Support Contact State
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
-  const [activePolicyTab, setActivePolicyTab] = useState('contact'); // 'contact' | 'terms' | 'privacy' | 'refund'
+  const [activePolicyTab, setActivePolicyTab] = useState('contact'); // 'contact' | 'terms' | 'privacy' | 'refund' | 'faqs'
   const [policyData, setPolicyData] = useState({
     termsAndConditions: '',
     privacyPolicy: '',
     refundPolicy: '',
     contactPhone: '+91 98765 43210',
-    contactEmail: 'support@sdflms.org'
+    contactEmail: 'support@sdflms.org',
+    faqs: []
   });
   const [savingPolicy, setSavingPolicy] = useState(false);
 
@@ -96,11 +97,48 @@ const AdminDashboard = () => {
     try {
       const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/settings/policies`);
       if (res.data.success && res.data.data) {
-        setPolicyData(res.data.data);
+        setPolicyData({
+          ...res.data.data,
+          faqs: Array.isArray(res.data.data.faqs) ? res.data.data.faqs : []
+        });
       }
     } catch (err) {
       console.error("Error fetching policies", err);
     }
+  };
+
+  const handleAddFaq = () => {
+    setPolicyData((prev) => ({
+      ...prev,
+      faqs: [...(prev.faqs || []), { q: '', a: '' }]
+    }));
+  };
+
+  const handleUpdateFaq = (index, field, value) => {
+    setPolicyData((prev) => {
+      const updated = [...(prev.faqs || [])];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, faqs: updated };
+    });
+  };
+
+  const handleDeleteFaq = (index) => {
+    setPolicyData((prev) => ({
+      ...prev,
+      faqs: (prev.faqs || []).filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const handleMoveFaq = (index, direction) => {
+    setPolicyData((prev) => {
+      const list = [...(prev.faqs || [])];
+      const targetIdx = index + direction;
+      if (targetIdx < 0 || targetIdx >= list.length) return prev;
+      const temp = list[index];
+      list[index] = list[targetIdx];
+      list[targetIdx] = temp;
+      return { ...prev, faqs: list };
+    });
   };
 
   const handleSavePolicies = async (e) => {
@@ -114,7 +152,7 @@ const AdminDashboard = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (res.data.success) {
-        showToast('Legal policies & support contact updated successfully across Mobile App & Website!');
+        showToast('Legal policies, FAQs & support contact updated successfully across Mobile App & Website!');
         setPolicyModalOpen(false);
       }
     } catch (err) {
@@ -236,12 +274,22 @@ const AdminDashboard = () => {
 
           {/* Edit Policies & Support Contact Button */}
           <button
-            onClick={() => setPolicyModalOpen(true)}
+            onClick={() => { setActivePolicyTab('contact'); setPolicyModalOpen(true); }}
             className="px-4 py-3 bg-emerald-500/10 hover:bg-brand-green hover:text-white text-emerald-800 border border-emerald-300 rounded-2xl text-xs lg:text-sm font-bold shadow-xs transition-all flex items-center gap-2"
             title="Edit Terms, Privacy Policy, Refund Policy and Support Contact"
           >
             <FaFileContract size={13} />
-            <span>Policies & Support Contact</span>
+            <span>Policies & Support</span>
+          </button>
+
+          {/* Edit FAQs Button */}
+          <button
+            onClick={() => { setActivePolicyTab('faqs'); setPolicyModalOpen(true); }}
+            className="px-4 py-3 bg-indigo-500/10 hover:bg-indigo-600 hover:text-white text-indigo-800 border border-indigo-300 rounded-2xl text-xs lg:text-sm font-bold shadow-xs transition-all flex items-center gap-2"
+            title="Edit Frequently Asked Questions (FAQs) for App & Website"
+          >
+            <FaQuestionCircle size={13} />
+            <span>Edit FAQs</span>
           </button>
 
           <button
@@ -702,6 +750,17 @@ const AdminDashboard = () => {
                 >
                   Refund Policy
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setActivePolicyTab('faqs')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                    activePolicyTab === 'faqs'
+                      ? 'bg-brand-green text-white shadow-xs'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <FaQuestionCircle size={11} /> FAQs (Help & Support)
+                </button>
               </div>
 
               <form onSubmit={handleSavePolicies} className="space-y-4 pt-4">
@@ -787,6 +846,119 @@ const AdminDashboard = () => {
                       className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-mono text-gray-800 outline-none focus:border-brand-green focus:bg-white leading-relaxed"
                       placeholder="Enter Refund & Cancellation Policy..."
                     />
+                  </div>
+                )}
+
+                {/* FAQs Tab */}
+                {activePolicyTab === 'faqs' && (
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-indigo-50/80 rounded-2xl border border-indigo-100">
+                      <div>
+                        <h4 className="text-xs font-extrabold text-indigo-950 flex items-center gap-1.5">
+                          <FaQuestionCircle className="text-indigo-600" /> Help & Support FAQs Management
+                        </h4>
+                        <p className="text-[11px] text-indigo-800/80 mt-0.5">
+                          These questions and answers are instantly synchronized across the Mobile App & Website Help & Support tab.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddFaq}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shrink-0 shadow-xs transition-all hover:scale-105"
+                      >
+                        <FaPlus size={11} /> Add New FAQ
+                      </button>
+                    </div>
+
+                    {(!policyData.faqs || policyData.faqs.length === 0) ? (
+                      <div className="text-center py-10 px-4 bg-gray-50/80 rounded-2xl border border-dashed border-gray-200">
+                        <FaQuestionCircle className="text-3xl text-gray-300 mx-auto mb-2" />
+                        <p className="text-xs font-bold text-gray-600">No FAQs configured yet</p>
+                        <p className="text-[11px] text-gray-400 mt-1">Click the button above to add your first question and answer.</p>
+                        <button
+                          type="button"
+                          onClick={handleAddFaq}
+                          className="mt-3 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:text-indigo-600 hover:border-indigo-400 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5"
+                        >
+                          <FaPlus size={10} /> Add First FAQ
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar">
+                        {policyData.faqs.map((faq, index) => (
+                          <div
+                            key={index}
+                            className="p-4 bg-gray-50/90 hover:bg-white rounded-2xl border border-gray-200/90 shadow-xs transition-all space-y-3"
+                          >
+                            {/* Card Header with numbering, reorder, delete */}
+                            <div className="flex items-center justify-between">
+                              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-indigo-700 bg-indigo-100/70 px-2.5 py-1 rounded-lg">
+                                FAQ #{index + 1}
+                              </span>
+
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  disabled={index === 0}
+                                  onClick={() => handleMoveFaq(index, -1)}
+                                  className="p-1.5 text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-400 rounded-lg hover:bg-gray-200/60 transition-colors"
+                                  title="Move Up"
+                                >
+                                  <FaArrowUp size={11} />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={index === policyData.faqs.length - 1}
+                                  onClick={() => handleMoveFaq(index, 1)}
+                                  className="p-1.5 text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-400 rounded-lg hover:bg-gray-200/60 transition-colors"
+                                  title="Move Down"
+                                >
+                                  <FaArrowDown size={11} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteFaq(index)}
+                                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-1"
+                                  title="Delete FAQ"
+                                >
+                                  <FaTrash size={12} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Question Field */}
+                            <div>
+                              <label className="text-[11px] font-bold text-gray-700 block mb-1">
+                                Question
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                value={faq.q || faq.question || ''}
+                                onChange={(e) => handleUpdateFaq(index, 'q', e.target.value)}
+                                placeholder="e.g. How do I join my live Zoom classes?"
+                                className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-900 outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green"
+                              />
+                            </div>
+
+                            {/* Answer Field */}
+                            <div>
+                              <label className="text-[11px] font-bold text-gray-700 block mb-1">
+                                Answer
+                              </label>
+                              <textarea
+                                rows={3}
+                                required
+                                value={faq.a || faq.answer || ''}
+                                onChange={(e) => handleUpdateFaq(index, 'a', e.target.value)}
+                                placeholder="e.g. Navigate to My Learning and tap your enrolled course..."
+                                className="w-full p-3 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green resize-none leading-relaxed"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

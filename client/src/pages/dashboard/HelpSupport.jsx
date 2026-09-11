@@ -1,8 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaArrowLeft, FaWhatsapp, FaEnvelope, FaPhoneAlt, FaChevronDown, FaPaperPlane, FaCheckCircle, FaQuestionCircle } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+
+const DEFAULT_FAQS = [
+  {
+    q: "How do I join my live daily Zoom classes?",
+    a: "Go to 'My Enrollments' in your dashboard or click 'Learning' from the bottom menu. Select your active course, and on each class day you will see an active 'Join Live Class' button with the Zoom link, Meeting ID, and Passcode."
+  },
+  {
+    q: "What if I miss a live class session?",
+    a: "Don't worry! After each class finishes, our instructors upload the session recording and class practice notes to 'View Materials' inside your course dashboard so you can practice anytime."
+  },
+  {
+    q: "How long is my course access valid after completion?",
+    a: "Course access validity varies by program (typically 1 to 2 months after completion or lifetime access as specified on the course enrollment page). You can practice all uploaded materials during this entire validity period."
+  },
+  {
+    q: "Will I receive a course completion certificate?",
+    a: "Yes! Upon successfully completing your 1-month live course attendance and practice, an official verified certificate from Swamy Dwija Foundation will be generated in your 'Certificates' tab."
+  },
+  {
+    q: "How do I download my payment invoice / receipt?",
+    a: "Visit 'Payment History' from your Profile menu. You can view full transaction records and download an official PDF receipt for each course purchase."
+  }
+];
 
 const HelpSupport = () => {
   const navigate = useNavigate();
@@ -11,28 +34,28 @@ const HelpSupport = () => {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const faqs = [
-    {
-      q: "How do I join my live daily Zoom classes?",
-      a: "Go to 'My Enrollments' in your dashboard or click 'Learning' from the bottom menu. Select your active course, and on each class day you will see an active 'Join Live Class' button with the Zoom link, Meeting ID, and Passcode."
-    },
-    {
-      q: "What if I miss a live class session?",
-      a: "Don't worry! After each class finishes, our instructors upload the session recording and class practice notes to 'View Materials' inside your course dashboard so you can practice anytime."
-    },
-    {
-      q: "How long is my course access valid after completion?",
-      a: "Course access validity varies by program (typically 1 to 2 months after completion or lifetime access as specified on the course enrollment page). You can practice all uploaded materials during this entire validity period."
-    },
-    {
-      q: "Will I receive a course completion certificate?",
-      a: "Yes! Upon successfully completing your 1-month live course attendance and practice, an official verified certificate from Swamy Dwija Foundation will be generated in your 'Certificates' tab."
-    },
-    {
-      q: "How do I download my payment invoice / receipt?",
-      a: "Visit 'Payment History' from your Profile menu. You can view full transaction records and download an official PDF receipt for each course purchase."
-    }
-  ];
+  const [faqs, setFaqs] = useState(DEFAULT_FAQS);
+  const [contactEmail, setContactEmail] = useState('support@swamydwija.org');
+  const [contactPhone, setContactPhone] = useState('+91 9640275275');
+
+  useEffect(() => {
+    const fetchPolicies = async () => {
+      try {
+        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+        const res = await axios.get(`${apiBase}/admin/settings/policies`);
+        if (res.data?.success && res.data?.data) {
+          if (Array.isArray(res.data.data.faqs) && res.data.data.faqs.length > 0) {
+            setFaqs(res.data.data.faqs);
+          }
+          if (res.data.data.contactEmail) setContactEmail(res.data.data.contactEmail);
+          if (res.data.data.contactPhone) setContactPhone(res.data.data.contactPhone);
+        }
+      } catch (err) {
+        console.error('Error fetching policies in HelpSupport:', err);
+      }
+    };
+    fetchPolicies();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -94,20 +117,20 @@ const HelpSupport = () => {
 
         {/* Email Support */}
         <a
-          href="mailto:support@swamydwija.org"
+          href={`mailto:${contactEmail}`}
           className="bg-brand-green/10 hover:bg-brand-green/20 border border-brand-green/30 p-6 rounded-3xl flex flex-col items-center text-center transition-all group shadow-sm"
         >
           <div className="w-14 h-14 bg-brand-green text-white rounded-2xl flex items-center justify-center text-2xl mb-3 shadow-md group-hover:scale-110 transition-transform">
             <FaEnvelope />
           </div>
           <h3 className="font-bold text-gray-900 text-base">Email Support</h3>
-          <p className="text-xs text-gray-500 mt-1">support@swamydwija.org</p>
+          <p className="text-xs text-gray-500 mt-1 truncate max-w-full">{contactEmail}</p>
           <span className="mt-3 text-xs font-bold text-brand-green bg-white px-3 py-1 rounded-full shadow-xs">Send Email &rarr;</span>
         </a>
 
         {/* Helpline Support */}
         <a
-          href="tel:+919640275275"
+          href={`tel:${contactPhone.replace(/[^0-9+]/g, '')}`}
           className="bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 p-6 rounded-3xl flex flex-col items-center text-center shadow-sm transition-all block"
         >
           <div className="w-14 h-14 bg-amber-500 text-white rounded-2xl flex items-center justify-center text-2xl mb-3 shadow-md mx-auto">
@@ -115,7 +138,7 @@ const HelpSupport = () => {
           </div>
           <h3 className="font-bold text-gray-900 text-base">Helpline Hours</h3>
           <p className="text-xs text-gray-500 mt-1">Mon - Sat: 6:00 AM - 8:00 PM</p>
-          <span className="mt-3 text-xs font-bold text-amber-700 bg-white px-3 py-1 rounded-full shadow-xs inline-block">+91 9640275275</span>
+          <span className="mt-3 text-xs font-bold text-amber-700 bg-white px-3 py-1 rounded-full shadow-xs inline-block">{contactPhone}</span>
         </a>
       </div>
 
@@ -138,7 +161,7 @@ const HelpSupport = () => {
                     onClick={() => setActiveFaq(isOpen ? null : index)}
                     className="w-full px-5 py-4 text-left font-bold text-gray-800 flex justify-between items-center gap-4 hover:bg-gray-50/70 transition-colors"
                   >
-                    <span className="text-sm md:text-base">{faq.q}</span>
+                    <span className="text-sm md:text-base">{faq.q || faq.question}</span>
                     <FaChevronDown className={`text-gray-400 text-xs transition-transform duration-300 ${isOpen ? 'rotate-180 text-brand-green' : ''}`} />
                   </button>
                   {isOpen && (
@@ -147,7 +170,7 @@ const HelpSupport = () => {
                       animate={{ opacity: 1, height: 'auto' }}
                       className="px-5 pb-5 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-3"
                     >
-                      {faq.a}
+                      {faq.a || faq.answer}
                     </motion.div>
                   )}
                 </div>
