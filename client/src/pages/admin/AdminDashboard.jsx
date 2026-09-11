@@ -178,6 +178,38 @@ const AdminDashboard = () => {
     );
   };
 
+  const isClassPast = (cls) => {
+    if (!cls || !cls.date) return false;
+    if (cls.status === 'completed') return true;
+
+    try {
+      let sessionStart = new Date(cls.date);
+      if (cls.time) {
+        const parts = cls.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+        if (parts) {
+          let hour = parseInt(parts[1], 10);
+          const min = parseInt(parts[2], 10);
+          const ampm = parts[3] ? parts[3].toUpperCase() : null;
+          if (ampm === 'PM' && hour < 12) hour += 12;
+          if (ampm === 'AM' && hour === 12) hour = 0;
+
+          const rawDate = typeof cls.date === 'string'
+            ? (cls.date.includes('T') ? cls.date.split('T')[0] : cls.date)
+            : new Date(cls.date).toISOString().split('T')[0];
+          const [y, m, d] = rawDate.split('-').map(Number);
+          if (y && m && d) {
+            sessionStart = new Date(y, m - 1, d, hour, min, 0, 0);
+          }
+        }
+      }
+      const duration = cls.durationMinutes || 60;
+      const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+      return new Date() > sessionEnd;
+    } catch (e) {
+      return false;
+    }
+  };
+
   const handleSavePublicStats = async (e) => {
     e.preventDefault();
     setSavingStats(true);
@@ -429,7 +461,14 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                   <div className="shrink-0">
-                    {isClassToday(cls.date) ? (
+                    {isClassPast(cls) ? (
+                      <span 
+                        className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-3 py-1.5 rounded-xl flex items-center gap-1.5"
+                        title="This session has already ended"
+                      >
+                        <FaCheckCircle size={11} className="text-emerald-600" /> Completed
+                      </span>
+                    ) : isClassToday(cls.date) ? (
                       cls.zoomLink ? (
                         <a 
                           href={cls.zoomLink} 
