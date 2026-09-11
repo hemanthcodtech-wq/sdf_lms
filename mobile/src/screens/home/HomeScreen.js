@@ -460,7 +460,19 @@ export const HomeScreen = ({ navigation }) => {
 
               return (
                 <View key={item._id || idx} style={[styles.liveClassCard, shadows.md]}>
-                  <View style={styles.liveClassTop}>
+                  <TouchableOpacity
+                    style={styles.liveClassTop}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const c = item.courseId || item.course || item;
+                      const cid = item.courseId?._id || item.course?._id || item.courseId || item.course;
+                      navigation.navigate('StudentClasses', {
+                        course: c,
+                        courseId: cid,
+                        selectedClass: item,
+                      });
+                    }}
+                  >
                     <View style={{ flex: 1 }}>
                       <Text style={styles.liveCourseTitle} numberOfLines={1}>
                         {item.courseId?.title || item.title || 'Live Class Session'}
@@ -473,7 +485,7 @@ export const HomeScreen = ({ navigation }) => {
                       text={canJoin ? t('liveNow') : t('scheduled')}
                       variant={canJoin ? 'success' : 'default'}
                     />
-                  </View>
+                  </TouchableOpacity>
 
                   <View style={styles.liveActionsRow}>
                     {canJoin ? (

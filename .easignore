@@ -6,6 +6,11 @@ node_modules/
 .expo/
 dist/
 dist-test/
+*.zip
+*.tar
+*.gz
+/*.png
+/*.jpg
 *.pem
 *.bundle
 *.log

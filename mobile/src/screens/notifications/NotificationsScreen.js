@@ -243,6 +243,8 @@ export const NotificationsScreen = ({ navigation }) => {
       }
     } else if (item.type === 'course_enrolled') {
       navigation.navigate('LearningTab');
+    } else if (item.type === 'certificate') {
+      navigation.navigate('LearningTab');
     }
   };
 

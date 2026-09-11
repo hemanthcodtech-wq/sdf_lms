@@ -107,36 +107,59 @@ const StudentClasses = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const endpoint = courseId 
-        ? `${import.meta.env.VITE_API_BASE_URL}/classes/course/${courseId}`
-        : `${import.meta.env.VITE_API_BASE_URL}/classes/student`;
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-      const res = await axios.get(endpoint, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      let fetchedClasses = res.data && res.data.success && Array.isArray(res.data.data) ? res.data.data : [];
-      if (courseId) {
-        fetchedClasses = fetchedClasses.filter(c => {
-          const cId = c.courseId?._id || c.courseId;
-          return String(cId) === String(courseId);
-        });
+      // Query both the course-specific endpoint and student classes endpoint in parallel
+      const [courseClassesRes, studentClassesRes] = await Promise.all([
+        courseId ? axios.get(`${apiBase}/classes/course/${courseId}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null) : null,
+        axios.get(`${apiBase}/classes/student`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null)
+      ]);
+
+      const candidateList = [];
+      if (courseClassesRes?.data?.data && Array.isArray(courseClassesRes.data.data)) {
+        candidateList.push(...courseClassesRes.data.data);
       }
+      if (studentClassesRes?.data?.data && Array.isArray(studentClassesRes.data.data)) {
+        candidateList.push(...studentClassesRes.data.data);
+      }
+
+      // Filter and deduplicate classes for this specific course
+      const classMap = new Map();
+      candidateList.forEach((c) => {
+        if (!c) return;
+        const cCourseId = String(c.courseId?._id || c.course?._id || c.courseId || c.course || '');
+        if (!courseId || cCourseId === String(courseId)) {
+          const key = c._id || `${c.title}_${c.date}_${c.time}`;
+          if (!classMap.has(key) || c.zoomLink) {
+            classMap.set(key, c);
+          }
+        }
+      });
+
+      let fetchedClasses = Array.from(classMap.values());
+      // Sort chronologically by session start time
+      fetchedClasses.sort((a, b) => {
+        const timeA = parseClassDateTime(a?.date, a?.time)?.getTime() || 0;
+        const timeB = parseClassDateTime(b?.date, b?.time)?.getTime() || 0;
+        return timeA - timeB;
+      });
+
       setAllClasses(fetchedClasses);
 
       // Fetch materials
-      const courseIds = courseId ? [courseId] : [...new Set(res.data.data.map(c => c.courseId?._id).filter(Boolean))];
+      const allClassList = [...candidateList];
+      const courseIds = courseId ? [courseId] : [...new Set(allClassList.map(c => c.courseId?._id || c.courseId).filter(Boolean))];
       
       let allMaterials = [];
       for (const cid of courseIds) {
         try {
-          const matRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/courses/${cid}/materials`, {
+          const matRes = await axios.get(`${apiBase}/courses/${cid}/materials`, {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           });
           if (matRes.data.data) {
             allMaterials = [...allMaterials, ...matRes.data.data.map(m => ({
               ...m, 
-              courseName: res.data.data.find(c => c.courseId?._id === cid)?.courseId?.title || 'Course'
+              courseName: allClassList.find(c => (c.courseId?._id || c.courseId) === cid)?.courseId?.title || 'Course'
             }))];
           }
         } catch(e) {
@@ -209,14 +232,23 @@ const StudentClasses = () => {
   };
 
   const getNextClassDate = () => {
-    const now = new Date();
+    const now = new Date(currentTick);
     const futureClasses = allClasses.filter(cls => {
-      const classTime = new Date(`${cls.date.split('T')[0]}T${cls.time}:00`);
-      return classTime > now;
-    }).sort((a, b) => new Date(`${a.date.split('T')[0]}T${a.time}:00`) - new Date(`${b.date.split('T')[0]}T${b.time}:00`));
+      const sessionStart = parseClassDateTime(cls.date, cls.time);
+      if (!sessionStart) return false;
+      const duration = cls.durationMinutes || 60;
+      const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+      return sessionEnd >= now;
+    }).sort((a, b) => {
+      const aTime = parseClassDateTime(a?.date, a?.time)?.getTime() || 0;
+      const bTime = parseClassDateTime(b?.date, b?.time)?.getTime() || 0;
+      return aTime - bTime;
+    });
     
     if (futureClasses.length > 0) {
-      return new Date(futureClasses[0].date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const nextCls = futureClasses[0];
+      const parsedDate = parseClassDateTime(nextCls.date, nextCls.time) || new Date(nextCls.date);
+      return `${parsedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} • ${nextCls.time || ''}`;
     }
     return 'None Scheduled';
   };
@@ -438,7 +470,7 @@ const StudentClasses = () => {
                             
                             <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto">
                               <span className="text-[12px] text-gray-500 font-semibold">
-                                {new Date(cls.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} • {cls.time}
+                                {(parseClassDateTime(cls.date, cls.time) || new Date(cls.date)).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} • {cls.time}
                               </span>
                               
                               {/* Dynamic Action Buttons based on Status */}

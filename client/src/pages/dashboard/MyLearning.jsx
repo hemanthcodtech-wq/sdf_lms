@@ -61,117 +61,123 @@ const MyLearning = () => {
         return;
       }
 
-      // 1. Fetch enrolled courses
-      try {
-        const coursesRes = await axios.get(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/payments/history`,
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
-        if (coursesRes.data && coursesRes.data.success && Array.isArray(coursesRes.data.data)) {
-          const fetchedCourses = coursesRes.data.data
-            .filter(enrollment => enrollment && (enrollment.course || enrollment.courseId))
-            .map(enrollment => {
-              const courseObj = typeof enrollment.course === 'object' ? enrollment.course : {};
-              
-              // Dynamic progress calculation matching session dates
-              const dates = courseObj.sessionDates || [];
-              const classes = courseObj.classes || courseObj.sessions || [];
-              const totalCount = dates.length > 0 ? dates.length : classes.length;
-              let calcProgress = 0;
-              let allFinished = false;
+      // Fetch enrolled courses and live classes in parallel
+      const [coursesRes, classesRes] = await Promise.all([
+        axios.get(`${apiBase}/payments/history`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch((err) => {
+          console.error('Error fetching enrolled courses:', err);
+          return { data: { success: false, data: [] } };
+        }),
+        axios.get(`${apiBase}/classes/student`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch((err) => {
+          console.warn('Optional classes fetch error:', err);
+          return { data: { success: false, data: [] } };
+        })
+      ]);
 
-              if (totalCount > 0) {
-                const now = new Date();
-                let completedCount = 0;
-                for (let idx = 0; idx < totalCount; idx++) {
-                  const rawDate = dates[idx] || (classes[idx] && classes[idx].date) || courseObj.startDate;
-                  if (rawDate) {
-                    try {
-                      const dateStr = String(rawDate).includes('T') ? String(rawDate).split('T')[0] : String(rawDate);
-                      const [y, m, d] = dateStr.split('-').map(Number);
-                      if (y && m && d) {
-                        let startH = 6, startM = 0;
-                        const timeStr = (classes[idx] && classes[idx].time) || courseObj.startTime || (courseObj.timings ? courseObj.timings.split(' to ')[0] : '06:00');
-                        if (timeStr) {
-                          const match = timeStr.trim().match(/(\d{1,2}):(\d{2})/);
-                          if (match) {
-                            startH = parseInt(match[1], 10);
-                            startM = parseInt(match[2], 10);
-                            if (timeStr.toLowerCase().includes('pm') && startH < 12) startH += 12;
-                            if (timeStr.toLowerCase().includes('am') && startH === 12) startH = 0;
-                          }
-                        }
-                        const sessionStart = new Date(y, m - 1, d, startH, startM, 0, 0);
-                        const durMins = (classes[idx] && classes[idx].durationMinutes) || 60;
-                        const sessionEnd = new Date(sessionStart.getTime() + durMins * 60 * 1000);
-                        if (now > sessionEnd) {
-                          completedCount++;
-                        }
-                      }
-                    } catch (e) {}
-                  }
-                }
-                allFinished = completedCount === totalCount && totalCount > 0;
-                calcProgress = allFinished ? 100 : Math.round((completedCount / totalCount) * 100);
-              } else if (typeof enrollment.progress === 'number' && enrollment.progress > 0) {
-                calcProgress = enrollment.progress;
-                allFinished = enrollment.completed || enrollment.progress >= 100;
-              }
+      const rawClasses = classesRes?.data?.success && Array.isArray(classesRes.data.data) ? classesRes.data.data : [];
 
-              return {
-                id: enrollment._id,
-                courseId: courseObj._id || enrollment.course,
-                title: courseObj.title || 'Enrolled Course',
-                category: courseObj.category || 'Vedic Sciences',
-                image: courseObj.thumbnailUrl || courseObj.thumbnail || courseObj.image || '',
-                whatsappGroupLink: courseObj.whatsappGroupLink || '',
-                progress: calcProgress,
-                completed: allFinished && Boolean(enrollment.certificateId),
-                accessValidity: enrollment.accessValidity || courseObj.accessValidity || '2 Months',
-                accessExpiryDate: enrollment.accessExpiryDate,
-                isExpired: Boolean(enrollment.isExpired),
-                validityLabel: enrollment.validityLabel || (courseObj.accessValidity ? `${courseObj.accessValidity} Access` : '2 Months Access')
-              };
-            });
-          setCourses(fetchedCourses);
+      // Update upcoming class banner with latest scheduled/rescheduled classes
+      if (rawClasses.length > 0) {
+        const now = new Date();
+        const futureClasses = rawClasses.filter(cls => {
+          if (!cls || !cls.date) return false;
+          const sessionStart = parseClassDateTime(cls.date, cls.time);
+          if (!sessionStart) return false;
+          const duration = cls.durationMinutes || 60;
+          const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+          return sessionEnd >= now;
+        }).sort((a, b) => {
+          const aTime = parseClassDateTime(a?.date, a?.time)?.getTime() || 0;
+          const bTime = parseClassDateTime(b?.date, b?.time)?.getTime() || 0;
+          return aTime - bTime;
+        });
+
+        if (futureClasses.length > 0) {
+          setUpcomingClass(futureClasses[0]);
         }
-      } catch (cErr) {
-        console.error('Error fetching enrolled courses:', cErr);
       }
 
-      // 2. Fetch all classes safely
-      try {
-        const classesRes = await axios.get(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/classes/student`,
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
+      if (coursesRes?.data?.success && Array.isArray(coursesRes.data.data)) {
+        const fetchedCourses = coursesRes.data.data
+          .filter(enrollment => enrollment && (enrollment.course || enrollment.courseId))
+          .map(enrollment => {
+            const courseObj = typeof enrollment.course === 'object' ? enrollment.course : {};
+            const courseTargetId = String(courseObj._id || enrollment.course || enrollment.courseId || '');
 
-        if (classesRes.data && classesRes.data.success && Array.isArray(classesRes.data.data)) {
-          const now = new Date();
-          const futureClasses = classesRes.data.data.filter(cls => {
-            if (!cls || !cls.date) return false;
-            const sessionStart = parseClassDateTime(cls.date, cls.time);
-            if (!sessionStart) return false;
-            const duration = cls.durationMinutes || 60;
-            const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
-            return sessionEnd >= now;
-          }).sort((a, b) => {
-            const aTime = parseClassDateTime(a?.date, a?.time)?.getTime() || 0;
-            const bTime = parseClassDateTime(b?.date, b?.time)?.getTime() || 0;
-            return aTime - bTime;
+            // Find live classes for this course (including rescheduled sessions)
+            const matchedLiveClasses = rawClasses.filter(c => {
+              const cId = String(c.courseId?._id || c.course?._id || c.courseId || c.course || '');
+              const cTitle = String(c.courseId?.title || c.course?.title || '').trim().toLowerCase();
+              const courseTitle = String(courseObj.title || '').trim().toLowerCase();
+              return (courseTargetId && cId === courseTargetId) || (courseTitle && cTitle === courseTitle);
+            });
+
+            // Dynamic progress calculation matching session dates and rescheduled classes
+            const dates = courseObj.sessionDates || [];
+            const classes = matchedLiveClasses.length > 0 ? matchedLiveClasses : (courseObj.classes || courseObj.sessions || []);
+            const totalCount = classes.length > 0 ? classes.length : dates.length;
+            let calcProgress = 0;
+            let allFinished = false;
+
+            if (totalCount > 0) {
+              const now = new Date();
+              let completedCount = 0;
+              for (let idx = 0; idx < totalCount; idx++) {
+                const rawDate = (classes[idx] && classes[idx].date) || dates[idx] || courseObj.startDate;
+                if (rawDate) {
+                  try {
+                    const dateStr = String(rawDate).includes('T') ? String(rawDate).split('T')[0] : String(rawDate);
+                    const [y, m, d] = dateStr.split('-').map(Number);
+                    if (y && m && d) {
+                      let startH = 6, startM = 0;
+                      const timeStr = (classes[idx] && classes[idx].time) || courseObj.startTime || (courseObj.timings ? courseObj.timings.split(' to ')[0] : '06:00');
+                      if (timeStr) {
+                        const match = timeStr.trim().match(/(\d{1,2}):(\d{2})/);
+                        if (match) {
+                          startH = parseInt(match[1], 10);
+                          startM = parseInt(match[2], 10);
+                          if (timeStr.toLowerCase().includes('pm') && startH < 12) startH += 12;
+                          if (timeStr.toLowerCase().includes('am') && startH === 12) startH = 0;
+                        }
+                      }
+                      const sessionStart = new Date(y, m - 1, d, startH, startM, 0, 0);
+                      const durMins = (classes[idx] && classes[idx].durationMinutes) || 60;
+                      const sessionEnd = new Date(sessionStart.getTime() + durMins * 60 * 1000);
+                      if (now > sessionEnd) {
+                        completedCount++;
+                      }
+                    }
+                  } catch (e) {}
+                }
+              }
+              allFinished = completedCount === totalCount && totalCount > 0;
+              calcProgress = allFinished ? 100 : Math.round((completedCount / totalCount) * 100);
+            } else if (typeof enrollment.progress === 'number' && enrollment.progress > 0) {
+              calcProgress = enrollment.progress;
+              allFinished = enrollment.completed || enrollment.progress >= 100;
+            }
+
+            return {
+              id: enrollment._id,
+              courseId: courseTargetId,
+              title: courseObj.title || 'Enrolled Course',
+              category: courseObj.category || 'Vedic Sciences',
+              image: courseObj.thumbnailUrl || courseObj.thumbnail || courseObj.image || '',
+              whatsappGroupLink: courseObj.whatsappGroupLink || '',
+              progress: calcProgress,
+              completed: allFinished && Boolean(enrollment.certificateId),
+              accessValidity: enrollment.accessValidity || courseObj.accessValidity || '2 Months',
+              accessExpiryDate: enrollment.accessExpiryDate,
+              isExpired: Boolean(enrollment.isExpired),
+              validityLabel: enrollment.validityLabel || (courseObj.accessValidity ? `${courseObj.accessValidity} Access` : '2 Months Access')
+            };
           });
-
-          if (futureClasses.length > 0) {
-            setUpcomingClass(futureClasses[0]);
-          }
-        }
-      } catch (clsErr) {
-        console.warn('Optional classes fetch error:', clsErr);
+        setCourses(fetchedCourses);
       }
 
     } catch (err) {

@@ -63,9 +63,24 @@ export const notificationService = {
 
   /**
    * Send external system notification immediately to Android status bar / tray
+   * Also saves to in-app notification center if saveInApp is true
    */
-  sendInstantNotification: async (title, body, data = {}) => {
+  sendInstantNotification: async (title, body, data = {}, saveInApp = true) => {
     try {
+      if (saveInApp) {
+        await notificationService.addNotification(
+          {
+            id: data.id || `notif_${Date.now()}`,
+            type: data.type || 'course_enrolled',
+            title: title || '🔔 Swamy Dwija Foundation',
+            message: body || '',
+            time: data.time || 'Just now',
+            ...data,
+          },
+          false
+        );
+      }
+
       const Notifications = require('expo-notifications');
       if (Notifications?.scheduleNotificationAsync) {
         if (Platform.OS === 'android') {
@@ -302,12 +317,70 @@ export const notificationService = {
         });
       }
 
-      // myCourses is not looped for synthetic notifications: genuine certificate and enrollment
-      // events are saved once via addNotification() and permanently removed when cleared.
+      // Check enrolled courses for in-app course notifications
+      const dynamicCourseNotifications = [];
+      if (Array.isArray(myCourses)) {
+        myCourses.forEach((item) => {
+          if (!item) return;
+          const courseObj = (item && typeof item.course === 'object' && item.course !== null)
+            ? item.course
+            : null;
+          const courseId = courseObj?._id || item.course || item._id;
+          if (!courseId) return;
+
+          const courseTitle = courseObj?.title || item.courseTitle || 'Course';
+          const notifId = `enroll_${courseId}`;
+
+          if (!isDismissed(notifId) && !isDismissed(courseId)) {
+            const enrollDate = item.createdAt ? new Date(item.createdAt) : null;
+            if (!enrollDate || enrollDate.getTime() > lastClearedTime) {
+              dynamicCourseNotifications.push({
+                id: notifId,
+                type: 'course_enrolled',
+                title: '🎉 Course Enrollment Confirmed!',
+                message: `You are enrolled in "${courseTitle}". Live classes and syllabus are active!`,
+                time: enrollDate ? enrollDate.toLocaleDateString() : 'Active',
+                courseId: courseId,
+                course: courseObj || item,
+                unread: false,
+                createdAt: item.createdAt || new Date().toISOString(),
+              });
+            }
+          }
+
+          if (item.completed || item.certificateId) {
+            const certNotifId = `cert_${courseId}`;
+            if (!isDismissed(certNotifId)) {
+              dynamicCourseNotifications.push({
+                id: certNotifId,
+                type: 'certificate',
+                title: '🏆 Certificate of Completion Issued!',
+                message: `Congratulations! Your certificate for "${courseTitle}" is ready. Tap to view.`,
+                time: 'Ready',
+                courseId: courseId,
+                course: courseObj || item,
+                unread: false,
+                createdAt: item.updatedAt || item.createdAt || new Date().toISOString(),
+              });
+            }
+          }
+        });
+      }
 
       // Merge and deduplicate
       const map = new Map();
-      [...dynamicLiveNotifications, ...list].forEach((item) => {
+      // First, add stored notifications (which may be unread / newly created)
+      list.forEach((item) => {
+        if (item && item.id && !isDismissed(item.id) && !map.has(item.id)) {
+          map.set(item.id, item);
+          if (item.courseId) {
+            map.set(`enroll_${item.courseId}`, item);
+          }
+        }
+      });
+
+      // Then merge dynamic live and dynamic course notifications (if not already present or dismissed)
+      [...dynamicLiveNotifications, ...dynamicCourseNotifications].forEach((item) => {
         if (item && item.id && !isDismissed(item.id) && !map.has(item.id)) {
           map.set(item.id, item);
         }
@@ -376,23 +449,28 @@ export const notificationService = {
   },
 
   /**
-   * Add a new custom notification
+   * Add a new custom notification (saves in-app and triggers external push alert)
    */
-  addNotification: async (notification) => {
+  addNotification: async (notification, triggerExternal = true) => {
     try {
       const raw = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
       const list = raw ? JSON.parse(raw) : [];
       const item = {
-        id: 'notif_' + Date.now(),
+        id: notification.id || ('notif_' + Date.now()),
         unread: true,
         createdAt: new Date().toISOString(),
+        time: 'Just now',
         ...notification,
       };
-      list.unshift(item);
-      await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(list));
+
+      const filtered = list.filter((n) => n.id !== item.id);
+      filtered.unshift(item);
+      await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(filtered));
 
       // Trigger external OS notification
-      notificationService.sendInstantNotification(item.title, item.message, item);
+      if (triggerExternal) {
+        await notificationService.sendInstantNotification(item.title, item.message, item, false);
+      }
       return item;
     } catch (e) {
       console.error('Error adding notification:', e);

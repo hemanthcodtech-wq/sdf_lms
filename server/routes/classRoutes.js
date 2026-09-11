@@ -57,14 +57,16 @@ const ensureCourseSessions = async (courseId) => {
 // GET classes for a logged-in student based on their enrollments
 router.get('/student', protect, async (req, res) => {
   try {
-    const studentIdentifiers = [req.user.emailOrPhone];
-    if (req.user.email) studentIdentifiers.push(req.user.email);
-    if (req.user.phone) studentIdentifiers.push(req.user.phone);
-    
+    const studentIdentifiers = [req.user.emailOrPhone, req.user.email, req.user.phone].filter(Boolean);
+    const enrollmentFilter = {
+      $or: [
+        { studentEmail: { $in: studentIdentifiers } },
+        ...(req.user._id ? [{ user: req.user._id }, { userId: req.user._id }] : [])
+      ]
+    };
+
     // Find all courses the student is enrolled in
-    const enrollments = await Enrollment.find({
-      studentEmail: { $in: studentIdentifiers.filter(Boolean) },
-    }).populate('course');
+    const enrollments = await Enrollment.find(enrollmentFilter).populate('course');
 
     const enrolledCourseIds = enrollments.map((e) => e.course?._id || e.course).filter(Boolean);
 
@@ -111,10 +113,15 @@ router.get('/course/:courseId', protect, async (req, res) => {
     await ensureCourseSessions(courseId);
 
     const studentIdentifiers = [req.user.emailOrPhone, req.user.email, req.user.phone].filter(Boolean);
-    const enrollment = await Enrollment.findOne({
+    const enrollmentFilter = {
       course: courseId,
-      studentEmail: { $in: studentIdentifiers }
-    }).populate('course');
+      $or: [
+        { studentEmail: { $in: studentIdentifiers } },
+        ...(req.user._id ? [{ user: req.user._id }, { userId: req.user._id }] : [])
+      ]
+    };
+
+    const enrollment = await Enrollment.findOne(enrollmentFilter).populate('course');
 
     const classes = await Class.find({ courseId })
       .populate('courseId', 'title category level thumbnailUrl whatsappGroupLink instructor timings zoomMeetingLink accessValidity startDate endDate duration sessionDates')

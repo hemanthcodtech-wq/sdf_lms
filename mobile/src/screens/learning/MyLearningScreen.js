@@ -238,9 +238,22 @@ export const MyLearningScreen = ({ navigation }) => {
             />
           }
           renderItem={({ item }) => {
+            const courseData = (item && typeof item.course === 'object' && item.course !== null) ? item.course : {};
+            const targetCourseId = courseData._id || (typeof item.course === 'string' ? item.course : null) || item.courseId || item._id;
             const courseObj = (item && typeof item.course === 'object' && item.course !== null)
-              ? { ...item, ...item.course, title: item.course.title || item.title, thumbnailUrl: item.course.thumbnailUrl || item.course.thumbnail || item.thumbnailUrl }
-              : item;
+              ? {
+                  ...item,
+                  ...item.course,
+                  _id: targetCourseId,
+                  courseId: targetCourseId,
+                  title: item.course.title || item.title,
+                  thumbnailUrl: item.course.thumbnailUrl || item.course.thumbnail || item.thumbnailUrl
+                }
+              : {
+                  ...item,
+                  _id: targetCourseId,
+                  courseId: targetCourseId
+                };
             const progressVal = getEnrollmentProgress(item);
             const isExpired = Boolean(item.isExpired);
             const validityLabel = item.validityLabel || (courseObj.accessValidity ? `${courseObj.accessValidity} Access` : '2 Months Access');
@@ -263,6 +276,7 @@ export const MyLearningScreen = ({ navigation }) => {
                     navigation.navigate('StudentClasses', {
                       course: courseObj,
                       enrollment: item,
+                      courseId: targetCourseId,
                     })
                   }
                 />

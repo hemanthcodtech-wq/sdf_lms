@@ -134,6 +134,13 @@ export const CheckoutScreen = ({ route, navigation }) => {
         });
 
         if (verifyRes.success) {
+          await notificationService.addNotification({
+            type: 'course_enrolled',
+            title: '🎉 Course Enrollment Confirmed!',
+            message: `You are now enrolled in "${course.title}". Your live classes and syllabus are active!`,
+            courseId: course._id,
+            time: 'Just now',
+          });
           Alert.alert(
             'Enrollment Successful! 🎉',
             `You have been enrolled into ${course.title}.`,
@@ -191,10 +198,13 @@ export const CheckoutScreen = ({ route, navigation }) => {
                 });
 
                 if (verifyRes.success) {
-                  await notificationService.sendInstantNotification(
-                    '🎉 Course Enrollment Confirmed!',
-                    `You are now enrolled in "${course.title}". Your live classes and syllabus are active!`
-                  );
+                  await notificationService.addNotification({
+                    type: 'course_enrolled',
+                    title: '🎉 Course Enrollment Confirmed!',
+                    message: `You are now enrolled in "${course.title}". Your live classes and syllabus are active!`,
+                    courseId: course._id,
+                    time: 'Just now',
+                  });
                   if (typeof window !== 'undefined') {
                     window.alert(`🎉 Payment Successful!\n\nYou are now enrolled into ${course.title}.`);
                   }
@@ -427,10 +437,13 @@ export const CheckoutScreen = ({ route, navigation }) => {
         });
 
         if (verifyRes.success) {
-          await notificationService.sendInstantNotification(
-            '🎉 Course Enrollment Confirmed!',
-            `You are now enrolled in "${course.title}". Your live classes and syllabus are active!`
-          );
+          await notificationService.addNotification({
+            type: 'course_enrolled',
+            title: '🎉 Course Enrollment Confirmed!',
+            message: `You are now enrolled in "${course.title}". Your live classes and syllabus are active!`,
+            courseId: course._id,
+            time: 'Just now',
+          });
           Alert.alert(
             'Payment Successful! 🎉',
             `Congratulations! You have been enrolled into ${course.title}.`,

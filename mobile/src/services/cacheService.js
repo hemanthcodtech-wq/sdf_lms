@@ -104,6 +104,25 @@ export const cacheService = {
   setStudentClasses: async (classes) => {
     if (!Array.isArray(classes)) return;
     memoryCache.studentClasses = classes;
+
+    // Index classes by courseId so course classrooms get instant sync
+    classes.forEach((cl) => {
+      const cId = (cl.courseId?._id || cl.course?._id || cl.courseId || cl.course || '').toString();
+      if (cId) {
+        if (!memoryCache.courseClasses[cId]) {
+          memoryCache.courseClasses[cId] = [];
+        }
+        const existingIdx = memoryCache.courseClasses[cId].findIndex(
+          (x) => (x._id || x.id) === (cl._id || cl.id)
+        );
+        if (existingIdx >= 0) {
+          memoryCache.courseClasses[cId][existingIdx] = cl;
+        } else {
+          memoryCache.courseClasses[cId].push(cl);
+        }
+      }
+    });
+
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.STUDENT_CLASSES, JSON.stringify(classes));
     } catch (e) {}

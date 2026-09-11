@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,11 @@ import {
   Image,
   Platform,
   ActivityIndicator,
+  RefreshControl,
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -29,19 +31,88 @@ import { cacheService } from '../../services/cacheService';
 
 export const StudentClassesScreen = ({ route, navigation }) => {
   const course = route?.params?.course || {};
-  const courseId = course?._id || course?.id;
+  const enrollment = route?.params?.enrollment || {};
+  const selectedClass = route?.params?.selectedClass;
+
+  // Resolve courseId comprehensively from any input source
+  const courseId =
+    route?.params?.courseId ||
+    (course?.course && typeof course.course === 'object' ? course.course._id : null) ||
+    (enrollment?.course && typeof enrollment.course === 'object' ? enrollment.course._id : null) ||
+    course?.courseId?._id ||
+    course?.courseId ||
+    course?._id ||
+    (typeof course?.course === 'string' ? course.course : null) ||
+    (typeof enrollment?.course === 'string' ? enrollment.course : null) ||
+    course?.id;
+
+  const courseTitle = (
+    course?.title ||
+    course?.course?.title ||
+    enrollment?.course?.title ||
+    selectedClass?.courseId?.title ||
+    selectedClass?.course?.title ||
+    ''
+  ).trim();
+
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 600;
   const horizontalSafe = Math.max(insets.left, insets.right, isTablet ? 24 : 16);
   const bottomSafe = Math.max(insets.bottom, Platform.OS === 'android' ? 24 : 16);
 
-  const cachedClasses = courseId ? cacheService.getCourseClasses(courseId) : [];
+  // Helper to determine if a class belongs to this course
+  const isClassForThisCourse = useCallback(
+    (cl) => {
+      if (!cl) return false;
+      const targetId = String(courseId || '').trim();
+      const targetTitle = courseTitle.toLowerCase();
+
+      const cId = String(cl.courseId?._id || cl.course?._id || cl.courseId?.id || cl.courseId || cl.course || '').trim();
+      const cTitle = String(cl.courseId?.title || cl.course?.title || '').trim().toLowerCase();
+      const classTitle = String(cl.title || '').trim().toLowerCase();
+
+      if (targetId && cId && (cId === targetId || String(cl.courseId) === targetId)) {
+        return true;
+      }
+      if (targetTitle && cTitle && (cTitle === targetTitle || cTitle.includes(targetTitle) || targetTitle.includes(cTitle))) {
+        return true;
+      }
+      if (targetTitle && classTitle && (classTitle.includes(targetTitle) || targetTitle.includes(classTitle))) {
+        return true;
+      }
+      if (selectedClass && (cl._id || cl.id) === (selectedClass._id || selectedClass.id)) {
+        return true;
+      }
+      return false;
+    },
+    [courseId, courseTitle, selectedClass]
+  );
+
+  // Synchronous 0ms cached classes resolver (merges course-specific cache and student classes cache)
+  const getInitialClasses = () => {
+    if (courseId) {
+      const cached = cacheService.getCourseClasses(courseId);
+      if (Array.isArray(cached) && cached.length > 0) return cached;
+    }
+    const allStudentClasses = cacheService.getStudentClasses();
+    if (Array.isArray(allStudentClasses) && allStudentClasses.length > 0) {
+      const matching = allStudentClasses.filter(isClassForThisCourse);
+      if (matching.length > 0) return matching;
+    }
+    if (selectedClass && isClassForThisCourse(selectedClass)) {
+      return [selectedClass];
+    }
+    return [];
+  };
+
+  const initialClasses = getInitialClasses();
   const cachedMaterials = courseId ? cacheService.getCourseMaterials(courseId) : [];
   const hasPredefinedContent = (course?.topics && course.topics.length > 0) || (course?.sessionDates && course.sessionDates.length > 0);
 
-  const [classes, setClasses] = useState(cachedClasses);
-  const [loading, setLoading] = useState(cachedClasses.length === 0 && !hasPredefinedContent);
+  const [classes, setClasses] = useState(initialClasses);
+  const [loading, setLoading] = useState(initialClasses.length === 0 && !hasPredefinedContent);
+  const [refreshing, setRefreshing] = useState(false);
   const [downloadingMaterial, setDownloadingMaterial] = useState(false);
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('lessons'); // 'lessons', 'materials', 'community'
@@ -57,41 +128,102 @@ export const StudentClassesScreen = ({ route, navigation }) => {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    fetchCourseClasses();
-  }, [courseId]);
-
-  const fetchCourseClasses = async () => {
+  const fetchCourseClasses = useCallback(async (isSilent = false) => {
     try {
-      if (classes.length === 0 && !hasPredefinedContent) {
+      if (!isSilent && classes.length === 0 && !hasPredefinedContent) {
         setLoading(true);
       }
-      
-      const [classesRes, materialsRes] = await Promise.all([
+
+      // Query both course-specific endpoint AND student classes endpoint in parallel
+      const [courseClassesRes, studentClassesRes, materialsRes] = await Promise.all([
+        courseId ? courseService.getCourseClasses(courseId).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         courseService.getStudentClasses().catch(() => ({ data: [] })),
-        courseId ? courseService.getCourseMaterials(courseId).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+        courseId ? courseService.getCourseMaterials(courseId).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
       ]);
 
-      if (classesRes?.data && classesRes.data.length > 0) {
-        const matchingClasses = classesRes.data.filter(
-          (c) => (c.courseId?._id || c.courseId?.id || c.courseId) === courseId
-        );
+      const candidateList = [];
+      if (courseClassesRes?.data && Array.isArray(courseClassesRes.data)) {
+        candidateList.push(...courseClassesRes.data);
+      }
+      if (studentClassesRes?.data && Array.isArray(studentClassesRes.data)) {
+        candidateList.push(...studentClassesRes.data);
+      }
+      if (selectedClass) {
+        candidateList.push(selectedClass);
+      }
+
+      // Deduplicate classes and ensure latest update is retained
+      const classMap = new Map();
+      candidateList.forEach((cl) => {
+        if (cl && isClassForThisCourse(cl)) {
+          const key = cl._id || cl.id || `${cl.title}_${cl.date}_${cl.time}`;
+          if (!classMap.has(key) || (!classMap.get(key).zoomLink && cl.zoomLink)) {
+            classMap.set(key, cl);
+          }
+        }
+      });
+
+      const matchingClasses = Array.from(classMap.values());
+
+      if (matchingClasses.length > 0) {
         setClasses(matchingClasses);
         if (courseId) cacheService.setCourseClasses(courseId, matchingClasses);
-      } else {
+      } else if (!hasPredefinedContent) {
         setClasses([]);
       }
 
       if (materialsRes?.data && Array.isArray(materialsRes.data)) {
         setMaterials(materialsRes.data);
         if (courseId) cacheService.setCourseMaterials(courseId, materialsRes.data);
-      } else {
-        setMaterials([]);
       }
     } catch (err) {
       console.error('Error fetching classes and materials:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
+    }
+  }, [courseId, courseTitle, isClassForThisCourse, selectedClass, classes.length, hasPredefinedContent]);
+
+  useEffect(() => {
+    fetchCourseClasses();
+  }, [courseId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchCourseClasses(true);
+    }, [fetchCourseClasses])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchCourseClasses(true);
+  };
+
+  // Helper to get Date object from lesson for accurate sorting
+  const getSessionDateObj = (lesson) => {
+    if (!lesson) return new Date(0);
+    const dateStr = lesson.date || lesson.startDate;
+    const timeStr = lesson.time || course?.startTime || (course?.timings ? course.timings.split(' to ')[0] : '06:00');
+    if (!dateStr) return new Date(0);
+    try {
+      const safeDateStr = dateStr instanceof Date ? dateStr.toISOString().split('T')[0] : String(dateStr);
+      const rawDate = safeDateStr.includes('T') ? safeDateStr.split('T')[0] : safeDateStr;
+      const [y, m, d] = rawDate.split('-').map(Number);
+      if (!y || !m || !d) return new Date(0);
+      let startH = 6, startM = 0;
+      if (timeStr && typeof timeStr === 'string') {
+        const cleanTime = timeStr.trim();
+        const match = cleanTime.match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+          startH = parseInt(match[1], 10);
+          startM = parseInt(match[2], 10);
+          if (cleanTime.toLowerCase().includes('pm') && startH < 12) startH += 12;
+          if (cleanTime.toLowerCase().includes('am') && startH === 12) startH = 0;
+        }
+      }
+      return new Date(y, m - 1, d, startH, startM, 0, 0);
+    } catch (e) {
+      return new Date(0);
     }
   };
 
@@ -103,17 +235,21 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         id: cl._id || `class_${i}`,
         title: cl.title || `Session ${i + 1}`,
         duration: cl.durationMinutes ? `${cl.durationMinutes} mins` : (cl.time || 'Live Batch'),
+        durationMinutes: cl.durationMinutes || 60,
         zoomLink: cl.zoomLink || course?.zoomMeetingLink,
         date: cl.date,
         time: cl.time,
+        zoomMeetingId: cl.zoomMeetingId,
       });
     });
+    realSessions.sort((a, b) => getSessionDateObj(a) - getSessionDateObj(b));
   } else if (course?.topics && course.topics.length > 0) {
     course.topics.forEach((top, i) => {
       realSessions.push({
         id: `topic_${i}`,
         title: `Module ${i + 1}: ${top}`,
         duration: course?.timings || 'Scheduled Live',
+        durationMinutes: 60,
         zoomLink: course?.zoomMeetingLink,
       });
     });
@@ -123,9 +259,12 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         id: `session_${i}`,
         title: `Live Session ${i + 1} (${sd})`,
         duration: course?.timings || '1 Hour',
+        durationMinutes: 60,
         zoomLink: course?.zoomMeetingLink,
+        date: sd,
       });
     });
+    realSessions.sort((a, b) => getSessionDateObj(a) - getSessionDateObj(b));
   }
 
   const getSessionStatus = (lesson, idx) => {
@@ -142,7 +281,8 @@ export const StudentClassesScreen = ({ route, navigation }) => {
     }
 
     try {
-      const rawDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+      const safeDateStr = dateStr instanceof Date ? dateStr.toISOString().split('T')[0] : String(dateStr);
+      const rawDate = safeDateStr.includes('T') ? safeDateStr.split('T')[0] : safeDateStr;
       const [y, m, d] = rawDate.split('-').map(Number);
       if (!y || !m || !d) {
         return { isCompleted: false, isLiveNow: false, canJoin: false, label: 'Scheduled', displayDate, displayTime };
@@ -165,7 +305,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         : dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 
       let startH = 6, startM = 0;
-      if (timeStr) {
+      if (timeStr && typeof timeStr === 'string') {
         const cleanTime = timeStr.trim();
         const match = cleanTime.match(/(\d{1,2}):(\d{2})/);
         if (match) {
@@ -181,7 +321,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       const joinWindowStart = new Date(sessionStart.getTime() - 2 * 60 * 1000);
 
       let sessionEnd;
-      if (endTimeStr) {
+      if (endTimeStr && typeof endTimeStr === 'string') {
         const matchEnd = endTimeStr.match(/(\d{1,2}):(\d{2})/);
         if (matchEnd) {
           let endH = parseInt(matchEnd[1], 10);
@@ -226,6 +366,27 @@ export const StudentClassesScreen = ({ route, navigation }) => {
     }
   };
 
+  // Auto-activate selectedClass or the first upcoming/live class
+  useEffect(() => {
+    if (realSessions.length > 0) {
+      if (selectedClass) {
+        const targetId = selectedClass._id || selectedClass.id;
+        const foundIdx = realSessions.findIndex((s) => (s.id || s._id) === targetId);
+        if (foundIdx >= 0) {
+          setActiveLessonIndex(foundIdx);
+          return;
+        }
+      }
+      const firstUpcomingIdx = realSessions.findIndex((s, idx) => {
+        const st = getSessionStatus(s, idx);
+        return !st.isCompleted;
+      });
+      if (firstUpcomingIdx >= 0) {
+        setActiveLessonIndex(firstUpcomingIdx);
+      }
+    }
+  }, [realSessions.length, selectedClass]);
+
   const currentLesson = realSessions[activeLessonIndex] || realSessions[0] || null;
   const currentStatus = currentLesson
     ? getSessionStatus(currentLesson, activeLessonIndex >= 0 ? activeLessonIndex : 0)
@@ -259,10 +420,6 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       setClaimingCert(true);
       const res = await courseService.completeCourse(courseId);
       setCertIssued(true);
-      await notificationService.sendInstantNotification(
-        '🏆 Certificate of Completion Issued!',
-        `Congratulations on completing "${course?.title || 'your course'}"! Your official certificate has been issued, sent to your email, and saved to your account.`
-      );
       await notificationService.addNotification({
         type: 'certificate',
         title: '🏆 Certificate of Completion Issued!',
@@ -514,6 +671,14 @@ export const StudentClassesScreen = ({ route, navigation }) => {
           },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
       >
         <View style={{ width: '100%', maxWidth: 1000, alignSelf: 'center' }}>
         {activeTab === 'lessons' && (
@@ -524,12 +689,16 @@ export const StudentClassesScreen = ({ route, navigation }) => {
               realSessions.map((lesson, idx) => {
                 const status = getSessionStatus(lesson, idx);
                 const isDone = status.isCompleted;
+                const isSelected = activeLessonIndex === idx;
 
                 return (
-                  <View
+                  <TouchableOpacity
                     key={lesson.id || idx}
+                    onPress={() => setActiveLessonIndex(idx)}
+                    activeOpacity={0.85}
                     style={[
                       styles.lessonCard,
+                      isSelected && styles.lessonCardSelected,
                       isDone && styles.lessonCardDone,
                       shadows.sm,
                     ]}
@@ -538,13 +707,14 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                     <View
                       style={[
                         styles.checkCircle,
+                        isSelected && !isDone && styles.checkCircleSelected,
                         isDone && styles.checkCircleDone,
                       ]}
                     >
                       {isDone ? (
                         <Ionicons name="checkmark" size={13} color="#fff" />
                       ) : (
-                        <Text style={styles.checkCircleNumber}>
+                        <Text style={[styles.checkCircleNumber, isSelected && styles.checkCircleNumberSelected]}>
                           {idx + 1}
                         </Text>
                       )}
@@ -555,6 +725,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                       <Text
                         style={[
                           styles.lessonTitle,
+                          isSelected && !isDone && styles.lessonTitleSelected,
                           isDone && styles.lessonTitleDone,
                         ]}
                         numberOfLines={2}
@@ -598,7 +769,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                         <Text style={styles.scheduledBadgeText}>Starts 2m Before</Text>
                       </TouchableOpacity>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 );
               })
             ) : (
@@ -994,6 +1165,11 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
     gap: 12,
   },
+  lessonCardSelected: {
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+    backgroundColor: '#eff6ff',
+  },
   lessonCardDone: {
     borderColor: '#bbf7d0',
     backgroundColor: '#f0fdf4',
@@ -1008,6 +1184,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.surfaceAlt,
   },
+  checkCircleSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '20',
+  },
   checkCircleDone: {
     backgroundColor: '#16a34a',
     borderColor: '#16a34a',
@@ -1017,10 +1197,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textMuted,
   },
+  checkCircleNumberSelected: {
+    color: colors.primary,
+  },
   lessonTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  lessonTitleSelected: {
+    color: colors.primary,
+    fontWeight: '700',
   },
   lessonTitleDone: {
     color: '#15803d',

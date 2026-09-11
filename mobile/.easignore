@@ -6,6 +6,9 @@ node_modules/
 .expo/
 dist/
 dist-test/
+*.zip
+../*.zip
+../*.pem
 npm-debug.*
 *.jks
 *.p8
