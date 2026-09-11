@@ -167,6 +167,17 @@ const AdminDashboard = () => {
     setTimeout(() => setToastMessage(''), 4000);
   };
 
+  const isClassToday = (dateInput) => {
+    if (!dateInput) return false;
+    const d = new Date(dateInput);
+    const now = new Date();
+    return (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    );
+  };
+
   const handleSavePublicStats = async (e) => {
     e.preventDefault();
     setSavingStats(true);
@@ -418,17 +429,27 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                   <div className="shrink-0">
-                    {cls.zoomLink ? (
-                      <a 
-                        href={cls.zoomLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
-                      >
-                        <FaVideo size={11} /> Launch
-                      </a>
+                    {isClassToday(cls.date) ? (
+                      cls.zoomLink ? (
+                        <a 
+                          href={cls.zoomLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                          title="Launch today's live Zoom class"
+                        >
+                          <FaVideo size={11} /> Launch
+                        </a>
+                      ) : (
+                        <span className="text-xs font-bold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-xl">No Link</span>
+                      )
                     ) : (
-                      <span className="text-xs font-bold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-xl">No Link</span>
+                      <span 
+                        className="text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200/80 px-3 py-1.5 rounded-xl flex items-center gap-1.5"
+                        title={`Scheduled for ${new Date(cls.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                      >
+                        <FaCalendarCheck size={11} className="text-gray-400" /> Scheduled
+                      </span>
                     )}
                   </div>
                 </div>
