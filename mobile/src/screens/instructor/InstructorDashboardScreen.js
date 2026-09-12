@@ -709,7 +709,7 @@ export const InstructorDashboardScreen = ({ navigation }) => {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.sectionTitle}>Enrolled Student Roster</Text>
                   <Text style={styles.sectionSubtitle}>
-                    Learner profiles, course progress, and quick Call / WhatsApp actions
+                    Learner profiles and quick Call / WhatsApp actions
                   </Text>
                 </View>
                 <View style={styles.studentCountBadge}>
@@ -854,24 +854,14 @@ export const InstructorDashboardScreen = ({ navigation }) => {
                           )}
                         </View>
 
-                        {/* Progress and Date Footer */}
-                        <View style={styles.fullStudentFooter}>
-                          <View style={{ flex: 1, marginRight: 12 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                              <Text style={styles.progressLabel}>Course Progress</Text>
-                              <Text style={styles.progressPercentText}>{st.progress || 0}%</Text>
-                            </View>
-                            <View style={styles.fullProgressBarTrack}>
-                              <View style={[styles.fullProgressBarFill, { width: `${Math.min(100, Math.max(0, st.progress || 0))}%` }]} />
-                            </View>
-                          </View>
-
-                          {enrolledDate ? (
+                        {/* Enrolled Date Footer */}
+                        {enrolledDate ? (
+                          <View style={[styles.fullStudentFooter, { justifyContent: 'flex-end' }]}>
                             <Text style={styles.enrolledDateText}>
-                              📅 {new Date(enrolledDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              📅 Enrolled: {new Date(enrolledDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </Text>
-                          ) : null}
-                        </View>
+                          </View>
+                        ) : null}
                       </View>
                     );
                   })}
