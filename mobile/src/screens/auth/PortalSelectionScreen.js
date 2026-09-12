@@ -227,18 +227,6 @@ export const PortalSelectionScreen = ({ navigation }) => {
             <Text style={styles.portalGoogleBtnText}>Sign In with Google</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Guest Exploration Option */}
-        <View style={styles.guestSection}>
-          <TouchableOpacity
-            style={styles.guestButton}
-            onPress={() => navigation.navigate('Main')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.guestButtonText}>Browse & Explore Courses as Guest</Text>
-            <Ionicons name="compass-outline" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </View>
   );
@@ -342,22 +330,6 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 13,
     fontWeight: '700',
-  },
-  guestSection: {
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  guestButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  guestButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
   },
   googleSection: {
     marginTop: 4,

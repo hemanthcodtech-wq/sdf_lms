@@ -233,10 +233,6 @@ export const ProfileScreen = ({ navigation }) => {
             : true;
         if (ok) {
           await logout();
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Auth' }],
-          });
         }
       } else {
         Alert.alert('Logout', 'Are you sure you want to log out?', [
@@ -246,10 +242,6 @@ export const ProfileScreen = ({ navigation }) => {
             style: 'destructive',
             onPress: async () => {
               await logout();
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Auth' }],
-              });
             },
           },
         ]);
@@ -402,20 +394,6 @@ export const ProfileScreen = ({ navigation }) => {
                 <Text style={styles.statLabel}>{t('paid')}</Text>
               </View>
             </View>
-          </View>
-        ) : (
-          <View style={[styles.profileCard, shadows.md]}>
-            <View style={styles.avatarLarge}>
-              <Ionicons name="person" size={32} color="#fff" />
-            </View>
-            <Text style={styles.userName}>{t('guestLearner')}</Text>
-            <Text style={styles.userEmail}>{t('signInPrompt')}</Text>
-            <TouchableOpacity
-              style={styles.loginCardBtn}
-              onPress={() => navigation.navigate('Auth')}
-            >
-              <Text style={styles.loginCardBtnText}>{t('loginSignUp')}</Text>
-            </TouchableOpacity>
           </View>
         )}
 

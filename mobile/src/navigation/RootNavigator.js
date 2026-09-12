@@ -22,10 +22,29 @@ import { PolicyViewerScreen } from '../screens/profile/PolicyViewerScreen';
 const RootStack = createNativeStackNavigator();
 
 export const RootNavigator = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  // When not logged in, STRICTLY show Auth Flow only (No guest learner mode)
+  if (!isAuthenticated) {
+    return (
+      <RootStack.Navigator
+        key="unauthenticated-auth-stack"
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }}
+      >
+        <RootStack.Screen name="Auth" component={AuthNavigator} />
+        <RootStack.Screen name="PolicyViewer" component={PolicyViewerScreen} />
+      </RootStack.Navigator>
+    );
+  }
 
   const getInitialRoute = () => {
-    if (!isAuthenticated) return 'Auth';
     if (user?.role === 'instructor') return 'InstructorDashboard';
     if (user?.role === 'moderator') return 'ModeratorDashboard';
     return 'Main';
@@ -33,20 +52,23 @@ export const RootNavigator = () => {
 
   return (
     <RootStack.Navigator
-      key={isAuthenticated ? (user?.role || 'student') : 'guest'}
+      key={`authenticated-${user?.role || 'student'}`}
       initialRouteName={getInitialRoute()}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
       }}
     >
-      {/* Auth Portal Gateway (Student, Instructor, Moderator) */}
-      <RootStack.Screen name="Auth" component={AuthNavigator} />
+      {/* Role-based dashboard */}
+      {user?.role === 'instructor' ? (
+        <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
+      ) : user?.role === 'moderator' ? (
+        <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
+      ) : (
+        <RootStack.Screen name="Main" component={MainTabNavigator} />
+      )}
 
-      {/* Main Student Dashboard & Tabs */}
-      <RootStack.Screen name="Main" component={MainTabNavigator} />
-
-      {/* Dedicated Staff & Faculty Portals */}
+      {/* Staff dashboards accessible if needed */}
       <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
       <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
 

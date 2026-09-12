@@ -325,7 +325,7 @@ export const HomeScreen = ({ navigation }) => {
               <View>
                 <Text style={styles.greeting}>{t('welcomeBack')}</Text>
                 <Text style={styles.userName} numberOfLines={1}>
-                  {user?.name || t('guestLearner')}
+                  {user?.name || 'Student'}
                 </Text>
               </View>
             </TouchableOpacity>
