@@ -5,7 +5,7 @@ import {
   FaShieldAlt, FaUserShield, FaUsers, FaChalkboardTeacher, 
   FaBookOpen, FaCheckCircle, FaUserCheck, FaClock, FaCalendarAlt,
   FaVideo, FaPlayCircle, FaTimes, FaSpa, FaArrowLeft, FaFilePdf,
-  FaExternalLinkAlt, FaChevronRight, FaGraduationCap
+  FaExternalLinkAlt, FaChevronRight, FaGraduationCap, FaUserEdit
 } from 'react-icons/fa';
 import { getCourseImageUrl } from '../../utils/imageHelper';
 
@@ -25,6 +25,17 @@ const ModeratorDashboard = () => {
   const rawUser = localStorage.getItem('moderatorUser');
   const cachedModerator = rawUser ? JSON.parse(rawUser) : null;
   const [currentTick, setCurrentTick] = useState(Date.now());
+
+  // Moderator Profile Edit State
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    phone: '',
+    bio: '',
+    password: ''
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTick(Date.now()), 15000);
@@ -85,6 +96,60 @@ const ModeratorDashboard = () => {
       console.error('Error fetching moderator dashboard:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const prof = dashboardData?.profile || cachedModerator;
+    if (prof) {
+      setProfileForm({
+        name: prof.name || '',
+        phone: prof.phone || '',
+        bio: prof.bio || '',
+        password: ''
+      });
+    }
+  }, [dashboardData]);
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setProfileSaving(true);
+    setProfileMsg('');
+
+    try {
+      const payload = {
+        name: profileForm.name,
+        phone: profileForm.phone,
+        bio: profileForm.bio
+      };
+      if (profileForm.password && profileForm.password.trim().length >= 6) {
+        payload.password = profileForm.password.trim();
+      }
+
+      const res = await axios.put(`${import.meta.env.VITE_API_BASE_URL}/moderator/profile`, payload, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('moderatorToken')}` }
+      });
+
+      if (res.data.success) {
+        setProfileMsg('Profile updated successfully!');
+        if (cachedModerator) {
+          localStorage.setItem('moderatorUser', JSON.stringify({
+            ...cachedModerator,
+            name: profileForm.name,
+            phone: profileForm.phone,
+            bio: profileForm.bio
+          }));
+        }
+        fetchDashboardStats(true);
+        setTimeout(() => {
+          setIsEditProfileOpen(false);
+          setProfileMsg('');
+        }, 1200);
+      }
+    } catch (err) {
+      setProfileMsg(err.response?.data?.message || 'Error updating profile.');
+    } finally {
+      setProfileSaving(false);
     }
   };
 
@@ -837,11 +902,151 @@ const ModeratorDashboard = () => {
                 <span>Role:</span>
                 <span className="font-bold text-brand-green-dark uppercase">Certified Moderator</span>
               </div>
+              {profile.phone && (
+                <div className="flex justify-between">
+                  <span>Phone:</span>
+                  <span className="font-bold text-gray-800">{profile.phone}</span>
+                </div>
+              )}
+              {profile.bio && (
+                <div className="pt-1">
+                  <span className="block mb-0.5">Bio:</span>
+                  <span className="text-gray-600 italic line-clamp-2">{profile.bio}</span>
+                </div>
+              )}
             </div>
+
+            {/* Edit Profile Button */}
+            <button
+              onClick={() => setIsEditProfileOpen(true)}
+              className="w-full mt-2 py-3 bg-brand-green/10 hover:bg-brand-green hover:text-white text-brand-green-dark font-extrabold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <FaUserEdit size={13} />
+              Edit Profile
+            </button>
           </div>
         </div>
 
       </div>
+
+      {/* EDIT PROFILE MODAL */}
+      <AnimatePresence>
+        {isEditProfileOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setIsEditProfileOpen(false)}
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-lg rounded-[2.5rem] p-6 lg:p-8 shadow-2xl z-10"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-6">
+                <div>
+                  <h2 className="text-xl font-black text-gray-900">Update Profile</h2>
+                  <p className="text-xs text-gray-400">Edit your moderator account information</p>
+                </div>
+                <button
+                  onClick={() => setIsEditProfileOpen(false)}
+                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
+                >
+                  <FaTimes size={14} />
+                </button>
+              </div>
+
+              {profileMsg && (
+                <div className={`mb-4 p-4 text-xs font-bold rounded-2xl border ${
+                  profileMsg.includes('success') || profileMsg.includes('successfully')
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-red-50 border-red-200 text-red-800'
+                }`}>
+                  {profileMsg}
+                </div>
+              )}
+
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-extrabold text-gray-700 uppercase tracking-wider">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                    required
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-green/20 outline-none"
+                    placeholder="Your full name"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-extrabold text-gray-700 uppercase tracking-wider">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-green/20 outline-none"
+                    placeholder="Phone number (optional)"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-extrabold text-gray-700 uppercase tracking-wider">
+                    Bio
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={profileForm.bio}
+                    onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-green/20 outline-none resize-none"
+                    placeholder="A short bio about yourself (optional)"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-extrabold text-gray-700 uppercase tracking-wider">
+                    New Password <span className="font-normal normal-case text-gray-400">(leave blank to keep current)</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={profileForm.password}
+                    onChange={(e) => setProfileForm({ ...profileForm, password: e.target.value })}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-brand-green/20 outline-none"
+                    placeholder="Min 6 characters"
+                    minLength="6"
+                    autoComplete="new-password"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditProfileOpen(false)}
+                    className="px-5 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={profileSaving}
+                    className="px-7 py-3 rounded-2xl bg-brand-green hover:bg-brand-green-dark text-white font-extrabold text-xs shadow-md disabled:opacity-60 cursor-pointer"
+                  >
+                    {profileSaving ? 'Saving...' : 'Save Profile'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
