@@ -24,7 +24,7 @@ import { getCourseImageUrl } from '../../utils/imageHelper';
 import { CustomButton } from '../../components/CustomButton';
 
 const getClassStatus = (cls) => {
-  if (cls.status) return cls.status;
+  if (cls.status && (cls.status === 'COMPLETED' || cls.status === 'CANCELLED')) return cls.status;
   const now = new Date();
   const classDate = new Date(cls.date);
 
@@ -953,27 +953,31 @@ export const InstructorDashboardScreen = ({ navigation }) => {
                         styles.hostZoomBtn,
                         isCompleted
                           ? styles.hostZoomBtnCompleted
-                          : isLive
-                          ? styles.hostZoomBtnLive
-                          : styles.hostZoomBtnUpcoming,
+                          : !isLive
+                          ? styles.hostZoomBtnUpcoming
+                          : styles.hostZoomBtnLive,
                       ]}
+                      disabled={!isLive && !isCompleted}
                       onPress={() => handleStartZoom(cl.zoomStartUrl || cl.zoomHostUrl || cl.zoomLink || cl.courseId?.zoomMeetingLink)}
                       activeOpacity={0.8}
                     >
                       <Ionicons
-                        name={isCompleted ? 'play-circle-outline' : 'videocam'}
+                        name={isCompleted ? 'play-circle-outline' : isLive ? 'videocam' : 'time-outline'}
                         size={16}
-                        color={isCompleted ? '#374151' : '#ffffff'}
+                        color={isCompleted ? '#374151' : !isLive ? '#92400e' : '#ffffff'}
                       />
                       <Text
                         style={[
                           styles.hostZoomBtnText,
                           isCompleted && { color: '#374151' },
+                          !isLive && !isCompleted && { color: '#92400e', fontWeight: '700' },
                         ]}
                       >
                         {isCompleted
                           ? 'Replay / Enter Session ↗'
-                          : 'Start Session ↗'}
+                          : isLive
+                          ? 'Start Session ↗'
+                          : 'Starts 2m Before Session'}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1662,8 +1666,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   hostZoomBtnCompleted: {
     backgroundColor: '#f3f4f6',
@@ -1671,10 +1675,12 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   hostZoomBtnLive: {
-    backgroundColor: '#16a34a',
+    backgroundColor: colors.secondary,
   },
   hostZoomBtnUpcoming: {
-    backgroundColor: colors.secondary,
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fde68a',
   },
   hostZoomBtnText: {
     color: '#ffffff',
