@@ -20,16 +20,15 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { courseService } from '../../services/courseService';
 import { getCourseImageUrl } from '../../utils/imageHelper';
-import { cacheService } from '../../services/cacheService';
 
-// Robust helper to check if a user is enrolled in a course by ID, slug, or title
-const checkEnrollmentMatch = (enrollmentsList, courseObj, fallbackSlug) => {
-  if (!Array.isArray(enrollmentsList) || enrollmentsList.length === 0) return false;
+// Helper to find enrollment match by ID, slug, or title
+const findEnrollmentMatch = (enrollmentsList, courseObj, fallbackSlug) => {
+  if (!Array.isArray(enrollmentsList) || enrollmentsList.length === 0) return null;
   const cId = (courseObj?._id || courseObj?.id || '').toString();
   const cSlug = (courseObj?.slug || fallbackSlug || '').toString().toLowerCase();
   const cTitle = (courseObj?.title || '').toString().toLowerCase();
 
-  return enrollmentsList.some((e) => {
+  return enrollmentsList.find((e) => {
     const c = e?.course || e;
     const itemId = (c?._id || c?.id || c || '').toString();
     const itemSlug = (c?.slug || '').toString().toLowerCase();
@@ -41,7 +40,7 @@ const checkEnrollmentMatch = (enrollmentsList, courseObj, fallbackSlug) => {
       (cSlug && itemSlug === cSlug) ||
       (cTitle && itemTitle && itemTitle === cTitle)
     );
-  });
+  }) || null;
 };
 
 export const CourseDetailsScreen = ({ route, navigation }) => {
@@ -53,67 +52,51 @@ export const CourseDetailsScreen = ({ route, navigation }) => {
   const [course, setCourse] = useState(initialCourse || null);
   const [loading, setLoading] = useState(!initialCourse);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'curriculum', 'instructor'
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [userEnrollment, setUserEnrollment] = useState(null);
+  const [checkingEnrollment, setCheckingEnrollment] = useState(Boolean(user));
 
-  // Initial check from cached courses
-  const [isEnrolled, setIsEnrolled] = useState(() => {
-    if (!user) return false;
-    return checkEnrollmentMatch(cacheService.getMyCourses(), initialCourse, slug);
-  });
-
-  const syncEnrollment = useCallback(async (currentCourseData) => {
-    if (!user) {
-      setIsEnrolled(false);
-      return;
-    }
-
-    const courseToTest = currentCourseData || course || initialCourse;
-
-    // 1. Instant check from cache
-    const cached = cacheService.getMyCourses();
-    if (checkEnrollmentMatch(cached, courseToTest, slug)) {
-      setIsEnrolled(true);
-    }
-
-    // 2. ALWAYS fetch fresh from server to guarantee newly enrolled courses are detected immediately
+  const fetchCourseAndEnrollment = useCallback(async (showLoader = false) => {
     try {
-      const enrollRes = await courseService.getMyCourses();
-      if (enrollRes?.data && Array.isArray(enrollRes.data)) {
-        cacheService.setMyCourses(enrollRes.data);
-        const enrolled = checkEnrollmentMatch(enrollRes.data, courseToTest, slug);
-        setIsEnrolled(enrolled);
+      if (showLoader) setLoading(true);
+      if (user) setCheckingEnrollment(true);
+
+      const [courseRes, enrollRes] = await Promise.allSettled([
+        courseService.getCourseDetails(slug),
+        user ? courseService.getMyCourses() : Promise.resolve({ data: [] }),
+      ]);
+
+      let currentCourse = course || initialCourse;
+      if (courseRes.status === 'fulfilled' && courseRes.value?.data) {
+        currentCourse = courseRes.value.data;
+        setCourse(currentCourse);
       }
-    } catch (err) {
-      console.log('Error syncing enrollment status:', err);
-    }
-  }, [user, course, initialCourse, slug]);
 
-  const fetchCourseDetails = async () => {
-    try {
-      if (!initialCourse) setLoading(true);
-      const res = await courseService.getCourseDetails(slug);
-      if (res?.data) {
-        setCourse(res.data);
-        await syncEnrollment(res.data);
+      if (user && enrollRes.status === 'fulfilled' && Array.isArray(enrollRes.value?.data)) {
+        const match = findEnrollmentMatch(enrollRes.value.data, currentCourse, slug);
+        setIsEnrolled(Boolean(match));
+        setUserEnrollment(match);
       } else {
-        await syncEnrollment();
+        setIsEnrolled(false);
+        setUserEnrollment(null);
       }
     } catch (error) {
-      console.error('Error fetching course details:', error);
-      await syncEnrollment();
+      console.error('Error fetching live course and enrollment details:', error);
     } finally {
       setLoading(false);
+      setCheckingEnrollment(false);
     }
-  };
+  }, [slug, user, course, initialCourse]);
 
   useEffect(() => {
-    fetchCourseDetails();
+    fetchCourseAndEnrollment(!initialCourse);
   }, [slug]);
 
-  // Re-verify enrollment whenever screen is focused (e.g. returning after payment or switching tabs)
+  // Always refresh live on screen focus so newly enrolled courses reflect immediately
   useFocusEffect(
     useCallback(() => {
-      syncEnrollment();
-    }, [syncEnrollment])
+      fetchCourseAndEnrollment(false);
+    }, [fetchCourseAndEnrollment])
   );
 
   const handleShare = async () => {
@@ -134,18 +117,10 @@ export const CourseDetailsScreen = ({ route, navigation }) => {
     }
 
     if (isEnrolled) {
-      const cached = cacheService.getMyCourses();
-      const cId = (course?._id || course?.id || initialCourse?._id || '').toString();
-      const cSlug = (course?.slug || slug || '').toString().toLowerCase();
-
-      const enrollment = cached?.find((e) => {
-        const c = e?.course || e;
-        const itemId = (c?._id || c?.id || c || '').toString();
-        const itemSlug = (c?.slug || '').toString().toLowerCase();
-        return (cId && itemId === cId) || (cSlug && itemSlug === cSlug);
+      navigation.navigate('StudentClasses', {
+        course: course || initialCourse,
+        enrollment: userEnrollment,
       });
-
-      navigation.navigate('StudentClasses', { course: course || initialCourse, enrollment });
     } else {
       navigation.navigate('Checkout', { course: course || initialCourse });
     }
@@ -340,17 +315,21 @@ export const CourseDetailsScreen = ({ route, navigation }) => {
         </View>
 
         <CustomButton
-          title={isEnrolled ? 'Go to Classes' : t('enrollNow')}
+          title={checkingEnrollment ? 'Checking...' : (isEnrolled ? 'Go to Classes' : t('enrollNow'))}
+          loading={checkingEnrollment}
+          disabled={checkingEnrollment}
           onPress={handleEnrollOrOpen}
           variant={isEnrolled ? 'secondary' : 'primary'}
           size="lg"
           style={{ flex: 1, marginLeft: 16 }}
           icon={
-            <Ionicons
-              name={isEnrolled ? 'play-forward' : 'flash'}
-              size={18}
-              color="#fff"
-            />
+            !checkingEnrollment ? (
+              <Ionicons
+                name={isEnrolled ? 'play-forward' : 'flash'}
+                size={18}
+                color="#fff"
+              />
+            ) : null
           }
         />
       </View>

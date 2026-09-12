@@ -27,7 +27,6 @@ import { notificationService } from '../../services/notificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../services/api';
 import { getAvatarUrl, getCourseImageUrl } from '../../utils/imageHelper';
-import { cacheService } from '../../services/cacheService';
 
 export const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -40,9 +39,9 @@ export const HomeScreen = ({ navigation }) => {
   const { t, language, changeLanguage } = useLanguage();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [courses, setCourses] = useState(() => cacheService.getCourses());
-  const [liveClasses, setLiveClasses] = useState(() => cacheService.getStudentClasses());
-  const [myCourses, setMyCourses] = useState(() => cacheService.getMyCourses());
+  const [courses, setCourses] = useState([]);
+  const [liveClasses, setLiveClasses] = useState([]);
+  const [myCourses, setMyCourses] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [currentTick, setCurrentTick] = useState(Date.now());
   const [hasUnreadNotifs, setHasUnreadNotifs] = useState(false);
@@ -137,7 +136,6 @@ export const HomeScreen = ({ navigation }) => {
       if (results[0].status === 'fulfilled' && results[0].value?.data) {
         const freshCourses = results[0].value.data;
         setCourses(freshCourses);
-        cacheService.setCourses(freshCourses);
       }
 
       // Handle User Specific Data
@@ -148,7 +146,6 @@ export const HomeScreen = ({ navigation }) => {
         if (results[2]?.status === 'fulfilled' && results[2].value?.data) {
           const myCourseList = results[2].value.data;
           setMyCourses(myCourseList);
-          cacheService.setMyCourses(myCourseList);
 
           myCourseList.forEach((mc) => {
             const cId = (mc.course?._id || mc.courseId?._id || mc.course || mc.courseId || mc._id || '').toString();
@@ -211,7 +208,6 @@ export const HomeScreen = ({ navigation }) => {
             });
 
           setLiveClasses(enrolledUpcoming);
-          cacheService.setStudentClasses(enrolledUpcoming);
           if (enrolledUpcoming.length > 0) {
             notificationService.syncUpcomingClassReminders(enrolledUpcoming);
           }
@@ -222,18 +218,7 @@ export const HomeScreen = ({ navigation }) => {
     }
   }, [user]);
 
-  // Load from local storage cache immediately on cold-start (0ms)
   useEffect(() => {
-    AsyncStorage.getItem('@sdf_cached_public_courses').then((raw) => {
-      if (raw) {
-        try {
-          const cached = JSON.parse(raw);
-          if (Array.isArray(cached) && cached.length > 0) {
-            setCourses(cached);
-          }
-        } catch (e) {}
-      }
-    });
     loadData();
   }, [loadData]);
 

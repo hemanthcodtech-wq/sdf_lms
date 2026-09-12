@@ -25,16 +25,15 @@ import { courseService } from '../../services/courseService';
 import { paymentService } from '../../services/paymentService';
 import { authService } from '../../services/authService';
 import { getAvatarUrl } from '../../utils/imageHelper';
-import { cacheService } from '../../services/cacheService';
 
 export const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, logout, wishlist, updateUserProfile } = useAuth();
   const { t } = useLanguage();
 
-  const [stats, setStats] = useState(() => cacheService.getUserStats());
-  const [detailedProfile, setDetailedProfile] = useState(() => cacheService.getUserProfile());
-  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [detailedProfile, setDetailedProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
@@ -105,10 +104,7 @@ export const ProfileScreen = ({ navigation }) => {
 
   const loadProfileData = useCallback(async () => {
     try {
-      // Only show spinner if we don't have any cached profile yet
-      if (!cacheService.getUserProfile()) {
-        setLoading(true);
-      }
+      setLoading(true);
 
       // Single payment history call provides enrollments, certificates & payment count
       const [profRes, payRes] = await Promise.allSettled([
@@ -118,7 +114,6 @@ export const ProfileScreen = ({ navigation }) => {
 
       if (profRes.status === 'fulfilled' && profRes.value?.data) {
         setDetailedProfile(profRes.value.data);
-        cacheService.setUserProfile(profRes.value.data);
       }
 
       let paymentsList = [];
@@ -137,7 +132,6 @@ export const ProfileScreen = ({ navigation }) => {
       };
 
       setStats(newStats);
-      cacheService.setUserStats(newStats);
     } catch (error) {
       console.error('Error loading profile data:', error);
     } finally {

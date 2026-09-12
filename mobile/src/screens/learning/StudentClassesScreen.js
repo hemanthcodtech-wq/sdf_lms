@@ -27,7 +27,6 @@ import { EmptyState } from '../../components/EmptyState';
 import { courseService } from '../../services/courseService';
 import { notificationService } from '../../services/notificationService';
 import { getCourseImageUrl } from '../../utils/imageHelper';
-import { cacheService } from '../../services/cacheService';
 
 export const StudentClassesScreen = ({ route, navigation }) => {
   const course = route?.params?.course || {};
@@ -89,25 +88,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
     [courseId, courseTitle, selectedClass]
   );
 
-  // Synchronous 0ms cached classes resolver (merges course-specific cache and student classes cache)
-  const getInitialClasses = () => {
-    if (courseId) {
-      const cached = cacheService.getCourseClasses(courseId);
-      if (Array.isArray(cached) && cached.length > 0) return cached;
-    }
-    const allStudentClasses = cacheService.getStudentClasses();
-    if (Array.isArray(allStudentClasses) && allStudentClasses.length > 0) {
-      const matching = allStudentClasses.filter(isClassForThisCourse);
-      if (matching.length > 0) return matching;
-    }
-    if (selectedClass && isClassForThisCourse(selectedClass)) {
-      return [selectedClass];
-    }
-    return [];
-  };
-
-  const initialClasses = getInitialClasses();
-  const cachedMaterials = courseId ? cacheService.getCourseMaterials(courseId) : [];
+  const initialClasses = (selectedClass && isClassForThisCourse(selectedClass)) ? [selectedClass] : [];
   const hasPredefinedContent = (course?.topics && course.topics.length > 0) || (course?.sessionDates && course.sessionDates.length > 0);
 
   const [classes, setClasses] = useState(initialClasses);
@@ -116,7 +97,7 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   const [downloadingMaterial, setDownloadingMaterial] = useState(false);
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('lessons'); // 'lessons', 'materials', 'community'
-  const [materials, setMaterials] = useState(cachedMaterials);
+  const [materials, setMaterials] = useState([]);
   const [claimingCert, setClaimingCert] = useState(false);
   const [certIssued, setCertIssued] = useState(Boolean(route.params?.enrollment?.completed || route.params?.enrollment?.certificateId));
   const [currentTick, setCurrentTick] = useState(Date.now());
@@ -167,14 +148,12 @@ export const StudentClassesScreen = ({ route, navigation }) => {
 
       if (matchingClasses.length > 0) {
         setClasses(matchingClasses);
-        if (courseId) cacheService.setCourseClasses(courseId, matchingClasses);
       } else if (!hasPredefinedContent) {
         setClasses([]);
       }
 
       if (materialsRes?.data && Array.isArray(materialsRes.data)) {
         setMaterials(materialsRes.data);
-        if (courseId) cacheService.setCourseMaterials(courseId, materialsRes.data);
       }
     } catch (err) {
       console.error('Error fetching classes and materials:', err);

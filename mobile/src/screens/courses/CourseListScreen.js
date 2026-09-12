@@ -21,14 +21,12 @@ import { EmptyState } from '../../components/EmptyState';
 import { courseService } from '../../services/courseService';
 import { useLanguage } from '../../context/LanguageContext';
 import { getCourseImageUrl } from '../../utils/imageHelper';
-import { cacheService } from '../../services/cacheService';
-
 export const CourseListScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
 
-  const [courses, setCourses] = useState(() => cacheService.getCourses());
-  const [loading, setLoading] = useState(() => cacheService.getCourses().length === 0);
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('All');
@@ -39,13 +37,12 @@ export const CourseListScreen = ({ navigation }) => {
   );
   const dynamicCategories = ['All', ...courseCategories];
 
-  const fetchCourses = useCallback(async (isInitial = false) => {
+  const fetchCourses = useCallback(async (showLoading = true) => {
     try {
-      if (isInitial && courses.length === 0) setLoading(true);
+      if (showLoading) setLoading(true);
       const res = await courseService.getPublicCourses();
       if (res?.data) {
         setCourses(res.data);
-        cacheService.setCourses(res.data);
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
@@ -53,16 +50,10 @@ export const CourseListScreen = ({ navigation }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [courses.length]);
+  }, []);
 
-  // Load from cache on cold start (0ms)
   useEffect(() => {
-    const cached = cacheService.getCourses();
-    if (cached && cached.length > 0) {
-      setCourses(cached);
-      setLoading(false);
-    }
-    fetchCourses(cached.length === 0);
+    fetchCourses(true);
   }, [fetchCourses]);
 
   // Refetch every time the user taps or navigates to the Explore Courses screen
