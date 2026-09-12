@@ -30,6 +30,11 @@ router.get(['/history', '/my-enrollments', '/my-payments'], protect, async (req,
       .populate('course', 'title category thumbnailUrl accessValidity duration price instructor instructorId whatsappGroupLink sessionDates timings startDate startTime endTime sessions')
       .sort('-createdAt');
 
+    // Filter out corrupted or deleted course enrollments
+    const activeEnrollments = enrollments.filter(
+      (enr) => enr && enr.course && typeof enr.course === 'object' && Boolean(enr.course.title)
+    );
+
     // Compute dynamic session progress based on exact IST session times
     const isSessionFinished = (dateStr, startTimeStr, endTimeStr, timingsStr) => {
       if (!dateStr) return false;
