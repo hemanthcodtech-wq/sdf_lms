@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
   Linking,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -115,6 +116,40 @@ export const PortalSelectionScreen = ({ navigation }) => {
     }
   };
 
+  const handleStaffPortalPress = () => {
+    if (Platform.OS === 'web') {
+      const choice = window.confirm(
+        'Staff Login:\n\nClick OK for Instructor Portal\nClick Cancel for Moderator Portal'
+      );
+      if (choice) {
+        navigation.navigate('InstructorLogin');
+      } else {
+        navigation.navigate('ModeratorLogin');
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Staff Login',
+      'Please select your portal to continue:',
+      [
+        {
+          text: 'Login with Instructor Portal',
+          onPress: () => navigation.navigate('InstructorLogin'),
+        },
+        {
+          text: 'Login with Moderator Portal',
+          onPress: () => navigation.navigate('ModeratorLogin'),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const portals = [
     {
       id: 'student',
@@ -130,27 +165,15 @@ export const PortalSelectionScreen = ({ navigation }) => {
     },
     {
       id: 'staff',
-      title: 'Instructor / Faculty Login',
-      subtitle: 'Course timetable, curriculum management & session start',
-      icon: 'easel-outline',
-      badge: 'FACULTY PORTAL',
+      title: 'Staff / Faculty Login',
+      subtitle: 'Access for instructors, faculty & batch moderators',
+      icon: 'briefcase-outline',
+      badge: 'STAFF PORTAL',
       badgeColor: colors.secondary,
       accentColor: colors.secondary,
       bgTint: 'rgba(234, 122, 40, 0.08)',
       borderColor: colors.secondary,
-      onPress: () => navigation.navigate('InstructorLogin'),
-    },
-    {
-      id: 'moderator',
-      title: 'Moderator / Supervisor Login',
-      subtitle: 'Batch supervision, live monitoring & attendance',
-      icon: 'shield-checkmark-outline',
-      badge: 'MODERATOR PORTAL',
-      badgeColor: '#2563eb',
-      accentColor: '#2563eb',
-      bgTint: 'rgba(37, 99, 235, 0.08)',
-      borderColor: '#2563eb',
-      onPress: () => navigation.navigate('ModeratorLogin'),
+      onPress: handleStaffPortalPress,
     },
   ];
 
