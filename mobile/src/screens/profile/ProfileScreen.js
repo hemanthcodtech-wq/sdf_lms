@@ -318,7 +318,7 @@ export const ProfileScreen = ({ navigation }) => {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 36 }]}
         showsVerticalScrollIndicator={false}
       >
-        {user ? (
+        {user && (
           <View style={[styles.profileCard, shadows.md]}>
             <View style={styles.avatarWrapper}>
               <TouchableOpacity

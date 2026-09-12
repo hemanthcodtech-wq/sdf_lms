@@ -59,16 +59,8 @@ export const RootNavigator = () => {
         animation: 'slide_from_right',
       }}
     >
-      {/* Role-based dashboard */}
-      {user?.role === 'instructor' ? (
-        <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
-      ) : user?.role === 'moderator' ? (
-        <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
-      ) : (
-        <RootStack.Screen name="Main" component={MainTabNavigator} />
-      )}
-
-      {/* Staff dashboards accessible if needed */}
+      {/* Dashboards (Student, Instructor, Moderator) */}
+      <RootStack.Screen name="Main" component={MainTabNavigator} />
       <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
       <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
 
