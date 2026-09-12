@@ -140,10 +140,10 @@ export const InstructorDashboardScreen = ({ navigation }) => {
   };
 
   const handleLogout = () => {
-    Alert.alert('Logout & Switch Portal', 'Do you want to log out of the Instructor Portal and return to Portal Selection (Student / Login / Staff)?', [
+    Alert.alert('Logout', 'Are you sure you want to log out of the Instructor Portal?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Logout & Switch',
+        text: 'Logout',
         style: 'destructive',
         onPress: async () => {
           await logout();
@@ -373,23 +373,13 @@ export const InstructorDashboardScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <TouchableOpacity
-                style={styles.switchPortalBtn}
-                onPress={handleLogout}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="apps-outline" size={14} color="#ffffff" />
-                <Text style={styles.switchPortalText}>Switch Portal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.logoutBtn}
-                onPress={handleLogout}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="log-out-outline" size={20} color={colors.error} />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.logoutBtn}
+              onPress={handleLogout}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="log-out-outline" size={20} color={colors.error} />
+            </TouchableOpacity>
           </View>
 
           {/* Top Metric Stats */}

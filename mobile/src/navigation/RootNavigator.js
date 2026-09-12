@@ -59,25 +59,13 @@ export const RootNavigator = () => {
         animation: 'slide_from_right',
       }}
     >
-      {/* Dashboards (Student, Instructor, Moderator) */}
+      {/* Role-isolated Portal Screens */}
       {user?.role === 'moderator' ? (
-        <>
-          <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
-          <RootStack.Screen name="Main" component={MainTabNavigator} />
-          <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
-        </>
+        <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
       ) : user?.role === 'instructor' ? (
-        <>
-          <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
-          <RootStack.Screen name="Main" component={MainTabNavigator} />
-          <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
-        </>
+        <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
       ) : (
-        <>
-          <RootStack.Screen name="Main" component={MainTabNavigator} />
-          <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
-          <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
-        </>
+        <RootStack.Screen name="Main" component={MainTabNavigator} />
       )}
 
       {/* Course Flow */}
