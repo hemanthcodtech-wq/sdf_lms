@@ -236,7 +236,7 @@ const StudentClasses = () => {
     const futureClasses = allClasses.filter(cls => {
       const sessionStart = parseClassDateTime(cls.date, cls.time);
       if (!sessionStart) return false;
-      const duration = cls.durationMinutes || 60;
+      const duration = Math.max(cls.durationMinutes || 60, 60);
       const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
       return sessionEnd >= now;
     }).sort((a, b) => {
@@ -429,7 +429,7 @@ const StudentClasses = () => {
                       allClasses.length > 0 ? allClasses.map((cls, index) => {
                         const now = new Date(currentTick);
                         const sessionStart = parseClassDateTime(cls.date, cls.time);
-                        const duration = cls.durationMinutes || 60;
+                        const duration = Math.max(cls.durationMinutes || 60, 60);
                         const sessionEnd = sessionStart ? new Date(sessionStart.getTime() + duration * 60 * 1000) : new Date();
 
                         const isPast = sessionStart ? now > sessionEnd : false;

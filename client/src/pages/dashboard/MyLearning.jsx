@@ -82,15 +82,20 @@ const MyLearning = () => {
         const futureClasses = rawClasses
           .map(cls => {
             const sessionStart = parseClassDateTime(cls.date, cls.time);
-            return { ...cls, sessionStart };
+            const duration = Math.max(cls.durationMinutes || 60, 60);
+            const sessionEnd = sessionStart ? new Date(sessionStart.getTime() + duration * 60 * 1000) : null;
+            return { ...cls, sessionStart, sessionEnd };
           })
-          .filter(cls => cls.sessionStart && cls.sessionStart > new Date(now.getTime() - 60 * 60 * 1000))
+          .filter(cls => cls.sessionEnd && cls.sessionEnd >= now)
           .sort((a, b) => a.sessionStart - b.sessionStart);
 
         if (futureClasses.length > 0) {
           setUpcomingClass(futureClasses[0]);
+        } else {
+          setUpcomingClass(null);
         }
       }
+
 
       if (coursesRes?.data?.success && Array.isArray(coursesRes.data.data)) {
         const fetchedCourses = coursesRes.data.data
@@ -216,9 +221,23 @@ const MyLearning = () => {
       if (!sessionStart) return false;
       const now = new Date(currentTick);
       const joinWindowStart = new Date(sessionStart.getTime() - 2 * 60 * 1000);
-      const duration = cls.durationMinutes || 60;
+      const duration = Math.max(cls.durationMinutes || 60, 60);
       const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
       return now >= joinWindowStart && now <= sessionEnd;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const isClassPast = (cls) => {
+    if (!cls || !cls.date) return false;
+    try {
+      const sessionStart = parseClassDateTime(cls.date, cls.time);
+      if (!sessionStart) return false;
+      const now = new Date(currentTick);
+      const duration = Math.max(cls.durationMinutes || 60, 60);
+      const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+      return now > sessionEnd;
     } catch (e) {
       return false;
     }
@@ -281,7 +300,7 @@ const MyLearning = () => {
               {upcomingClass && (
                 isClassLive(upcomingClass) ? (
                   <a 
-                    href={upcomingClass.zoomLink || '#'} 
+                    href={upcomingClass.zoomLink || upcomingClass.zoomStartUrl || '#'} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900 font-extrabold px-8 py-3.5 rounded-full text-base shadow-[0_4px_15px_rgba(252,213,54,0.3)] transition-all hover:scale-105 flex items-center gap-2 whitespace-nowrap animate-pulse cursor-pointer"
@@ -289,6 +308,18 @@ const MyLearning = () => {
                     <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping inline-block"></span>
                     Join Now (Live)
                   </a>
+                ) : isClassPast(upcomingClass) ? (
+                  <div className="flex flex-col items-center md:items-end gap-1.5">
+                    <button 
+                      disabled={true}
+                      className="bg-gray-200/90 text-gray-500 font-bold px-7 py-3 rounded-full text-sm shadow-none cursor-not-allowed flex items-center gap-2 whitespace-nowrap opacity-70 select-none"
+                    >
+                      Class Completed
+                    </button>
+                    <span className="text-[10px] font-extrabold text-green-800 bg-green-100 border border-green-300/70 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      CONCLUDED
+                    </span>
+                  </div>
                 ) : (
                   <div className="flex flex-col items-center md:items-end gap-1.5">
                     <button 
@@ -306,6 +337,7 @@ const MyLearning = () => {
                 )
               )}
             </div>
+
 
             <div className="pt-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
