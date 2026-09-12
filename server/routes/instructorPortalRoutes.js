@@ -142,7 +142,7 @@ router.get('/dashboard-stats', protect, instructor, async (req, res) => {
       const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
 
       const isPast = now > sessionEnd;
-      const isLiveNow = now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd;
+      const isLiveNow = now >= new Date(sessionStart.getTime() - 2 * 60 * 1000) && now <= sessionEnd;
       
       let status = 'UPCOMING';
       if (isPast) status = 'COMPLETED';

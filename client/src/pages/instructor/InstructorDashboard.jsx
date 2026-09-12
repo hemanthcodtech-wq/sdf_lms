@@ -56,6 +56,49 @@ const InstructorDashboard = () => {
   });
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState('');
+  const [currentTick, setCurrentTick] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTick(Date.now()), 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getSessionStatus = (cls) => {
+    if (!cls || !cls.date) return { isLive: false, isPast: false, isUpcoming: true };
+    try {
+      const now = new Date(currentTick);
+      let startHour = 6, startMin = 0;
+      const timeStr = cls.time || cls.courseId?.startTime || (cls.courseId?.timings ? cls.courseId.timings.split(' to ')[0] : '') || '';
+      if (timeStr) {
+        const parts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+        if (parts) {
+          let h = parseInt(parts[1], 10);
+          const m = parseInt(parts[2], 10);
+          const ampm = parts[3] ? parts[3].toUpperCase() : null;
+          if (ampm === 'PM' && h < 12) h += 12;
+          if (ampm === 'AM' && h === 12) h = 0;
+          startHour = h;
+          startMin = m;
+        }
+      }
+
+      const rawDate = typeof cls.date === 'string'
+        ? (cls.date.includes('T') ? cls.date.split('T')[0] : cls.date)
+        : new Date(cls.date).toISOString().split('T')[0];
+      const [y, m, d] = rawDate.split('-').map(Number);
+      const sessionStart = new Date(y, m - 1, d, startHour, startMin, 0, 0);
+      const duration = cls.durationMinutes || 60;
+      const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
+
+      const isLive = now >= new Date(sessionStart.getTime() - 2 * 60 * 1000) && now <= sessionEnd;
+      const isPast = now > sessionEnd;
+      const isUpcoming = now < new Date(sessionStart.getTime() - 2 * 60 * 1000);
+
+      return { isLive, isPast, isUpcoming };
+    } catch (e) {
+      return { isLive: Boolean(cls.isLiveNow), isPast: Boolean(cls.isPast), isUpcoming: Boolean(cls.isUpcoming) };
+    }
+  };
 
   const rawUser = localStorage.getItem('instructorUser');
   const cachedInstructor = rawUser ? JSON.parse(rawUser) : null;
@@ -580,8 +623,8 @@ const InstructorDashboard = () => {
                       const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
 
                       const isPast = now > sessionEnd;
-                      const isLiveNow = now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd;
-                      const isUpcoming = now < new Date(sessionStart.getTime() - 15 * 60 * 1000);
+                      const isLiveNow = now >= new Date(sessionStart.getTime() - 2 * 60 * 1000) && now <= sessionEnd;
+                      const isUpcoming = now < new Date(sessionStart.getTime() - 2 * 60 * 1000);
 
                       return (
                         <div
@@ -602,7 +645,7 @@ const InstructorDashboard = () => {
                               )}
                               {isUpcoming && (
                                 <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/60 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                                  UPCOMING
+                                  STARTS 2M BEFORE
                                 </span>
                               )}
                               {isPast && (
@@ -631,17 +674,28 @@ const InstructorDashboard = () => {
 
                           <div className="pt-3 border-t border-gray-100 mt-auto flex items-center justify-between">
                             {cls.zoomLink ? (
-                              <button
-                                onClick={() => setActiveLiveClass(cls)}
-                                className={`w-full py-2.5 rounded-xl font-bold text-xs shadow-sm hover:shadow flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                                  isPast
-                                    ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                                    : 'bg-brand-green hover:bg-brand-green-dark text-white'
-                                }`}
-                              >
-                                <FaPlayCircle size={13} />
-                                <span>{isPast ? 'Replay / Enter Session ↗' : 'Start Live Classroom ↗'}</span>
-                              </button>
+                              isLiveNow ? (
+                                <button
+                                  onClick={() => setActiveLiveClass(cls)}
+                                  className="w-full py-2.5 rounded-xl font-bold text-xs shadow-sm hover:shadow flex items-center justify-center gap-2 transition-all cursor-pointer bg-brand-green hover:bg-brand-green-dark text-white animate-pulse"
+                                >
+                                  <FaPlayCircle size={13} />
+                                  <span>Start Live Classroom ↗</span>
+                                </button>
+                              ) : isPast ? (
+                                <button
+                                  onClick={() => setActiveLiveClass(cls)}
+                                  className="w-full py-2.5 rounded-xl font-bold text-xs shadow-sm hover:shadow flex items-center justify-center gap-2 transition-all cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700"
+                                >
+                                  <FaPlayCircle size={13} />
+                                  <span>Replay / Enter Session ↗</span>
+                                </button>
+                              ) : (
+                                <div className="w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 bg-amber-50 border border-amber-200/80 text-amber-800">
+                                  <FaClock size={12} className="text-amber-600" />
+                                  <span>Starts 2m Before Session</span>
+                                </div>
+                              )
                             ) : (
                               <button
                                 onClick={() => setIsAddMaterialOpen(true)}
@@ -1312,47 +1366,61 @@ const InstructorDashboard = () => {
               </div>
             ) : upcomingClasses.length > 0 ? (
               <div className="space-y-3.5">
-                {upcomingClasses.map((cls) => (
-                  <div 
-                    key={cls._id}
-                    className="p-5 bg-gradient-to-br from-white to-[#FAF7F2] border border-gray-200/70 rounded-2xl shadow-xs hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  >
-                    <div className="space-y-1.5">
-                      <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-emerald-100/70 text-emerald-800 rounded-md text-[11px] font-extrabold">
-                        {cls.courseId?.title || 'Yoga Program'}
+                {upcomingClasses.map((cls) => {
+                  const sessionStatus = getSessionStatus(cls);
+                  return (
+                    <div 
+                      key={cls._id}
+                      className="p-5 bg-gradient-to-br from-white to-[#FAF7F2] border border-gray-200/70 rounded-2xl shadow-xs hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-emerald-100/70 text-emerald-800 rounded-md text-[11px] font-extrabold">
+                          {cls.courseId?.title || 'Yoga Program'}
+                        </div>
+                        <h3 className="font-extrabold text-base text-gray-900">{cls.title}</h3>
+                        <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-gray-500">
+                          <span className="flex items-center gap-1.5">
+                            <FaCalendarAlt className="text-brand-green" />
+                            {new Date(cls.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <FaClock className="text-brand-green" />
+                            {cls.time || cls.courseId?.timings || '06:00 AM IST'}
+                          </span>
+                        </div>
                       </div>
-                      <h3 className="font-extrabold text-base text-gray-900">{cls.title}</h3>
-                      <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-gray-500">
-                        <span className="flex items-center gap-1.5">
-                          <FaCalendarAlt className="text-brand-green" />
-                          {new Date(cls.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <FaClock className="text-brand-green" />
-                          {cls.time || cls.courseId?.timings || '06:00 AM IST'}
-                        </span>
-                      </div>
-                    </div>
 
-                    <div className="shrink-0 flex items-center gap-2">
-                      {cls.zoomStartUrl || cls.zoomHostUrl || cls.zoomLink || cls.zoomJoinUrl ? (
-                        <a
-                          href={cls.zoomStartUrl || cls.zoomHostUrl || (cls.zoomLink ? cls.zoomLink.replace(/\/j\//, '/s/') : cls.zoomJoinUrl)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-5 py-2.5 bg-brand-green hover:bg-brand-green-dark text-white rounded-xl font-bold text-xs shadow-sm hover:shadow transition-all flex items-center gap-2 cursor-pointer"
-                        >
-                          <FaPlayCircle size={13} />
-                          <span>Start Session ↗</span>
-                        </a>
-                      ) : (
-                        <span className="text-xs text-gray-400 font-semibold bg-gray-100 px-3 py-1.5 rounded-lg">
-                          Session Ready
-                        </span>
-                      )}
+                      <div className="shrink-0 flex items-center gap-2">
+                        {sessionStatus.isLive ? (
+                          cls.zoomStartUrl || cls.zoomHostUrl || cls.zoomLink || cls.zoomJoinUrl ? (
+                            <a
+                              href={cls.zoomStartUrl || cls.zoomHostUrl || (cls.zoomLink ? cls.zoomLink.replace(/\/j\//, '/s/') : cls.zoomJoinUrl)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-5 py-2.5 bg-brand-green hover:bg-brand-green-dark text-white rounded-xl font-bold text-xs shadow-sm hover:shadow transition-all flex items-center gap-2 cursor-pointer animate-pulse"
+                            >
+                              <FaPlayCircle size={13} />
+                              <span>Start Session ↗</span>
+                            </a>
+                          ) : (
+                            <span className="text-xs text-gray-400 font-semibold bg-gray-100 px-3 py-1.5 rounded-lg">
+                              Session Ready
+                            </span>
+                          )
+                        ) : sessionStatus.isPast ? (
+                          <span className="px-4 py-2 bg-gray-100 border border-gray-200 text-gray-500 rounded-xl font-bold text-xs">
+                            Completed
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-1.5 px-4 py-2 bg-amber-50 border border-amber-200/80 rounded-xl text-amber-800 font-bold text-xs">
+                            <FaClock size={12} className="text-amber-600" />
+                            <span>Starts 2m Before</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-12 bg-gray-50/70 rounded-2xl border border-gray-200/60 border-dashed space-y-2">

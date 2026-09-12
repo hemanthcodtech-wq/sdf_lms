@@ -80,11 +80,24 @@ export const LoginScreen = ({ navigation }) => {
     try {
       setLoading(true);
       setError('');
-      await login(email.trim(), password);
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Main', params: { screen: 'HomeTab' } }],
-      });
+      const data = await login(email.trim(), password);
+      const role = data?.role || data?.user?.role;
+      if (role === 'instructor') {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'InstructorDashboard' }],
+        });
+      } else if (role === 'moderator') {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'ModeratorDashboard' }],
+        });
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main', params: { screen: 'HomeTab' } }],
+        });
+      }
     } catch (err) {
       console.error('Login error:', err);
       setError(
@@ -106,17 +119,30 @@ export const LoginScreen = ({ navigation }) => {
       });
       const profile = await res.json();
       if (profile?.email) {
-        await loginWithGoogle({
+        const data = await loginWithGoogle({
           email: profile.email,
           name: profile.name || profile.given_name || 'Google User',
           avatar: profile.picture,
           googleId: profile.sub,
           accessToken: token,
         });
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main', params: { screen: 'HomeTab' } }],
-        });
+        const role = data?.role || data?.user?.role;
+        if (role === 'instructor') {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'InstructorDashboard' }],
+          });
+        } else if (role === 'moderator') {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'ModeratorDashboard' }],
+          });
+        } else {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Main', params: { screen: 'HomeTab' } }],
+          });
+        }
       } else {
         throw new Error('Failed to retrieve Google profile information');
       }

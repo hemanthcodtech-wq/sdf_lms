@@ -48,7 +48,7 @@ const getClassStatus = (cls) => {
   if (now > sessionEnd) {
     return 'COMPLETED';
   }
-  if (now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd) {
+  if (now >= new Date(sessionStart.getTime() - 2 * 60 * 1000) && now <= sessionEnd) {
     return 'LIVE NOW';
   }
   return 'UPCOMING';
@@ -455,23 +455,29 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
                     <TouchableOpacity
                       style={[
                         styles.monitorZoomBtn,
-                        isCompleted && { backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' },
+                        isCompleted
+                          ? { backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' }
+                          : !isLive
+                          ? { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a' }
+                          : { backgroundColor: '#2563eb' },
                       ]}
+                      disabled={!isLive && !isCompleted}
                       onPress={() => handleOpenZoom(s.zoomLink || s.courseId?.zoomMeetingLink)}
                       activeOpacity={0.8}
                     >
                       <Ionicons
-                        name={isCompleted ? 'play-circle-outline' : 'eye-outline'}
+                        name={isCompleted ? 'play-circle-outline' : isLive ? 'eye-outline' : 'time-outline'}
                         size={16}
-                        color={isCompleted ? '#374151' : '#ffffff'}
+                        color={isCompleted ? '#374151' : !isLive ? '#92400e' : '#ffffff'}
                       />
                       <Text
                         style={[
                           styles.monitorZoomBtnText,
                           isCompleted && { color: '#374151' },
+                          !isLive && !isCompleted && { color: '#92400e', fontWeight: '700' },
                         ]}
                       >
-                        {isCompleted ? 'Replay / View Recording ↗' : 'Enter Room to Monitor Session'}
+                        {isCompleted ? 'Replay / View Recording ↗' : isLive ? 'Enter Room to Monitor Session' : 'Starts 2m Before Session'}
                       </Text>
                     </TouchableOpacity>
                   </View>

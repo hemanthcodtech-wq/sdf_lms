@@ -60,9 +60,25 @@ export const RootNavigator = () => {
       }}
     >
       {/* Dashboards (Student, Instructor, Moderator) */}
-      <RootStack.Screen name="Main" component={MainTabNavigator} />
-      <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
-      <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
+      {user?.role === 'moderator' ? (
+        <>
+          <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
+          <RootStack.Screen name="Main" component={MainTabNavigator} />
+          <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
+        </>
+      ) : user?.role === 'instructor' ? (
+        <>
+          <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
+          <RootStack.Screen name="Main" component={MainTabNavigator} />
+          <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
+        </>
+      ) : (
+        <>
+          <RootStack.Screen name="Main" component={MainTabNavigator} />
+          <RootStack.Screen name="InstructorDashboard" component={InstructorDashboardScreen} />
+          <RootStack.Screen name="ModeratorDashboard" component={ModeratorDashboardScreen} />
+        </>
+      )}
 
       {/* Course Flow */}
       <RootStack.Screen name="CourseDetails" component={CourseDetailsScreen} />

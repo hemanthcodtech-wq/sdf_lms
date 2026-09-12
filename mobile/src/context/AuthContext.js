@@ -57,10 +57,32 @@ export const AuthProvider = ({ children }) => {
       const storedUser = await AsyncStorage.getItem('user');
       const storedWishlist = await AsyncStorage.getItem('wishlist');
 
-      if (storedToken && storedUser) {
-        const parsedUser = JSON.parse(storedUser);
+      if (storedToken) {
         setToken(storedToken);
-        setUser(parsedUser);
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+        // Always refresh latest user profile from server so role updates take effect immediately!
+        try {
+          const profileRes = await authService.getProfile();
+          const fresh = profileRes?.data || profileRes?.user;
+          if (fresh) {
+            const updatedUserData = {
+              _id: fresh._id,
+              name: fresh.name,
+              email: fresh.email || fresh.emailOrPhone,
+              phone: fresh.phone,
+              emailOrPhone: fresh.emailOrPhone || fresh.email,
+              avatar: fresh.avatar,
+              role: fresh.role || 'student',
+              createdAt: fresh.createdAt,
+            };
+            setUser(updatedUserData);
+            await AsyncStorage.setItem('user', JSON.stringify(updatedUserData));
+          }
+        } catch (syncErr) {
+          console.log('Background profile refresh skipped');
+        }
       }
       if (storedWishlist) {
         setWishlist(JSON.parse(storedWishlist));

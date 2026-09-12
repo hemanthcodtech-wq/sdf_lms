@@ -70,6 +70,14 @@ export const HomeScreen = ({ navigation }) => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (user?.role === 'moderator') {
+      navigation.navigate('ModeratorDashboard');
+    } else if (user?.role === 'instructor') {
+      navigation.navigate('InstructorDashboard');
+    }
+  }, [user?.role, navigation]);
+
   const userAvatarUri = getAvatarUrl(user?.avatar || user?.profileImage || user?.photoURL || user?.image);
 
   const courseCategories = Array.from(
@@ -349,6 +357,59 @@ export const HomeScreen = ({ navigation }) => {
             <Ionicons name="search-outline" size={20} color={colors.textMuted} />
             <Text style={styles.searchPlaceholder}>{t('searchCourses')}</Text>
           </TouchableOpacity>
+
+          {user?.role === 'moderator' && (
+            <TouchableOpacity
+              style={{
+                marginTop: 10,
+                backgroundColor: '#2563eb',
+                paddingVertical: 9,
+                paddingHorizontal: 14,
+                borderRadius: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+              onPress={() => navigation.navigate('ModeratorDashboard')}
+              activeOpacity={0.85}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="shield-checkmark" size={16} color="#ffffff" />
+                <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>
+                  Moderator Account Active
+                </Text>
+              </View>
+              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800' }}>
+                Open Portal →
+              </Text>
+            </TouchableOpacity>
+          )}
+          {user?.role === 'instructor' && (
+            <TouchableOpacity
+              style={{
+                marginTop: 10,
+                backgroundColor: colors.secondary,
+                paddingVertical: 9,
+                paddingHorizontal: 14,
+                borderRadius: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+              onPress={() => navigation.navigate('InstructorDashboard')}
+              activeOpacity={0.85}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="easel" size={16} color="#ffffff" />
+                <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '700' }}>
+                  Faculty Account Active
+                </Text>
+              </View>
+              <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800' }}>
+                Open Faculty Portal →
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 

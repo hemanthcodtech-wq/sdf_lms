@@ -81,7 +81,7 @@ router.get('/dashboard-stats', protect, moderator, async (req, res) => {
       const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
 
       const isPast = now > sessionEnd;
-      const isLiveNow = now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd;
+      const isLiveNow = now >= new Date(sessionStart.getTime() - 2 * 60 * 1000) && now <= sessionEnd;
       const status = isPast ? 'COMPLETED' : (isLiveNow ? 'LIVE NOW' : 'UPCOMING');
 
       // Determine Host/Monitor start URL

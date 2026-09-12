@@ -48,17 +48,30 @@ export const PortalSelectionScreen = ({ navigation }) => {
       });
       const profile = await res.json();
       if (profile?.email) {
-        await loginWithGoogle({
+        const data = await loginWithGoogle({
           email: profile.email,
           name: profile.name || profile.given_name || 'Google User',
           avatar: profile.picture,
           googleId: profile.sub,
           accessToken: token,
         });
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main', params: { screen: 'HomeTab' } }],
-        });
+        const role = data?.role || data?.user?.role;
+        if (role === 'instructor') {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'InstructorDashboard' }],
+          });
+        } else if (role === 'moderator') {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'ModeratorDashboard' }],
+          });
+        } else {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Main', params: { screen: 'HomeTab' } }],
+          });
+        }
       }
     } catch (e) {
       console.error('Portal Google Login Error:', e);
@@ -117,15 +130,27 @@ export const PortalSelectionScreen = ({ navigation }) => {
     },
     {
       id: 'staff',
-      title: 'Staff / Faculty Login',
-      subtitle: 'Access for instructors, faculty & batch moderators',
-      icon: 'briefcase-outline',
-      badge: 'STAFF PORTAL',
+      title: 'Instructor / Faculty Login',
+      subtitle: 'Course timetable, curriculum management & session start',
+      icon: 'easel-outline',
+      badge: 'FACULTY PORTAL',
       badgeColor: colors.secondary,
       accentColor: colors.secondary,
       bgTint: 'rgba(234, 122, 40, 0.08)',
       borderColor: colors.secondary,
       onPress: () => navigation.navigate('InstructorLogin'),
+    },
+    {
+      id: 'moderator',
+      title: 'Moderator / Supervisor Login',
+      subtitle: 'Batch supervision, live monitoring & attendance',
+      icon: 'shield-checkmark-outline',
+      badge: 'MODERATOR PORTAL',
+      badgeColor: '#2563eb',
+      accentColor: '#2563eb',
+      bgTint: 'rgba(37, 99, 235, 0.08)',
+      borderColor: '#2563eb',
+      onPress: () => navigation.navigate('ModeratorLogin'),
     },
   ];
 

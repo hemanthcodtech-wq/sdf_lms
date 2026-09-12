@@ -50,7 +50,7 @@ const getClassStatus = (cls) => {
   if (now > sessionEnd) {
     return 'COMPLETED';
   }
-  if (now >= new Date(sessionStart.getTime() - 15 * 60 * 1000) && now <= sessionEnd) {
+  if (now >= new Date(sessionStart.getTime() - 2 * 60 * 1000) && now <= sessionEnd) {
     return 'LIVE NOW';
   }
   return 'UPCOMING';

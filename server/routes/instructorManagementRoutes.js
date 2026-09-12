@@ -69,6 +69,7 @@ router.post('/', protect, admin, async (req, res) => {
 
     const instructor = new User({
       emailOrPhone: emailClean,
+      email: emailClean,
       name: name.trim(),
       phone: phone ? phone.trim() : '',
       speciality: speciality ? speciality.trim() : 'Yoga & Wellness Expert',

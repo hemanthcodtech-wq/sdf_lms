@@ -296,6 +296,32 @@ export const ProfileScreen = ({ navigation }) => {
       color: '#6366f1',
       onPress: () => navigation.navigate('Settings'),
     },
+    ...((effectiveUser?.role === 'instructor' || effectiveUser?.role === 'admin')
+      ? [
+          {
+            id: 'instructor_portal',
+            title: 'Instructor Portal',
+            subtitle: 'Manage curriculum, live classes & batches',
+            icon: 'easel-outline',
+            color: '#EA7A28',
+            badge: 'FACULTY',
+            onPress: () => navigation.navigate('InstructorDashboard'),
+          },
+        ]
+      : []),
+    ...((effectiveUser?.role === 'moderator' || effectiveUser?.role === 'admin')
+      ? [
+          {
+            id: 'moderator_portal',
+            title: 'Moderator Portal',
+            subtitle: 'Manage batch students & live attendance',
+            icon: 'shield-checkmark-outline',
+            color: '#0d5c31',
+            badge: 'STAFF',
+            onPress: () => navigation.navigate('ModeratorDashboard'),
+          },
+        ]
+      : []),
     {
       id: 'help',
       title: t('helpSupport'),
@@ -366,6 +392,30 @@ export const ProfileScreen = ({ navigation }) => {
                 variant={effectiveUser?.role === 'admin' ? 'danger' : 'primary'}
               />
             </View>
+
+            {(effectiveUser?.role === 'instructor' || effectiveUser?.role === 'admin') && (
+              <TouchableOpacity
+                style={styles.instructorPortalQuickBtn}
+                onPress={() => navigation.navigate('InstructorDashboard')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="easel" size={15} color="#ffffff" />
+                <Text style={styles.instructorPortalQuickBtnText}>Open Instructor Faculty Portal</Text>
+                <Ionicons name="arrow-forward" size={13} color="#ffffff" />
+              </TouchableOpacity>
+            )}
+
+            {(effectiveUser?.role === 'moderator' || effectiveUser?.role === 'admin') && (
+              <TouchableOpacity
+                style={styles.moderatorPortalQuickBtn}
+                onPress={() => navigation.navigate('ModeratorDashboard')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="shield-checkmark" size={15} color="#ffffff" />
+                <Text style={styles.instructorPortalQuickBtnText}>Open Moderator Portal</Text>
+                <Ionicons name="arrow-forward" size={13} color="#ffffff" />
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={styles.cardEditProfileBtn}
