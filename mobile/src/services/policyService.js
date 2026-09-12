@@ -10,62 +10,62 @@ const DEFAULT_FALLBACK_POLICIES = {
 
   refundPolicy: `1. 100% Digital Delivery\nAll courses, materials, and live lectures offered on Swamy Dwija Foundation are electronic digital goods. Course access is activated immediately upon successful payment verification.\n\n2. Cancellation Window\nYou may request a full refund or course transfer up to 24 hours prior to the start of Session 1 of your batch.\n\n3. Refund Processing\nApproved refunds are credited directly to your original payment method (Credit/Debit Card, Net Banking, or UPI) within 5 to 7 working business days.\n\n4. Exceptions\nOnce a batch has commenced and access to live interactive sessions or digital curriculum has been utilized, refunds cannot be issued. However, students experiencing genuine emergencies may request a transfer to a future batch.\n\n5. Submitting a Request\nTo request a cancellation or refund, please reach out to our team via the Call or Email button below with your registered email and Order ID.`,
 
-  contactPhone: '+91 98765 43210',
-  contactEmail: 'support@sdflms.org',
-  faqs: [
-    {
-      q: 'How do I join my live Zoom classes?',
-      a: 'Navigate to the Home screen under "Upcoming Live Classes" or go to "My Learning" -> tap your enrolled course -> select your active session under "Sessions" to join the live Zoom class.',
-    },
-    {
-      q: 'When do I receive my course certificate?',
-      a: 'Certificates are issued automatically once you finish all required video lessons, assignments, and quizzes with a passing grade.',
-    },
-    {
-      q: 'Can I watch recorded lectures offline?',
-      a: 'Yes, recorded classes and downloadable PDF materials are accessible 24/7 throughout your enrollment validity.',
-    },
-    {
-      q: 'What if I miss a live class session?',
-      a: "Don't worry! Instructors upload the session recording and class practice notes to 'View Materials' inside your course dashboard so you can practice anytime.",
-    },
-    {
-      q: 'How do I download my payment invoice / receipt?',
-      a: 'Visit Payment History from your Profile menu to view full transaction records and download an official PDF receipt for each course purchase.',
-    },
-  ],
+  contactPhone: '+91 9989551305',
+  contactEmail: 'swamidwijafoundation@gmail.com',
+  faqs: [],
 };
+
+let inMemoryPolicies = null;
 
 export const policyService = {
   getPolicies: async () => {
     try {
-      // 1. Return cache first if available
-      const cached = await AsyncStorage.getItem(POLICIES_CACHE_KEY);
-      let data = cached ? JSON.parse(cached) : DEFAULT_FALLBACK_POLICIES;
-
-      // 2. Fetch fresh from backend
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
-        const res = await fetch(`${API_BASE_URL}/admin/settings/policies`, {
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        const json = await res.json();
-        if (json?.success && json?.data) {
-          data = {
-            ...DEFAULT_FALLBACK_POLICIES,
-            ...json.data,
-          };
-          await AsyncStorage.setItem(POLICIES_CACHE_KEY, JSON.stringify(data));
-        }
-      } catch (netErr) {
-        // Fallback to cache if network is slow/offline
+      if (inMemoryPolicies) {
+        policyService._refreshInBackground();
+        return inMemoryPolicies;
       }
 
-      return data;
+      const cached = await AsyncStorage.getItem(POLICIES_CACHE_KEY);
+      if (cached) {
+        try {
+          inMemoryPolicies = JSON.parse(cached);
+          policyService._refreshInBackground();
+          return inMemoryPolicies;
+        } catch (e) {}
+      }
+
+      return await policyService._fetchFresh();
     } catch (e) {
       return DEFAULT_FALLBACK_POLICIES;
     }
   },
+
+  _refreshInBackground: async () => {
+    try {
+      await policyService._fetchFresh();
+    } catch (e) {}
+  },
+
+  _fetchFresh: async () => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(`${API_BASE_URL}/admin/settings/policies`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const json = await res.json();
+      if (json?.success && json?.data) {
+        const data = {
+          ...DEFAULT_FALLBACK_POLICIES,
+          ...json.data,
+        };
+        inMemoryPolicies = data;
+        await AsyncStorage.setItem(POLICIES_CACHE_KEY, JSON.stringify(data));
+        return data;
+      }
+    } catch (netErr) {}
+    return inMemoryPolicies || DEFAULT_FALLBACK_POLICIES;
+  },
 };
+

@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Linking,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../../theme/colors';
@@ -9,40 +18,30 @@ import { useLanguage } from '../../context/LanguageContext';
 export const HelpSupportScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
-  const [contactPhone, setContactPhone] = useState('+91 98765 43210');
-  const [contactEmail, setContactEmail] = useState('support@sdflms.org');
-  const [faqs, setFaqs] = useState([
-    {
-      q: 'How do I join my live Zoom classes?',
-      a: 'Navigate to the Home screen under "Upcoming Live Classes" or go to "My Learning" -> tap your enrolled course -> select your active session under "Sessions" to join the live Zoom class.',
-    },
-    {
-      q: 'When do I receive my course certificate?',
-      a: 'Certificates are issued automatically once you finish all required video lessons, assignments, and quizzes with a passing grade.',
-    },
-    {
-      q: 'Can I watch recorded lectures offline?',
-      a: 'Yes, recorded classes and downloadable PDF materials are accessible 24/7 throughout your enrollment validity.',
-    },
-    {
-      q: 'What if I miss a live class session?',
-      a: "Don't worry! Instructors upload the session recording and class practice notes to 'View Materials' inside your course dashboard so you can practice anytime.",
-    },
-    {
-      q: 'How do I download my payment invoice / receipt?',
-      a: 'Visit Payment History from your Profile menu to view full transaction records and download an official PDF receipt for each course purchase.',
-    },
-  ]);
+  const [contactPhone, setContactPhone] = useState('+91 9989551305');
+  const [contactEmail, setContactEmail] = useState('swamidwijafoundation@gmail.com');
+  const [faqs, setFaqs] = useState([]);
+  const [loadingFaqs, setLoadingFaqs] = useState(true);
   const [expandedIdx, setExpandedIdx] = useState(0);
 
   useEffect(() => {
-    policyService.getPolicies().then((res) => {
-      if (res?.contactPhone) setContactPhone(res.contactPhone);
-      if (res?.contactEmail) setContactEmail(res.contactEmail);
-      if (Array.isArray(res?.faqs) && res.faqs.length > 0) {
-        setFaqs(res.faqs);
-      }
-    });
+    let isMounted = true;
+    policyService.getPolicies()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.contactPhone) setContactPhone(res.contactPhone);
+        if (res?.contactEmail) setContactEmail(res.contactEmail);
+        if (Array.isArray(res?.faqs)) {
+          setFaqs(res.faqs);
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoadingFaqs(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleCall = () => {
@@ -106,32 +105,42 @@ export const HelpSupportScreen = ({ navigation }) => {
 
         {/* FAQs */}
         <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
-        {faqs.map((faq, idx) => {
-          const isExpanded = expandedIdx === idx;
-          const questionText = faq.q || faq.question || '';
-          const answerText = faq.a || faq.answer || '';
-          return (
-            <TouchableOpacity
-              key={idx}
-              style={[styles.faqCard, shadows.sm]}
-              onPress={() => setExpandedIdx(isExpanded ? null : idx)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.faqHeader}>
-                <Ionicons name="help-circle" size={20} color={colors.primary} />
-                <Text style={styles.faqQuestion}>{questionText}</Text>
-                <Ionicons
-                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.textTertiary}
-                />
-              </View>
-              {isExpanded && (
-                <Text style={styles.faqAnswer}>{answerText}</Text>
-              )}
-            </TouchableOpacity>
-          );
-        })}
+        {loadingFaqs ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : faqs.length > 0 ? (
+          faqs.map((faq, idx) => {
+            const isExpanded = expandedIdx === idx;
+            const questionText = faq.q || faq.question || '';
+            const answerText = faq.a || faq.answer || '';
+            return (
+              <TouchableOpacity
+                key={idx}
+                style={[styles.faqCard, shadows.sm]}
+                onPress={() => setExpandedIdx(isExpanded ? null : idx)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.faqHeader}>
+                  <Ionicons name="help-circle" size={20} color={colors.primary} />
+                  <Text style={styles.faqQuestion}>{questionText}</Text>
+                  <Ionicons
+                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color={colors.textTertiary}
+                  />
+                </View>
+                {isExpanded && (
+                  <Text style={styles.faqAnswer}>{answerText}</Text>
+                )}
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No questions available right now.</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -232,4 +241,23 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginLeft: 28,
   },
+  loadingContainer: {
+    paddingVertical: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyCard: {
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: colors.textTertiary,
+  },
 });
+
