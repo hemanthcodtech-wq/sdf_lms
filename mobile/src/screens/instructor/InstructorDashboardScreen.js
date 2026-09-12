@@ -140,10 +140,10 @@ export const InstructorDashboardScreen = ({ navigation }) => {
   };
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to log out of the Instructor Portal?', [
+    Alert.alert('Logout & Switch Portal', 'Do you want to log out of the Instructor Portal and return to Portal Selection (Student / Login / Staff)?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Logout',
+        text: 'Logout & Switch',
         style: 'destructive',
         onPress: async () => {
           await logout();
@@ -373,13 +373,23 @@ export const InstructorDashboardScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <TouchableOpacity
-              style={styles.logoutBtn}
-              onPress={handleLogout}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                style={styles.switchPortalBtn}
+                onPress={handleLogout}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="apps-outline" size={14} color="#ffffff" />
+                <Text style={styles.switchPortalText}>Switch Portal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.logoutBtn}
+                onPress={handleLogout}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="log-out-outline" size={20} color={colors.error} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Top Metric Stats */}
@@ -1311,6 +1321,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: colors.textPrimary,
+  },
+  switchPortalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+  },
+  switchPortalText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   logoutBtn: {
     width: 38,

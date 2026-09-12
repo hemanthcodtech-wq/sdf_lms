@@ -231,6 +231,11 @@ export const StudentClassesScreen = ({ route, navigation }) => {
   const realSessions = [];
   if (classes.length > 0) {
     classes.forEach((cl, i) => {
+      const isRescheduled = Boolean(
+        cl.isRescheduled ||
+        (cl.time && course?.startTime && cl.time.trim() !== course.startTime.trim()) ||
+        (cl.originalTime && cl.time !== cl.originalTime)
+      );
       realSessions.push({
         id: cl._id || `class_${i}`,
         title: cl.title || `Session ${i + 1}`,
@@ -240,6 +245,9 @@ export const StudentClassesScreen = ({ route, navigation }) => {
         date: cl.date,
         time: cl.time,
         zoomMeetingId: cl.zoomMeetingId,
+        isRescheduled,
+        originalTime: cl.originalTime || course?.startTime,
+        originalDate: cl.originalDate,
       });
     });
     realSessions.sort((a, b) => getSessionDateObj(a) - getSessionDateObj(b));
@@ -320,22 +328,6 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       // Active 2 minutes before class begins
       const joinWindowStart = new Date(sessionStart.getTime() - 2 * 60 * 1000);
 
-      let sessionEnd;
-      if (endTimeStr && typeof endTimeStr === 'string') {
-        const matchEnd = endTimeStr.match(/(\d{1,2}):(\d{2})/);
-        if (matchEnd) {
-          let endH = parseInt(matchEnd[1], 10);
-          let endM = parseInt(matchEnd[2], 10);
-          if (endTimeStr.toLowerCase().includes('pm') && endH < 12) endH += 12;
-          if (endTimeStr.toLowerCase().includes('am') && endH === 12) endH = 0;
-          sessionEnd = new Date(y, m - 1, d, endH, endM, 0, 0);
-        }
-      }
-      if (!sessionEnd) {
-        const durMins = lesson.durationMinutes || (parseInt(lesson.duration, 10) || 60);
-        sessionEnd = new Date(sessionStart.getTime() + durMins * 60 * 1000);
-      }
-
       const formatTime12 = (date) => {
         let hours = date.getHours();
         const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -346,6 +338,25 @@ export const StudentClassesScreen = ({ route, navigation }) => {
       };
 
       displayTime = `${formatTime12(sessionStart)}`;
+
+      // Calculate sessionEnd strictly from sessionStart + durationMinutes
+      const durMins = lesson.durationMinutes || (parseInt(lesson.duration, 10) || 60);
+      let sessionEnd = new Date(sessionStart.getTime() + durMins * 60 * 1000);
+
+      // Only use course-level endTime if session was NOT rescheduled AND explicit end is strictly AFTER sessionStart
+      if (!lesson.isRescheduled && endTimeStr && typeof endTimeStr === 'string') {
+        const matchEnd = endTimeStr.match(/(\d{1,2}):(\d{2})/);
+        if (matchEnd) {
+          let endH = parseInt(matchEnd[1], 10);
+          let endM = parseInt(matchEnd[2], 10);
+          if (endTimeStr.toLowerCase().includes('pm') && endH < 12) endH += 12;
+          if (endTimeStr.toLowerCase().includes('am') && endH === 12) endH = 0;
+          const candidateEnd = new Date(y, m - 1, d, endH, endM, 0, 0);
+          if (candidateEnd > sessionStart) {
+            sessionEnd = candidateEnd;
+          }
+        }
+      }
 
       if (route.params?.enrollment?.isExpired) {
         return { isCompleted: true, isLiveNow: false, canJoin: false, label: 'Expired', displayDate, displayTime };
@@ -587,20 +598,58 @@ export const StudentClassesScreen = ({ route, navigation }) => {
           <TouchableOpacity
             style={[
               styles.playCenterButton,
-              !currentStatus?.canJoin && { backgroundColor: 'rgba(30, 41, 59, 0.75)' },
+              currentStatus?.canJoin
+                ? styles.playCenterButtonLive
+                : currentStatus?.isCompleted
+                ? styles.playCenterButtonDone
+                : styles.playCenterButtonUpcoming,
             ]}
-            onPress={() => handleJoinZoom(currentLesson)}
+            onPress={() => {
+              if (currentStatus?.canJoin) {
+                handleJoinZoom(currentLesson);
+              } else if (currentStatus?.isCompleted) {
+                Alert.alert('Session Completed', 'This live session has finished. You can access recordings and notes in the "Materials & Notes" tab below.');
+              } else {
+                Alert.alert(
+                  currentLesson?.isRescheduled ? '🔄 Rescheduled Session' : 'Scheduled Live Class',
+                  `This class is scheduled for ${currentStatus?.displayDate} at ${currentStatus?.displayTime}.\n\nThe "Join Class" button will be enabled 2 minutes before the session starts.`
+                );
+              }
+            }}
             activeOpacity={0.8}
           >
-            <Ionicons name={currentStatus?.canJoin ? "videocam" : "lock-closed"} size={currentStatus?.canJoin ? 32 : 26} color="#fff" />
+            <Ionicons
+              name={
+                currentStatus?.canJoin
+                  ? "videocam"
+                  : currentStatus?.isCompleted
+                  ? "checkmark-done"
+                  : "time"
+              }
+              size={currentStatus?.canJoin ? 32 : 28}
+              color="#fff"
+            />
+            {currentStatus?.canJoin && (
+              <Text style={styles.playCenterLiveText}>JOIN NOW (LIVE)</Text>
+            )}
           </TouchableOpacity>
           <View style={styles.playerBottomInfo}>
             <Text style={styles.playerLessonTitle} numberOfLines={1}>
               {currentLesson?.title || course?.title || 'Live Interactive Class'}
             </Text>
-            <Text style={styles.playerSubInfo}>
-              ⏰ {course?.timings || 'Batch schedule in description'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+              <Text style={styles.playerSubInfo}>
+                ⏰ {currentStatus?.displayDate ? `${currentStatus.displayDate} • ${currentStatus.displayTime}` : (course?.timings || 'Batch schedule in description')}
+              </Text>
+              {currentLesson?.isRescheduled && (
+                <View style={styles.rescheduledHeroBadge}>
+                  <Ionicons name="swap-horizontal" size={11} color="#92400e" />
+                  <Text style={styles.rescheduledHeroBadgeText}>
+                    Rescheduled to {currentStatus?.displayTime}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </View>
@@ -722,20 +771,33 @@ export const StudentClassesScreen = ({ route, navigation }) => {
 
                     {/* Session Title & Date/Time Information */}
                     <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text
-                        style={[
-                          styles.lessonTitle,
-                          isSelected && !isDone && styles.lessonTitleSelected,
-                          isDone && styles.lessonTitleDone,
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {lesson.title}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 2 }}>
+                        <Text
+                          style={[
+                            styles.lessonTitle,
+                            isSelected && !isDone && styles.lessonTitleSelected,
+                            isDone && styles.lessonTitleDone,
+                          ]}
+                          numberOfLines={2}
+                        >
+                          {lesson.title}
+                        </Text>
+                        {lesson.isRescheduled && (
+                          <View style={styles.rescheduledTag}>
+                            <Ionicons name="swap-horizontal" size={10} color="#92400e" />
+                            <Text style={styles.rescheduledTagText}>Rescheduled</Text>
+                          </View>
+                        )}
+                      </View>
                       <View style={styles.lessonMetaRow}>
                         <Text style={styles.lessonMetaText}>
                           📅 {status.displayDate} • ⏰ {status.displayTime}
                         </Text>
+                        {lesson.isRescheduled && (
+                          <Text style={styles.rescheduledMetaNote}>
+                            (Moved to {status.displayTime})
+                          </Text>
+                        )}
                       </View>
                     </View>
 
@@ -759,8 +821,10 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                         style={styles.scheduledBadge}
                         onPress={() =>
                           Alert.alert(
-                            'Live Session',
-                            `This session is scheduled for ${status.displayDate} at ${status.displayTime}.\n\nThe "Join Class" button will be activated 2 minutes before class starts.`
+                            lesson.isRescheduled ? '🔄 Rescheduled Live Class' : 'Live Session Scheduled',
+                            lesson.isRescheduled
+                              ? `This class has been rescheduled to ${status.displayDate} at ${status.displayTime}.\n\nThe "Join Class" button will be activated 2 minutes before class starts.`
+                              : `This session is scheduled for ${status.displayDate} at ${status.displayTime}.\n\nThe "Join Class" button will be activated 2 minutes before class starts.`
                           )
                         }
                         activeOpacity={0.7}
@@ -1554,5 +1618,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#065f46',
+  },
+  rescheduledHeroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#fef3c7',
+    borderColor: '#fde68a',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  rescheduledHeroBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#92400e',
+  },
+  rescheduledTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#fef3c7',
+    borderColor: '#fde68a',
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  rescheduledTagText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#92400e',
+  },
+  rescheduledMetaNote: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#b45309',
+  },
+  playCenterButtonLive: {
+    backgroundColor: '#16a34a',
+  },
+  playCenterButtonDone: {
+    backgroundColor: '#059669',
+  },
+  playCenterButtonUpcoming: {
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  playCenterLiveText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+    marginTop: 2,
+    letterSpacing: 0.5,
   },
 });

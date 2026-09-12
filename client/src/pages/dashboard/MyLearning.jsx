@@ -12,6 +12,8 @@ const MyLearning = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentTick, setCurrentTick] = useState(Date.now());
+  const [classes, setClasses] = useState([]);
+  const [activeTab, setActiveTab] = useState('ongoing'); // 'ongoing' | 'completed'
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -61,41 +63,29 @@ const MyLearning = () => {
         return;
       }
 
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-
       // Fetch enrolled courses and live classes in parallel
       const [coursesRes, classesRes] = await Promise.all([
-        axios.get(`${apiBase}/payments/history`, {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/payments/history`, {
           headers: { Authorization: `Bearer ${token}` }
-        }).catch((err) => {
-          console.error('Error fetching enrolled courses:', err);
-          return { data: { success: false, data: [] } };
         }),
-        axios.get(`${apiBase}/classes/student`, {
+        axios.get(`${import.meta.env.VITE_API_BASE_URL}/classes/student`, {
           headers: { Authorization: `Bearer ${token}` }
-        }).catch((err) => {
-          console.warn('Optional classes fetch error:', err);
-          return { data: { success: false, data: [] } };
-        })
+        }).catch(() => ({ data: { success: true, data: [] } }))
       ]);
 
-      const rawClasses = classesRes?.data?.success && Array.isArray(classesRes.data.data) ? classesRes.data.data : [];
+      const rawClasses = Array.isArray(classesRes?.data?.data) ? classesRes.data.data : [];
+      setClasses(rawClasses);
 
       // Update upcoming class banner with latest scheduled/rescheduled classes
       if (rawClasses.length > 0) {
         const now = new Date();
-        const futureClasses = rawClasses.filter(cls => {
-          if (!cls || !cls.date) return false;
-          const sessionStart = parseClassDateTime(cls.date, cls.time);
-          if (!sessionStart) return false;
-          const duration = cls.durationMinutes || 60;
-          const sessionEnd = new Date(sessionStart.getTime() + duration * 60 * 1000);
-          return sessionEnd >= now;
-        }).sort((a, b) => {
-          const aTime = parseClassDateTime(a?.date, a?.time)?.getTime() || 0;
-          const bTime = parseClassDateTime(b?.date, b?.time)?.getTime() || 0;
-          return aTime - bTime;
-        });
+        const futureClasses = rawClasses
+          .map(cls => {
+            const sessionStart = parseClassDateTime(cls.date, cls.time);
+            return { ...cls, sessionStart };
+          })
+          .filter(cls => cls.sessionStart && cls.sessionStart > new Date(now.getTime() - 60 * 60 * 1000))
+          .sort((a, b) => a.sessionStart - b.sessionStart);
 
         if (futureClasses.length > 0) {
           setUpcomingClass(futureClasses[0]);
@@ -146,8 +136,24 @@ const MyLearning = () => {
                         }
                       }
                       const sessionStart = new Date(y, m - 1, d, startH, startM, 0, 0);
-                      const durMins = (classes[idx] && classes[idx].durationMinutes) || 60;
-                      const sessionEnd = new Date(sessionStart.getTime() + durMins * 60 * 1000);
+
+                      let sessionEnd;
+                      const endTimeStr = (classes[idx] && classes[idx].endTime) || courseObj.endTime || (courseObj.timings && courseObj.timings.includes(' to ') ? courseObj.timings.split(' to ')[1] : null);
+                      if (endTimeStr) {
+                        const matchEnd = endTimeStr.match(/(\d{1,2}):(\d{2})/);
+                        if (matchEnd) {
+                          let endH = parseInt(matchEnd[1], 10);
+                          let endM = parseInt(matchEnd[2], 10);
+                          if (endTimeStr.toLowerCase().includes('pm') && endH < 12) endH += 12;
+                          if (endTimeStr.toLowerCase().includes('am') && endH === 12) endH = 0;
+                          sessionEnd = new Date(y, m - 1, d, endH, endM, 0, 0);
+                        }
+                      }
+                      if (!sessionEnd) {
+                        const durMins = (classes[idx] && classes[idx].durationMinutes) || 60;
+                        sessionEnd = new Date(sessionStart.getTime() + durMins * 60 * 1000);
+                      }
+
                       if (now > sessionEnd) {
                         completedCount++;
                       }
@@ -157,9 +163,9 @@ const MyLearning = () => {
               }
               allFinished = completedCount === totalCount && totalCount > 0;
               calcProgress = allFinished ? 100 : Math.round((completedCount / totalCount) * 100);
-            } else if (typeof enrollment.progress === 'number' && enrollment.progress > 0) {
-              calcProgress = enrollment.progress;
-              allFinished = enrollment.completed || enrollment.progress >= 100;
+            } else {
+              calcProgress = 0;
+              allFinished = false;
             }
 
             return {
@@ -302,121 +308,164 @@ const MyLearning = () => {
             </div>
 
             <div className="pt-4">
-              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><FaGraduationCap className="text-yellow-500" /> My Enrolled Courses</h2>
-              {/* Course Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {courses.map((course, index) => {
-                  const colors = getCategoryColor(course.category);
-                  return (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}
-                      key={course.id}
-                      className="bg-white rounded-[20px] border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col relative group"
-                    >
-                      {/* Top colored banner */}
-                      <div className={`${colors} px-5 py-3 flex justify-between items-center border-b border-white/50`}>
-                        <span className="font-bold text-sm tracking-tight">{course.category}</span>
-                        {course.isExpired ? (
-                          <span className="text-[10px] font-extrabold uppercase tracking-wide flex items-center gap-1 bg-red-600 text-white px-2.5 py-0.5 rounded-full shadow-2xs">
-                            Expired
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold uppercase tracking-wide opacity-80 flex items-center gap-1 bg-white/30 px-2 py-0.5 rounded-full">
-                            Enrolled
-                          </span>
-                        )}
-                      </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <FaGraduationCap className="text-yellow-500" /> My Enrolled Courses
+                </h2>
 
-                      {/* Content */}
-                      <div className="p-6 flex-1 flex flex-col">
-                        <div className="flex items-start gap-4 mb-3">
-                          <div className="w-14 h-14 rounded-xl bg-gray-50 shrink-0 overflow-hidden border border-gray-100 flex items-center justify-center">
-                            {course.image ? (
-                              <img
-                                src={getCourseImageUrl(course.image)}
-                                alt={course.title}
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                onError={(e) => {
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <FaGraduationCap className="text-gray-300 size-6" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0 pt-1">
-                            <h3 className="text-lg font-black text-gray-800 leading-snug line-clamp-2">{course.title}</h3>
-                          </div>
-                        </div>
-
-                        {/* Access Validity Badge */}
-                        <div className="mb-3">
-                          <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
-                            course.isExpired 
-                              ? 'bg-red-50 text-red-700 border-red-200' 
-                              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                          }`}>
-                            <span>{course.isExpired ? '🔒' : '⏳'}</span>
-                            <span>{course.validityLabel}</span>
-                          </span>
-                        </div>
-
-                        <div className="mt-auto pt-4 border-t border-gray-50">
-                          <div className="flex justify-between items-center mb-2">
-                            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Progress</div>
-                            <div className="text-sm font-bold text-gray-700">{course.progress}%</div>
-                          </div>
-                          <div className="w-full bg-gray-100 rounded-full h-1.5 mb-6">
-                            <div className="bg-[#fcd536] h-1.5 rounded-full" style={{ width: `${course.progress}%` }}></div>
-                          </div>
-
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={() => navigate(`/dashboard/learning/${course.courseId}`)}
-                              className={`flex-1 font-bold px-3 py-3 rounded-xl text-xs sm:text-sm shadow-sm transition-transform active:scale-95 flex justify-center items-center gap-1.5 cursor-pointer ${
-                                course.isExpired 
-                                  ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200' 
-                                  : 'bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900'
-                              }`}
-                            >
-                              <span>{course.isExpired ? 'View Course (Archived)' : 'View Classes'}</span> <FaChevronRight className="text-[10px]" />
-                            </button>
-
-                            {course.whatsappGroupLink && (
-                              <a
-                                href={course.whatsappGroupLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-3.5 py-3 bg-[#25D366] hover:bg-[#1ebc59] text-white rounded-xl shadow-xs transition-transform active:scale-95 flex items-center justify-center cursor-pointer"
-                                title="Join Batch WhatsApp Group"
-                              >
-                                <FaWhatsapp size={17} />
-                              </a>
-                            )}
-                          </div>
-
-                          {(course.progress === 100 && course.completed) && (
-                            <button
-                              onClick={() => navigate('/dashboard/certificates')}
-                              className="w-full mt-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
-                            >
-                              <FaAward className="text-amber-600" />
-                              <span>Certificate Ready • View in Portal</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-                
-                {courses.length === 0 && (
-                  <div className="col-span-full text-center p-12 bg-white rounded-2xl border border-dashed border-gray-300 text-gray-500 font-medium">
-                    You haven't enrolled in any courses yet.
-                  </div>
-                )}
+                {/* Ongoing / Completed Tabs */}
+                <div className="flex bg-gray-200/60 p-1 rounded-xl w-fit border border-gray-200/80">
+                  <button
+                    onClick={() => setActiveTab('ongoing')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'ongoing'
+                        ? 'bg-white text-gray-900 shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Ongoing Courses {courses.filter(c => !c.completed).length > 0 ? `(${courses.filter(c => !c.completed).length})` : ''}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('completed')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      activeTab === 'completed'
+                        ? 'bg-white text-gray-900 shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Completed Courses {courses.filter(c => c.completed).length > 0 ? `(${courses.filter(c => c.completed).length})` : ''}
+                  </button>
+                </div>
               </div>
+
+              {/* Course Cards Grid */}
+              {(() => {
+                const ongoing = courses.filter(c => !c.completed);
+                const completed = courses.filter(c => c.completed);
+                const displayed = activeTab === 'completed' ? completed : ongoing;
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {displayed.map((course, index) => {
+                      const colors = getCategoryColor(course.category);
+                      return (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}
+                          key={course.id}
+                          className="bg-white rounded-[20px] border border-gray-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col relative group"
+                        >
+                          {/* Top colored banner */}
+                          <div className={`${colors} px-5 py-3 flex justify-between items-center border-b border-white/50`}>
+                            <span className="font-bold text-sm tracking-tight">{course.category}</span>
+                            {course.isExpired ? (
+                              <span className="text-[10px] font-extrabold uppercase tracking-wide flex items-center gap-1 bg-red-600 text-white px-2.5 py-0.5 rounded-full shadow-2xs">
+                                Expired
+                              </span>
+                            ) : course.completed ? (
+                              <span className="text-[10px] font-bold uppercase tracking-wide flex items-center gap-1 bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                                Completed
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold uppercase tracking-wide opacity-80 flex items-center gap-1 bg-white/30 px-2 py-0.5 rounded-full">
+                                Ongoing
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Content */}
+                          <div className="p-6 flex-1 flex flex-col">
+                            <div className="flex items-start gap-4 mb-3">
+                              <div className="w-14 h-14 rounded-xl bg-gray-50 shrink-0 overflow-hidden border border-gray-100 flex items-center justify-center">
+                                {course.image ? (
+                                  <img
+                                    src={getCourseImageUrl(course.image)}
+                                    alt={course.title}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                    onError={(e) => {
+                                      e.currentTarget.onerror = null;
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <FaGraduationCap className="text-gray-300 size-6" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0 pt-1">
+                                <h3 className="text-lg font-black text-gray-800 leading-snug line-clamp-2">{course.title}</h3>
+                              </div>
+                            </div>
+
+                            {/* Access Validity Badge */}
+                            <div className="mb-3">
+                              <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                                course.isExpired 
+                                  ? 'bg-red-50 text-red-700 border-red-200' 
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              }`}>
+                                <span>{course.isExpired ? '🔒' : '⏳'}</span>
+                                <span>{course.validityLabel}</span>
+                              </span>
+                            </div>
+
+                            <div className="mt-auto pt-4 border-t border-gray-50">
+                              <div className="flex justify-between items-center mb-2">
+                                <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">Progress</div>
+                                <div className="text-sm font-bold text-gray-700">{course.progress}%</div>
+                              </div>
+                              <div className="w-full bg-gray-100 rounded-full h-1.5 mb-6">
+                                <div className="bg-[#fcd536] h-1.5 rounded-full" style={{ width: `${course.progress}%` }}></div>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => navigate(`/dashboard/learning/${course.courseId}`)}
+                                  className={`flex-1 font-bold px-3 py-3 rounded-xl text-xs sm:text-sm shadow-sm transition-transform active:scale-95 flex justify-center items-center gap-1.5 cursor-pointer ${
+                                    course.isExpired 
+                                      ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200' 
+                                      : 'bg-[#fcd536] hover:bg-[#f6cd24] text-gray-900'
+                                  }`}
+                                >
+                                  <span>{course.isExpired ? 'View Course (Archived)' : 'View Classes'}</span> <FaChevronRight className="text-[10px]" />
+                                </button>
+
+                                {course.whatsappGroupLink && (
+                                  <a
+                                    href={course.whatsappGroupLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-3.5 py-3 bg-[#25D366] hover:bg-[#1ebc59] text-white rounded-xl shadow-xs transition-transform active:scale-95 flex items-center justify-center cursor-pointer"
+                                    title="Join Batch WhatsApp Group"
+                                  >
+                                    <FaWhatsapp size={17} />
+                                  </a>
+                                )}
+                              </div>
+
+                              {(course.progress === 100 && course.completed) && (
+                                <button
+                                  onClick={() => navigate('/dashboard/certificates')}
+                                  className="w-full mt-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                                >
+                                  <FaAward className="text-amber-600" />
+                                  <span>Certificate Ready • View in Portal</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                    
+                    {displayed.length === 0 && (
+                      <div className="col-span-full text-center p-12 bg-white rounded-2xl border border-dashed border-gray-300 text-gray-500 font-medium">
+                        {activeTab === 'completed' 
+                          ? 'No completed courses yet. Keep learning!' 
+                          : "You don't have any ongoing courses. Explore our catalog to start learning!"}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             
           </div>

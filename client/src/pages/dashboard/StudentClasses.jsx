@@ -447,7 +447,12 @@ const StudentClasses = () => {
                                 {isPast ? <FaCheckCircle size={20} className="text-green-600" /> : <FaCalendarAlt size={18} />}
                               </div>
                               <div className="flex flex-col pt-1 flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  {cls.isRescheduled && (
+                                    <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                                      🔄 RESCHEDULED
+                                    </span>
+                                  )}
                                   {isLiveNow && (
                                     <span className="flex items-center gap-1.5 text-[10px] font-extrabold text-green-700 bg-green-100 px-2.5 py-0.5 rounded-full animate-pulse">
                                       <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span> LIVE NOW
@@ -471,6 +476,7 @@ const StudentClasses = () => {
                             <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto">
                               <span className="text-[12px] text-gray-500 font-semibold">
                                 {(parseClassDateTime(cls.date, cls.time) || new Date(cls.date)).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} • {cls.time}
+                                {cls.isRescheduled && <span className="text-amber-700 font-bold ml-1.5">(Rescheduled)</span>}
                               </span>
                               
                               {/* Dynamic Action Buttons based on Status */}

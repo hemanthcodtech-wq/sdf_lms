@@ -265,6 +265,8 @@ router.post('/:id/reschedule', protect, admin, async (req, res) => {
 
     const zoomDetails = await createZoomMeeting(classTitle, startTimeObj.toISOString(), classDuration);
 
+    const originalTimeStr = liveClass.time;
+
     // Update the class document
     liveClass.title = classTitle;
     liveClass.date = new Date(newDate);
@@ -273,11 +275,15 @@ router.post('/:id/reschedule', protect, admin, async (req, res) => {
     liveClass.zoomLink = zoomDetails.joinUrl;
     liveClass.zoomStartUrl = zoomDetails.startUrl;
     liveClass.zoomMeetingId = zoomDetails.meetingId;
+    liveClass.isRescheduled = true;
+    liveClass.originalDate = oldDateStr;
+    liveClass.originalTime = originalTimeStr;
     await liveClass.save();
 
     // Update Course sessionDates array to stay in sync
     if (liveClass.courseId) {
-      const course = await Course.findById(liveClass.courseId._id || liveClass.courseId);
+      const courseId = liveClass.courseId._id || liveClass.courseId;
+      const course = await Course.findById(courseId);
       if (course && Array.isArray(course.sessionDates)) {
         const updatedDates = course.sessionDates.filter(d => d !== oldDateStr);
         if (!updatedDates.includes(newDateStr)) {
@@ -287,6 +293,19 @@ router.post('/:id/reschedule', protect, admin, async (req, res) => {
         course.sessionDates = updatedDates;
         await course.save();
       }
+
+      // Reset course enrollments back to ongoing since a session is rescheduled to the future
+      await Enrollment.updateMany(
+        { course: courseId },
+        { 
+          $set: { 
+            completed: false, 
+            certificateId: null, 
+            completionDate: null, 
+            progress: 0 
+          } 
+        }
+      ).catch(() => {});
     }
 
     // Send notifications to enrolled students

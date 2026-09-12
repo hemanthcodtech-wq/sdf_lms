@@ -30,35 +30,89 @@ router.get(['/history', '/my-enrollments', '/my-payments'], protect, async (req,
       .populate('course', 'title category thumbnailUrl accessValidity duration price instructor instructorId whatsappGroupLink sessionDates timings startDate startTime endTime sessions')
       .sort('-createdAt');
 
-    // Compute dynamic session progress and ensure completed courses have certificateId
-    const activeEnrollments = enrollments.filter(
-      (enr) => enr && enr.course && typeof enr.course === 'object' && Boolean(enr.course.title)
-    );
+    // Compute dynamic session progress based on exact IST session times
+    const isSessionFinished = (dateStr, startTimeStr, endTimeStr, timingsStr) => {
+      if (!dateStr) return false;
+      try {
+        const cleanDate = String(dateStr).includes('T') ? String(dateStr).split('T')[0] : String(dateStr);
+        const [y, m, d] = cleanDate.split('-').map(Number);
+        if (!y || !m || !d) return false;
+
+        let startH = 6, startM = 0;
+        const timeStr = startTimeStr || (timingsStr ? timingsStr.split(' to ')[0] : '06:00');
+        if (timeStr) {
+          const match = String(timeStr).trim().match(/(\d{1,2}):(\d{2})/);
+          if (match) {
+            startH = parseInt(match[1], 10);
+            startM = parseInt(match[2], 10);
+            if (String(timeStr).toLowerCase().includes('pm') && startH < 12) startH += 12;
+            if (String(timeStr).toLowerCase().includes('am') && startH === 12) startH = 0;
+          }
+        }
+
+        let endH = null, endM = null;
+        const endStr = endTimeStr || (timingsStr && timingsStr.includes(' to ') ? timingsStr.split(' to ')[1] : null);
+        if (endStr) {
+          const matchEnd = String(endStr).trim().match(/(\d{1,2}):(\d{2})/);
+          if (matchEnd) {
+            endH = parseInt(matchEnd[1], 10);
+            endM = parseInt(matchEnd[2], 10);
+            if (String(endStr).toLowerCase().includes('pm') && endH < 12) endH += 12;
+            if (String(endStr).toLowerCase().includes('am') && endH === 12) endH = 0;
+          }
+        }
+
+        // Session end in IST converted to UTC (IST = UTC + 5:30)
+        let sessionEndUtc;
+        if (endH !== null && endM !== null) {
+          sessionEndUtc = new Date(Date.UTC(y, m - 1, d, endH - 5, endM - 30, 0));
+        } else {
+          sessionEndUtc = new Date(Date.UTC(y, m - 1, d, startH - 5, startM - 30 + 60, 0));
+        }
+
+        const nowUtc = new Date();
+        return nowUtc > sessionEndUtc;
+      } catch (e) {
+        return false;
+      }
+    };
 
     for (const enr of activeEnrollments) {
       if (enr.course) {
         const dates = enr.course.sessionDates || [];
         if (dates.length > 0) {
-          const now = new Date();
           let completedCount = 0;
           dates.forEach((sd) => {
-            const sDate = new Date(sd);
-            if (!isNaN(sDate.getTime()) && now > new Date(sDate.getTime() + 60 * 60 * 1000)) {
+            if (isSessionFinished(sd, enr.course.startTime, enr.course.endTime, enr.course.timings)) {
               completedCount++;
             }
           });
-          if (completedCount > 0 && !enr.completed) {
-            enr.progress = Math.min(100, Math.round((completedCount / dates.length) * 100));
+
+          const isAllFinished = completedCount === dates.length;
+          const calculatedProgress = isAllFinished ? 100 : Math.round((completedCount / dates.length) * 100);
+
+          if (!isAllFinished) {
+            // Not all sessions finished -> Strictly ONGOING
+            enr.progress = calculatedProgress;
+            enr.completed = false;
+            enr.certificateId = null;
+            enr.completionDate = null;
+            await enr.save().catch(() => {});
+          } else {
+            // All sessions have completed
+            enr.progress = 100;
+            if (enr.completed && !enr.certificateId) {
+              enr.certificateId = `SDF-CERT-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+              if (!enr.completionDate) enr.completionDate = new Date();
+              await enr.save().catch(() => {});
+            }
+          }
+        } else {
+          // No session dates defined yet -> Course is newly created / ongoing
+          if (!enr.completed) {
+            enr.progress = enr.progress || 0;
           }
         }
-      }
-
-      if ((enr.completed || enr.progress >= 100) && !enr.certificateId) {
-        enr.certificateId = `SDF-CERT-${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
-        enr.completed = true;
-        enr.progress = 100;
-        if (!enr.completionDate) enr.completionDate = new Date();
-        await enr.save().catch(() => {});
       }
     }
 

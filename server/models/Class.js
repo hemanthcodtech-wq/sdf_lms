@@ -34,6 +34,18 @@ const classSchema = new mongoose.Schema({
   isRecurring: {
     type: Boolean,
     default: false
+  },
+  isRescheduled: {
+    type: Boolean,
+    default: false
+  },
+  originalDate: {
+    type: String,
+    default: null
+  },
+  originalTime: {
+    type: String,
+    default: null
   }
 }, { timestamps: true });
 

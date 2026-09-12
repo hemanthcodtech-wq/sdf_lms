@@ -33,6 +33,7 @@ export const RootNavigator = () => {
 
   return (
     <RootStack.Navigator
+      key={isAuthenticated ? (user?.role || 'student') : 'guest'}
       initialRouteName={getInitialRoute()}
       screenOptions={{
         headerShown: false,

@@ -63,13 +63,7 @@ export const MyLearningScreen = ({ navigation }) => {
     setRefreshing(false);
   };
 
-  const isCourseCompleted = (item) => {
-    return Boolean(item.completed === true || item.certificateId);
-  };
-
   const getEnrollmentProgress = (item) => {
-    if (isCourseCompleted(item)) return 100;
-
     const courseObj = (item && typeof item.course === 'object' && item.course !== null)
       ? item.course
       : item;
@@ -130,15 +124,37 @@ export const MyLearningScreen = ({ navigation }) => {
         }
       }
 
-      if (completedCount > 0) {
-        return Math.min(100, Math.round((completedCount / totalCount) * 100));
+      if (completedCount === totalCount && totalCount > 0) {
+        return 100;
       }
+      return totalCount > 0 ? Math.min(99, Math.round((completedCount / totalCount) * 100)) : 0;
     }
 
+    if (item.completed && item.certificateId) return 100;
     if (typeof item.progress === 'number' && item.progress > 0 && item.progress < 100) {
       return item.progress;
     }
     return 0;
+  };
+
+  const isCourseCompleted = (item) => {
+    const courseObj = (item && typeof item.course === 'object' && item.course !== null)
+      ? item.course
+      : item;
+
+    const dates = courseObj?.sessionDates || [];
+    const classes = courseObj?.classes || courseObj?.liveClasses || courseObj?.sessions || [];
+    const totalCount = dates.length > 0 ? dates.length : classes.length;
+
+    const progress = getEnrollmentProgress(item);
+
+    // If the course has sessions, ALL sessions must have finished before it can ever be completed!
+    if (totalCount > 0 && progress < 100) {
+      return false;
+    }
+
+    // A course is only completed if all sessions finished (progress 100%) AND it has been marked completed or certificate claimed
+    return Boolean(progress >= 100 && (item.completed === true || item.certificateId));
   };
 
   const validEnrollments = enrollments.filter(
