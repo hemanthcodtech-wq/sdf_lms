@@ -19,6 +19,8 @@ import { CustomButton } from '../../components/CustomButton';
 import { useAuth } from '../../context/AuthContext';
 import { paymentService } from '../../services/paymentService';
 import { notificationService } from '../../services/notificationService';
+import { courseService } from '../../services/courseService';
+import { cacheService } from '../../services/cacheService';
 import { getCourseImageUrl } from '../../utils/imageHelper';
 
 // Conditionally load react-native-webview on native platforms
@@ -198,6 +200,13 @@ export const CheckoutScreen = ({ route, navigation }) => {
                 });
 
                 if (verifyRes.success) {
+                  try {
+                    const freshCourses = await courseService.getMyCourses();
+                    if (freshCourses?.data && Array.isArray(freshCourses.data)) {
+                      cacheService.setMyCourses(freshCourses.data);
+                    }
+                  } catch (e) {}
+
                   await notificationService.addNotification({
                     type: 'course_enrolled',
                     title: '🎉 Course Enrollment Confirmed!',
@@ -437,6 +446,13 @@ export const CheckoutScreen = ({ route, navigation }) => {
         });
 
         if (verifyRes.success) {
+          try {
+            const freshCourses = await courseService.getMyCourses();
+            if (freshCourses?.data && Array.isArray(freshCourses.data)) {
+              cacheService.setMyCourses(freshCourses.data);
+            }
+          } catch (e) {}
+
           await notificationService.addNotification({
             type: 'course_enrolled',
             title: '🎉 Course Enrollment Confirmed!',
