@@ -605,11 +605,14 @@ export const StudentClassesScreen = ({ route, navigation }) => {
                   ? "checkmark-done"
                   : "time"
               }
-              size={currentStatus?.canJoin ? 32 : 28}
+              size={currentStatus?.canJoin ? 26 : 28}
               color="#fff"
             />
             {currentStatus?.canJoin && (
-              <Text style={styles.playCenterLiveText}>JOIN NOW (LIVE)</Text>
+              <View style={styles.playCenterLiveTextWrap}>
+                <Text style={styles.playCenterLiveText}>JOIN NOW</Text>
+                <Text style={styles.playCenterLiveSubText}>(LIVE)</Text>
+              </View>
             )}
           </TouchableOpacity>
           <View style={styles.playerBottomInfo}>
@@ -1636,7 +1639,19 @@ const styles = StyleSheet.create({
     color: '#b45309',
   },
   playCenterButtonLive: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     backgroundColor: '#16a34a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 8,
   },
   playCenterButtonDone: {
     backgroundColor: '#059669',
@@ -1646,11 +1661,26 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.4)',
   },
+  playCenterLiveTextWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
   playCenterLiveText: {
     color: '#fff',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '900',
-    marginTop: 2,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    lineHeight: 12,
+  },
+  playCenterLiveSubText: {
+    color: '#dcfce7',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    textAlign: 'center',
+    lineHeight: 11,
+    marginTop: 1,
   },
 });
