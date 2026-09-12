@@ -31,7 +31,11 @@ export const ProfileScreen = ({ navigation }) => {
   const { user, logout, wishlist, updateUserProfile } = useAuth();
   const { t } = useLanguage();
 
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState({
+    enrolledCount: 0,
+    certificatesCount: 0,
+    paymentsCount: 0,
+  });
   const [detailedProfile, setDetailedProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -261,16 +265,16 @@ export const ProfileScreen = ({ navigation }) => {
     {
       id: 'learning',
       title: t('myEnrollments'),
-      subtitle: `${stats.enrolledCount} ${t('activeCoursesSubtitle')}`,
+      subtitle: `${stats?.enrolledCount || 0} ${t('activeCoursesSubtitle')}`,
       icon: 'book-outline',
       color: colors.primary,
-      badge: stats.enrolledCount > 0 ? stats.enrolledCount.toString() : null,
+      badge: (stats?.enrolledCount || 0) > 0 ? stats.enrolledCount.toString() : null,
       onPress: () => navigation.navigate('LearningTab'),
     },
     {
       id: 'payments',
       title: t('paymentHistory'),
-      subtitle: `${stats.paymentsCount} ${t('transactionsSubtitle')}`,
+      subtitle: `${stats?.paymentsCount || 0} ${t('transactionsSubtitle')}`,
       icon: 'card-outline',
       color: colors.secondary,
       onPress: () => navigation.navigate('PaymentHistory'),
@@ -278,10 +282,10 @@ export const ProfileScreen = ({ navigation }) => {
     {
       id: 'certificates',
       title: t('myCertificates'),
-      subtitle: `${stats.certificatesCount} ${t('certificatesEarned')}`,
+      subtitle: `${stats?.certificatesCount || 0} ${t('certificatesEarned')}`,
       icon: 'ribbon-outline',
       color: '#f59e0b',
-      badge: stats.certificatesCount > 0 ? stats.certificatesCount.toString() : null,
+      badge: (stats?.certificatesCount || 0) > 0 ? stats.certificatesCount.toString() : null,
       onPress: () => navigation.navigate('Certificates'),
     },
     {
@@ -374,17 +378,17 @@ export const ProfileScreen = ({ navigation }) => {
 
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
-                <Text style={styles.statValue}>{stats.enrolledCount}</Text>
+                <Text style={styles.statValue}>{stats?.enrolledCount ?? 0}</Text>
                 <Text style={styles.statLabel}>{t('courses')}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statBox}>
-                <Text style={styles.statValue}>{stats.certificatesCount}</Text>
+                <Text style={styles.statValue}>{stats?.certificatesCount ?? 0}</Text>
                 <Text style={styles.statLabel}>{t('certificates')}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statBox}>
-                <Text style={styles.statValue}>{stats.paymentsCount}</Text>
+                <Text style={styles.statValue}>{stats?.paymentsCount ?? 0}</Text>
                 <Text style={styles.statLabel}>{t('paid')}</Text>
               </View>
             </View>

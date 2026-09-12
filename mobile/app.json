@@ -2,7 +2,7 @@
   "expo": {
     "name": "Swamy dwija Foundation",
     "slug": "sdf-lms",
-    "owner": "student17s-team",
+    "owner": "student18s-team",
     "scheme": "sdflms",
     "version": "1.0.0",
     "orientation": "default",
@@ -61,7 +61,7 @@
     "extra": {
       "apiUrl": "https://swamidwijafoundation.com/api",
       "eas": {
-        "projectId": "ad472c0b-35db-40c3-ae8b-ba5d20cc87ad"
+        "projectId": "7f564fa7-ee35-4bd8-976b-ff4778606bf5"
       }
     }
   }
