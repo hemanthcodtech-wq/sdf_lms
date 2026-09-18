@@ -38,15 +38,19 @@ export const PolicyViewerScreen = ({ navigation, route }) => {
   }, []);
 
   const getTitle = () => {
-    if (policyType === 'terms') return t('termsConditions');
+    if (policyType === 'terms') return t('termsConditions') || 'Terms & Conditions';
+    if (policyType === 'instructorTerms') return 'Instructor Terms & Conditions';
+    if (policyType === 'moderatorTerms') return 'Moderator Terms & Conditions';
     if (policyType === 'privacy') return t('privacyPolicy');
     if (policyType === 'refund') return t('refundPolicy');
-    return t('termsConditions');
+    return t('termsConditions') || 'Terms & Conditions';
   };
 
   const getContent = () => {
     if (!policies) return '';
     if (policyType === 'terms') return policies.termsAndConditions;
+    if (policyType === 'instructorTerms') return policies.instructorTerms || policies.termsAndConditions;
+    if (policyType === 'moderatorTerms') return policies.moderatorTerms || policies.termsAndConditions;
     if (policyType === 'privacy') return policies.privacyPolicy;
     if (policyType === 'refund') return policies.refundPolicy;
     return policies.termsAndConditions;

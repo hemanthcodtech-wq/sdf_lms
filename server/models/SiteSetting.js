@@ -34,6 +34,8 @@ const siteSettingSchema = new mongoose.Schema({
   },
   policies: {
     termsAndConditions: { type: String, default: '' },
+    instructorTerms: { type: String, default: '' },
+    moderatorTerms: { type: String, default: '' },
     privacyPolicy: { type: String, default: '' },
     refundPolicy: { type: String, default: '' },
     contactPhone: { type: String, default: '+91 98765 43210' },

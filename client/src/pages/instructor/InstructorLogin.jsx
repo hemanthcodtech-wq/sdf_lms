@@ -7,6 +7,7 @@ import {
   FaArrowLeft, FaSpa, FaOm, FaAward, FaCalendarCheck, FaVideo,
   FaKey, FaTimes, FaCheckCircle
 } from 'react-icons/fa';
+import { TermsModal } from '../../components/common/TermsModal';
 
 const InstructorLogin = () => {
   const location = useLocation();
@@ -14,6 +15,8 @@ const InstructorLogin = () => {
 
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -47,6 +50,10 @@ const InstructorLogin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!agreed) {
+      setError('Please check and agree to the Instructor Terms & Conditions to sign in.');
+      return;
+    }
     setError('');
     setIsLoading(true);
 
@@ -318,6 +325,33 @@ const InstructorLogin = () => {
                 </div>
               </div>
 
+              {/* Terms and Conditions Checkbox */}
+              <label className="flex items-start gap-2.5 text-xs text-gray-600 cursor-pointer select-none mt-2">
+                <input 
+                  type="checkbox" 
+                  checked={agreed} 
+                  onChange={(e) => {
+                    setAgreed(e.target.checked);
+                    setError('');
+                  }}
+                  className="mt-0.5 rounded border-gray-300 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer" 
+                />
+                <span className="leading-snug">
+                  I agree to the{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setTermsModalOpen(true);
+                    }}
+                    className="text-brand-green font-bold hover:underline inline cursor-pointer"
+                  >
+                    Instructor Terms & Conditions
+                  </button>
+                  .
+                </span>
+              </label>
+
               {/* Submit Button */}
               <button
                 type="submit"
@@ -349,6 +383,17 @@ const InstructorLogin = () => {
 
         </motion.div>
       </div>
+
+      {/* INSTRUCTOR TERMS MODAL */}
+      <TermsModal
+        isOpen={termsModalOpen}
+        onClose={() => setTermsModalOpen(false)}
+        onAccept={() => {
+          setAgreed(true);
+          setError('');
+        }}
+        role="instructor"
+      />
 
       {/* INSTRUCTOR FORGOT PASSWORD MODAL */}
       <AnimatePresence>

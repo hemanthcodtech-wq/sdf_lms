@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, shadows } from '../../theme/colors';
 import { CustomInput } from '../../components/CustomInput';
 import { CustomButton } from '../../components/CustomButton';
+import { TermsModal } from '../../components/TermsModal';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -29,6 +30,8 @@ export const RegisterScreen = ({ navigation }) => {
     password: '',
     confirmPassword: '',
   });
+  const [agreed, setAgreed] = useState(false);
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -38,6 +41,11 @@ export const RegisterScreen = ({ navigation }) => {
   };
 
   const handleRegister = async () => {
+    if (!agreed) {
+      setError('Please check and agree to the Terms & Conditions to create an account.');
+      return;
+    }
+
     if (!formData.name.trim()) {
       setError('Please enter your full name.');
       return;
@@ -179,6 +187,29 @@ export const RegisterScreen = ({ navigation }) => {
             leftIcon={<Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />}
           />
 
+          {/* Terms and Conditions Checkbox */}
+          <TouchableOpacity
+            style={styles.termsCheckboxRow}
+            activeOpacity={0.8}
+            onPress={() => {
+              setAgreed((prev) => !prev);
+              setError('');
+            }}
+          >
+            <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
+              {agreed && <Ionicons name="checkmark" size={13} color="#ffffff" />}
+            </View>
+            <Text style={styles.termsText}>
+              I agree to the{' '}
+              <Text
+                style={styles.termsLink}
+                onPress={() => setTermsModalVisible(true)}
+              >
+                Terms & Conditions
+              </Text>
+            </Text>
+          </TouchableOpacity>
+
           <CustomButton
             title={t('register')}
             onPress={handleRegister}
@@ -218,6 +249,17 @@ export const RegisterScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Terms & Conditions Modal */}
+      <TermsModal
+        visible={termsModalVisible}
+        onClose={() => setTermsModalVisible(false)}
+        onAccept={() => {
+          setAgreed(true);
+          setError('');
+        }}
+        role="user"
+      />
     </KeyboardAvoidingView>
   );
 };
@@ -330,5 +372,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#334155',
+  },
+  termsCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 16,
+    paddingHorizontal: 2,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.8,
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    backgroundColor: '#ffffff',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  termsText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: colors.primary,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });

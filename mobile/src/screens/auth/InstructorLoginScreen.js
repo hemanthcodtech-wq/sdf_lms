@@ -16,6 +16,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { colors, shadows } from '../../theme/colors';
 import { CustomInput } from '../../components/CustomInput';
 import { CustomButton } from '../../components/CustomButton';
+import { TermsModal } from '../../components/TermsModal';
 import { useAuth } from '../../context/AuthContext';
 
 export const InstructorLoginScreen = ({ navigation }) => {
@@ -24,6 +25,8 @@ export const InstructorLoginScreen = ({ navigation }) => {
 
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [agreed, setAgreed] = useState(false);
+  const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
@@ -91,6 +94,11 @@ export const InstructorLoginScreen = ({ navigation }) => {
   };
 
   const handleGoogleLogin = async () => {
+    if (!agreed) {
+      setError('Please check and agree to the Instructor Terms & Conditions to sign in with Google.');
+      return;
+    }
+
     const clientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '473693349273-r3lct54ccv5pfeppqkes57odmni6nvh4.apps.googleusercontent.com';
     try {
       setError('');
@@ -127,6 +135,11 @@ export const InstructorLoginScreen = ({ navigation }) => {
   };
 
   const handleLogin = async () => {
+    if (!agreed) {
+      setError('Please check and agree to the Instructor Terms & Conditions to sign in.');
+      return;
+    }
+
     if (!emailOrPhone.trim() || !password.trim()) {
       setError('Please enter your instructor email and password.');
       return;
@@ -238,6 +251,29 @@ export const InstructorLoginScreen = ({ navigation }) => {
             <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
 
+          {/* Terms and Conditions Checkbox */}
+          <TouchableOpacity
+            style={styles.termsCheckboxRow}
+            activeOpacity={0.8}
+            onPress={() => {
+              setAgreed((prev) => !prev);
+              setError('');
+            }}
+          >
+            <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
+              {agreed && <Ionicons name="checkmark" size={13} color="#ffffff" />}
+            </View>
+            <Text style={styles.termsText}>
+              I agree to the{' '}
+              <Text
+                style={styles.termsLink}
+                onPress={() => setTermsModalVisible(true)}
+              >
+                Instructor Terms & Conditions
+              </Text>
+            </Text>
+          </TouchableOpacity>
+
           <CustomButton
             title="Sign In to Faculty Portal"
             onPress={handleLogin}
@@ -295,6 +331,17 @@ export const InstructorLoginScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Terms & Conditions Modal */}
+      <TermsModal
+        visible={termsModalVisible}
+        onClose={() => setTermsModalVisible(false)}
+        onAccept={() => {
+          setAgreed(true);
+          setError('');
+        }}
+        role="instructor"
+      />
     </KeyboardAvoidingView>
   );
 };
@@ -450,6 +497,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#334155',
+  },
+  termsCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 16,
+    paddingHorizontal: 2,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.8,
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    backgroundColor: '#ffffff',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
+  },
+  termsText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: colors.secondary,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });
 

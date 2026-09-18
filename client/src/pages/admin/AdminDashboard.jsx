@@ -49,13 +49,15 @@ const AdminDashboard = () => {
 
   // Policy & Support Contact State
   const [policyModalOpen, setPolicyModalOpen] = useState(false);
-  const [activePolicyTab, setActivePolicyTab] = useState('contact'); // 'contact' | 'terms' | 'privacy' | 'refund' | 'faqs'
+  const [activePolicyTab, setActivePolicyTab] = useState('contact'); // 'contact' | 'terms' | 'instructorTerms' | 'moderatorTerms' | 'privacy' | 'refund' | 'faqs'
   const [policyData, setPolicyData] = useState({
     termsAndConditions: '',
+    instructorTerms: '',
+    moderatorTerms: '',
     privacyPolicy: '',
     refundPolicy: '',
-    contactPhone: '+91 98765 43210',
-    contactEmail: 'support@sdflms.org',
+    contactPhone: '+91 9989551305',
+    contactEmail: 'swamidwijafoundation@gmail.com',
     faqs: []
   });
   const [savingPolicy, setSavingPolicy] = useState(false);
@@ -769,7 +771,7 @@ const AdminDashboard = () => {
                 <button
                   type="button"
                   onClick={() => setActivePolicyTab('contact')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                     activePolicyTab === 'contact'
                       ? 'bg-brand-green text-white shadow-xs'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -780,18 +782,40 @@ const AdminDashboard = () => {
                 <button
                   type="button"
                   onClick={() => setActivePolicyTab('terms')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                     activePolicyTab === 'terms'
                       ? 'bg-brand-green text-white shadow-xs'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  Terms & Conditions
+                  User Terms
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivePolicyTab('instructorTerms')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                    activePolicyTab === 'instructorTerms'
+                      ? 'bg-brand-green text-white shadow-xs'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Instructor Terms
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActivePolicyTab('moderatorTerms')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                    activePolicyTab === 'moderatorTerms'
+                      ? 'bg-brand-green text-white shadow-xs'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Moderator Terms
                 </button>
                 <button
                   type="button"
                   onClick={() => setActivePolicyTab('privacy')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                     activePolicyTab === 'privacy'
                       ? 'bg-brand-green text-white shadow-xs'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -802,7 +826,7 @@ const AdminDashboard = () => {
                 <button
                   type="button"
                   onClick={() => setActivePolicyTab('refund')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                     activePolicyTab === 'refund'
                       ? 'bg-brand-green text-white shadow-xs'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -813,13 +837,13 @@ const AdminDashboard = () => {
                 <button
                   type="button"
                   onClick={() => setActivePolicyTab('faqs')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                     activePolicyTab === 'faqs'
                       ? 'bg-brand-green text-white shadow-xs'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  <FaQuestionCircle size={11} /> FAQs (Help & Support)
+                  <FaQuestionCircle size={11} /> FAQs
                 </button>
               </div>
 
@@ -867,16 +891,53 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {/* Terms Tab */}
+                {/* User Terms Tab */}
                 {activePolicyTab === 'terms' && (
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-700 block">Terms & Conditions Content</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-gray-700 block">User / Student Terms & Conditions</label>
+                      <span className="text-[11px] text-gray-500 font-semibold">Displayed during Student & Learner Login / Sign Up</span>
+                    </div>
                     <textarea
                       rows={14}
                       value={policyData.termsAndConditions}
                       onChange={(e) => setPolicyData({ ...policyData, termsAndConditions: e.target.value })}
                       className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-mono text-gray-800 outline-none focus:border-brand-green focus:bg-white leading-relaxed"
-                      placeholder="Enter Terms & Conditions..."
+                      placeholder="Enter User Terms & Conditions..."
+                    />
+                  </div>
+                )}
+
+                {/* Instructor Terms Tab */}
+                {activePolicyTab === 'instructorTerms' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-gray-700 block">Instructor Terms & Conditions</label>
+                      <span className="text-[11px] text-gray-500 font-semibold">Displayed during Instructor Portal Login</span>
+                    </div>
+                    <textarea
+                      rows={14}
+                      value={policyData.instructorTerms}
+                      onChange={(e) => setPolicyData({ ...policyData, instructorTerms: e.target.value })}
+                      className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-mono text-gray-800 outline-none focus:border-brand-green focus:bg-white leading-relaxed"
+                      placeholder="Enter Instructor Terms & Conditions..."
+                    />
+                  </div>
+                )}
+
+                {/* Moderator Terms Tab */}
+                {activePolicyTab === 'moderatorTerms' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-gray-700 block">Moderator Terms & Conditions</label>
+                      <span className="text-[11px] text-gray-500 font-semibold">Displayed during Moderator Portal Login</span>
+                    </div>
+                    <textarea
+                      rows={14}
+                      value={policyData.moderatorTerms}
+                      onChange={(e) => setPolicyData({ ...policyData, moderatorTerms: e.target.value })}
+                      className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-mono text-gray-800 outline-none focus:border-brand-green focus:bg-white leading-relaxed"
+                      placeholder="Enter Moderator Terms & Conditions..."
                     />
                   </div>
                 )}

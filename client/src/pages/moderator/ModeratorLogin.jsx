@@ -6,6 +6,7 @@ import {
   FaShieldAlt, FaLock, FaEnvelope, FaEye, FaEyeSlash, 
   FaArrowLeft, FaUserShield, FaCheckCircle, FaKey, FaTimes
 } from 'react-icons/fa';
+import { TermsModal } from '../../components/common/TermsModal';
 
 const ModeratorLogin = () => {
   const location = useLocation();
@@ -13,6 +14,8 @@ const ModeratorLogin = () => {
 
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,6 +49,10 @@ const ModeratorLogin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!agreed) {
+      setError('Please check and agree to the Moderator Terms & Conditions to sign in.');
+      return;
+    }
     setError('');
     setIsLoading(true);
 
@@ -302,6 +309,33 @@ const ModeratorLogin = () => {
                 </div>
               </div>
 
+              {/* Terms and Conditions Checkbox */}
+              <label className="flex items-start gap-2.5 text-xs text-gray-600 cursor-pointer select-none mt-2">
+                <input 
+                  type="checkbox" 
+                  checked={agreed} 
+                  onChange={(e) => {
+                    setAgreed(e.target.checked);
+                    setError('');
+                  }}
+                  className="mt-0.5 rounded border-gray-300 text-brand-green focus:ring-brand-green/20 w-4 h-4 cursor-pointer" 
+                />
+                <span className="leading-snug">
+                  I agree to the{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setTermsModalOpen(true);
+                    }}
+                    className="text-brand-green font-bold hover:underline inline cursor-pointer"
+                  >
+                    Moderator Terms & Conditions
+                  </button>
+                  .
+                </span>
+              </label>
+
               <button
                 type="submit"
                 disabled={isLoading}
@@ -332,6 +366,17 @@ const ModeratorLogin = () => {
 
         </motion.div>
       </div>
+
+      {/* MODERATOR TERMS MODAL */}
+      <TermsModal
+        isOpen={termsModalOpen}
+        onClose={() => setTermsModalOpen(false)}
+        onAccept={() => {
+          setAgreed(true);
+          setError('');
+        }}
+        role="moderator"
+      />
 
       {/* MODERATOR FORGOT PASSWORD MODAL */}
       <AnimatePresence>
