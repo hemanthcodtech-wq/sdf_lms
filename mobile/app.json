@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sdflms.app"
+      "bundleIdentifier": "com.swamydwijafoundation.app"
     },
     "androidNavigationBar": {
       "barStyle": "dark-content",
@@ -29,7 +29,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0d5c31"
       },
-      "package": "com.sdflms.app",
+      "package": "com.swamydwijafoundation.app",
       "permissions": [
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.POST_NOTIFICATIONS",
