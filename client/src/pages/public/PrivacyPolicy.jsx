@@ -126,26 +126,84 @@ const PrivacyPolicy = () => {
             </ul>
           </section>
 
-          {/* 6. User Rights & Account Deletion */}
-          <section className="space-y-3">
+          {/* 6. User Data Deletion & Account Erasure Policy */}
+          <section className="space-y-4">
             <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
               <span className="w-7 h-7 rounded-xl bg-brand-green text-white text-xs flex items-center justify-center font-black">6</span>
-              Your Rights & Data Access
+              User Data Deletion & Account Erasure Policy
+            </h2>
+            <p className="text-sm text-gray-700">
+              At Swamy Dwija Foundation, we respect your right to control your personal information. You have the right to request the permanent deletion of your account and associated personal data at any time.
+            </p>
+
+            <div className="space-y-3 bg-[#FAF7F2] p-5 rounded-2xl border border-gray-200/70 text-sm">
+              <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                <FaDatabase className="text-brand-green" /> How to Request Data Deletion:
+              </h3>
+              <ul className="space-y-2 text-xs text-gray-600 list-disc pl-5">
+                <li>
+                  <strong className="text-gray-800">Email Request (Recommended):</strong> Send an email from your registered email address to <a href="mailto:swamidwijafoundation@gmail.com" className="text-brand-green font-semibold underline">swamidwijafoundation@gmail.com</a> (or <a href="mailto:support@swamydwija.org" className="text-brand-green font-semibold underline">support@swamydwija.org</a>) with the subject line <em>"Data Deletion Request"</em>. Please mention your full name, registered mobile number, and account email.
+                </li>
+                <li>
+                  <strong className="text-gray-800">In-App / Dashboard Request:</strong> Navigate to your <strong>Profile / Settings &rarr; Help & Support</strong> in the web dashboard or mobile app, and submit a ticket requesting account and data deletion.
+                </li>
+              </ul>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="p-4 bg-white rounded-2xl border border-gray-200/70 space-y-2">
+                <span className="font-bold text-gray-900 flex items-center gap-1.5">
+                  <FaUserShield className="text-brand-green" /> What Data is Permanently Deleted:
+                </span>
+                <ul className="space-y-1 text-gray-600 list-disc pl-4">
+                  <li>Profile identifiers: Name, email address, phone number, and photo.</li>
+                  <li>Authentication credentials, password hashes, and active session tokens.</li>
+                  <li>Learning progress, quiz attempts, and class attendance logs.</li>
+                  <li>Wishlist, cart items, and custom user preferences.</li>
+                </ul>
+              </div>
+
+              <div className="p-4 bg-white rounded-2xl border border-gray-200/70 space-y-2">
+                <span className="font-bold text-gray-900 flex items-center gap-1.5">
+                  <FaLock className="text-brand-green" /> Timeline & Verification:
+                </span>
+                <p className="text-gray-600 leading-relaxed">
+                  For your protection, our support team will verify your identity via a confirmation email before proceeding. Once verified, your account and personal data are permanently purged from our active databases within <strong>7 to 14 business days</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50/80 border border-amber-200/70 rounded-2xl text-xs text-amber-950 space-y-1.5">
+              <p className="font-bold flex items-center gap-1.5 text-amber-900">
+                ⚠️ Statutory Data Retention Exceptions:
+              </p>
+              <p className="text-amber-800 leading-relaxed">
+                In compliance with applicable Indian financial, taxation, and legal regulations (such as GST and accounting audit requirements), financial transaction records, invoices, and payment logs must be retained in an encrypted, isolated archive for the duration mandated by law. These archived financial logs are never utilized for marketing, user profiling, or operational contact.
+              </p>
+            </div>
+          </section>
+
+          {/* 7. User Rights & Data Access */}
+          <section className="space-y-3">
+            <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+              <span className="w-7 h-7 rounded-xl bg-brand-green text-white text-xs flex items-center justify-center font-black">7</span>
+              Your Rights & Data Portability
             </h2>
             <p className="text-sm">
-              You have the right to inspect, update, or request the deletion of your personal account data at any time via your <strong>Dashboard Settings</strong> or by emailing <a href="mailto:support@swamydwija.org" className="text-brand-green font-semibold underline">support@swamydwija.org</a>.
+              In addition to account deletion, you have the right to access, rectify, or download a copy of the personal information stored with Swamy Dwija Foundation. To exercise any of these rights, please contact our Grievance Officer below.
             </p>
           </section>
 
           {/* Grievance Officer */}
           <div className="pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gray-50/80 p-6 rounded-2xl">
             <div>
-              <h4 className="font-extrabold text-gray-900 text-sm">Privacy Grievance Officer</h4>
+              <h4 className="font-extrabold text-gray-900 text-sm">Privacy & Data Protection Grievance Officer</h4>
               <p className="text-xs text-gray-500 mt-0.5">Swamy Dwija Foundation, Telangana, India</p>
-              <p className="text-xs text-brand-green font-bold mt-1">support@swamydwija.org</p>
+              <p className="text-xs text-brand-green font-bold mt-1">swamidwijafoundation@gmail.com / support@swamydwija.org</p>
+              <p className="text-xs text-gray-500">Phone: +91 9989551305</p>
             </div>
             <a 
-              href="mailto:support@swamydwija.org"
+              href="mailto:swamidwijafoundation@gmail.com?subject=Privacy%20and%20Data%20Query"
               className="px-5 py-2.5 bg-brand-green text-white text-xs font-bold rounded-xl hover:bg-brand-green-dark transition-all shadow-xs shrink-0 flex items-center gap-2"
             >
               <FaEnvelope size={11} /> Contact Officer

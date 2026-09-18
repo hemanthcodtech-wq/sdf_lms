@@ -1239,7 +1239,27 @@ By registering as a Moderator, accepting a Moderator assignment, accessing the M
 
 © Swammy Dwija Foundation. All Rights Reserved.`,
 
-  privacyPolicy: `1. Information We Collect\nSwamy Dwija Foundation collects your name, email address, phone number, and basic profile information solely for account authentication, course enrollment, issuing completion certificates, and sending live session reminders.\n\n2. How We Use Your Information\nYour personal data is used exclusively to provide learning services, process payments via secure gateways (Razorpay / PhonePe), and send schedule updates. We never sell, rent, or trade your personal information to third parties.\n\n3. Data Security\nWe implement robust encryption and security protocols to safeguard your personal credentials and educational records against unauthorized access.\n\n4. Third-Party Integrations\nWe use verified services such as Google Identity for authentication and Zoom for live interactive classes. These services operate under their respective security standards.\n\n5. Privacy Questions\nIf you have questions about your personal data or wish to update your records, please reach out via the contact buttons below.`,
+  privacyPolicy: `1. Information We Collect
+Swamy Dwija Foundation collects your name, email address, phone number, and basic profile information solely for account authentication, course enrollment, issuing completion certificates, and sending live session reminders.
+
+2. How We Use Your Information
+Your personal data is used exclusively to provide learning services, process payments via secure gateways (Razorpay / PhonePe), and send schedule updates. We never sell, rent, or trade your personal information to third parties.
+
+3. Data Security
+We implement robust encryption and security protocols to safeguard your personal credentials and educational records against unauthorized access.
+
+4. Third-Party Integrations
+We use verified services such as Google Identity for authentication and Zoom for live interactive classes. These services operate under their respective security standards.
+
+5. User Data Deletion & Account Erasure Policy
+You have the right to request permanent deletion of your account and personal data at any time:
+• Email Request: Send an email to swamidwijafoundation@gmail.com with the subject line "Data Deletion Request" from your registered email address, specifying your full name and phone number.
+• In-App / Dashboard: Submit a ticket via Profile / Settings -> Help & Support.
+• What is Deleted: Personal profile data, contact details, authentication records, progress logs, and bookmarks are permanently purged within 7 to 14 business days after identity verification.
+• Legal Retention: In accordance with statutory Indian taxation and financial audit regulations, transaction receipts and invoices are securely archived for the mandated statutory duration before purge.
+
+6. Privacy Questions & Grievance Officer
+If you have questions about your personal data or wish to update your records, please contact our Grievance Officer at swamidwijafoundation@gmail.com or call +91 9989551305.`,
 
   refundPolicy: `1. 100% Digital Delivery\nAll courses, materials, and live lectures offered on Swamy Dwija Foundation are electronic digital goods. Course access is activated immediately upon successful payment verification.\n\n2. Cancellation Window\nYou may request a full refund or course transfer up to 24 hours prior to the start of Session 1 of your batch.\n\n3. Refund Processing\nApproved refunds are credited directly to your original payment method (Credit/Debit Card, Net Banking, or UPI) within 5 to 7 working business days.\n\n4. Exceptions\nOnce a batch has commenced and access to live interactive sessions or digital curriculum has been utilized, refunds cannot be issued. However, students experiencing genuine emergencies may request a transfer to a future batch.\n\n5. Submitting a Request\nTo request a cancellation or refund, please reach out to our team via the Call or Email button below with your registered email and Order ID.`,
 
