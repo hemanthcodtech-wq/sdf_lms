@@ -22,7 +22,7 @@
       "backgroundColor": "#ffffff"
     },
     "android": {
-      "versionCode": 3,
+      "versionCode": 5,
       "supportsTablet": true,
       "softwareKeyboardLayoutMode": "pan",
       "allowBackup": false,
