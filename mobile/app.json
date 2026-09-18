@@ -22,6 +22,7 @@
       "backgroundColor": "#ffffff"
     },
     "android": {
+      "versionCode": 3,
       "supportsTablet": true,
       "softwareKeyboardLayoutMode": "pan",
       "allowBackup": false,
@@ -52,6 +53,16 @@
         "expo-image-picker",
         {
           "photosPermission": "The app accesses your photos to let you update your profile photo."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0"
+          }
         }
       ]
     ],

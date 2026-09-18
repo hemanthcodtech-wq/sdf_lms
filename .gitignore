@@ -58,4 +58,7 @@ mobile/.expo/
 mobile/.env
 mobile/dist/
 mobile/web-build/
+mobile/android/
+playstore_assets/
+*.aab
 
