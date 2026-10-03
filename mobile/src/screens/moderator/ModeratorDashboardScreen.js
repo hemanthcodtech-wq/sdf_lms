@@ -314,7 +314,6 @@ export const ModeratorDashboardScreen = ({ navigation }) => {
                     <Image
                       source={{
                         uri: getCourseImageUrl(c.thumbnail || c.thumbnailUrl || c.image),
-                        cache: 'force-cache',
                       }}
                       style={styles.courseThumb}
                     />

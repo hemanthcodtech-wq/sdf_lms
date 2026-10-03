@@ -103,11 +103,24 @@ router.get('/dashboard-stats', protect, instructor, async (req, res) => {
     // Attach student count, full student details, session metrics, and materials to each course
     const coursesWithStats = assignedCourses.map(c => {
       const cObj = c.toObject();
+      let thumb = cObj.thumbnailUrl || cObj.thumbnail || cObj.image || '';
+      if (thumb) {
+        thumb = thumb.replace(/\\/g, '/');
+        const idx = thumb.indexOf('/uploads/');
+        if (idx !== -1) {
+          thumb = thumb.substring(idx);
+        } else if (thumb.startsWith('uploads/')) {
+          thumb = '/' + thumb;
+        }
+      }
       const courseEnrollments = enrollments.filter(e => e.course?.toString() === c._id.toString());
       const courseClasses = classes.filter(cl => cl.courseId?._id?.toString() === c._id.toString() || cl.courseId?.toString() === c._id.toString());
       const courseMaterials = materials.filter(m => m.courseId?.toString() === c._id.toString());
       return {
         ...cObj,
+        thumbnailUrl: thumb,
+        thumbnail: thumb,
+        image: thumb,
         enrolledStudentsCount: courseEnrollments.length,
         students: courseEnrollments,
         totalSessionsCount: courseClasses.length || (c.sessionDates ? c.sessionDates.length : 0),

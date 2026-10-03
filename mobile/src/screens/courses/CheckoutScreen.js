@@ -504,7 +504,6 @@ export const CheckoutScreen = ({ route, navigation }) => {
               <Image
                 source={{
                   uri: getCourseImageUrl(course.thumbnail || course.thumbnailUrl || course.image),
-                  cache: 'force-cache',
                 }}
                 style={styles.courseThumb}
               />

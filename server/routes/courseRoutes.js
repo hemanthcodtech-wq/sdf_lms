@@ -25,6 +25,8 @@ const cleanCourseUrls = (courseDoc) => {
       clean = '/' + clean;
     }
     course.thumbnailUrl = clean;
+    course.thumbnail = clean;
+    course.image = clean;
   }
   if (course.contentUrl) {
     let clean = course.contentUrl.replace(/\\/g, '/');

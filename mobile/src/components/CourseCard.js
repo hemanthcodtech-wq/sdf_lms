@@ -46,7 +46,7 @@ export const CourseCard = ({
       <View style={horizontal ? styles.horizontalImageWrap : styles.verticalImageWrap}>
         {imageUrl && !imgError ? (
           <Image
-            source={{ uri: imageUrl, cache: 'force-cache' }}
+            source={{ uri: imageUrl }}
             style={styles.image}
             resizeMode="cover"
             onError={() => setImgError(true)}

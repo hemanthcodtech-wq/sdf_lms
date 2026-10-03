@@ -493,13 +493,19 @@ export const InstructorDashboardScreen = ({ navigation }) => {
                     onPress={() => setSelectedCourse(selectedCourse?._id === c._id ? null : c)}
                   >
                     <View style={styles.courseCardTop}>
-                      <Image
-                        source={{
-                          uri: getCourseImageUrl(c.thumbnail || c.thumbnailUrl || c.image),
-                          cache: 'force-cache',
-                        }}
-                        style={styles.courseThumb}
-                      />
+                      {getCourseImageUrl(c.thumbnail || c.thumbnailUrl || c.image) ? (
+                        <Image
+                          source={{
+                            uri: getCourseImageUrl(c.thumbnail || c.thumbnailUrl || c.image),
+                          }}
+                          style={styles.courseThumb}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={[styles.courseThumb, { alignItems: 'center', justifyContent: 'center', backgroundColor: '#e2e8f0' }]}>
+                          <Ionicons name="book-outline" size={24} color={colors.secondary} />
+                        </View>
+                      )}
                       <View style={{ flex: 1 }}>
                         <Text style={styles.courseTitle} numberOfLines={2}>{c.title}</Text>
                         <Text style={styles.courseCategory}>{c.category || 'Yoga / Wellness'}</Text>
