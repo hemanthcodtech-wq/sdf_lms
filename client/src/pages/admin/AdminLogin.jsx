@@ -55,7 +55,11 @@ const AdminLogin = () => {
         navigate('/admin/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed. Please verify credentials.');
+      if (err.response?.data?.notRegistered || err.response?.status === 404) {
+        setError('Administrative account not found. Please verify your administrative email address.');
+      } else {
+        setError(err.response?.data?.message || 'Authentication failed. Please verify credentials.');
+      }
     } finally {
       setIsLoading(false);
     }
